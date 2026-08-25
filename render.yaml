@@ -3,7 +3,7 @@ services:
     name: enclave-api
     runtime: node
     plan: free
-    buildCommand: npm install && cd frontend && npm install
+    buildCommand: cd backend && npm install
     startCommand: node backend/src/index.js
     healthCheckPath: /api/health
     envVars:
@@ -16,6 +16,6 @@ services:
       - key: JWT_SECRET
         generateValue: true
       - key: DATABASE_PATH
-        value: ./backend/data/enclave.json
+        value: ./data/enclave.json
       - key: CORS_ORIGIN
         value: "*"

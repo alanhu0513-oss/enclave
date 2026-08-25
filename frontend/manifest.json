@@ -1,0 +1,22 @@
+{
+  "name": "Enclave",
+  "short_name": "Enclave",
+  "description": "Digital Identity Protection Vault — Offline Deepfake & Identity Alert Manager",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0a0e14",
+  "theme_color": "#0a0e14",
+  "orientation": "portrait",
+  "categories": ["security", "utilities"],
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='64' fill='%23121212'/%3E%3Ctext x='256' y='340' font-size='320' text-anchor='middle' fill='%234fc3f7'%3E🔒%3C/text%3E%3C/svg%3E",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "lang": "en",
+  "dir": "ltr"
+}

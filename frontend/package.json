@@ -1,0 +1,24 @@
+{
+  "name": "enclave",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Enclave — Digital Identity Protection Vault",
+  "scripts": {
+    "build:www": "cp index.html styles.css app.js api.js auth-ui.js manifest.json sw.js www/",
+    "sync": "npx cap sync",
+    "open:ios": "npx cap open ios",
+    "open:android": "npx cap open android",
+    "build:ios": "npm run build:www && npx cap sync ios",
+    "build:android": "npm run build:www && npx cap sync android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.4.1",
+    "@capacitor/camera": "^8.2.0",
+    "@capacitor/core": "^8.4.1",
+    "@capacitor/filesystem": "^8.1.2",
+    "@capacitor/ios": "^8.4.1"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.4.1"
+  }
+}

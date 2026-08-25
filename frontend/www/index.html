@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#020406">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>Enclave — Digital Identity Protection Vault</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════
+     SVG SPRITE — high-tech vector icons
+     ════════════════════════════════════════════ -->
+<svg id="svg-sprite" style="display:none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Shield Core -->
+    <g id="icon-shield">
+      <path d="M24 4 L44 12 L44 26 Q44 40 24 48 Q8 40 8 26 L8 12 Z"
+            fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+      <path d="M20 26 L26 32 L34 20" fill="none" stroke="currentColor"
+            stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+    <!-- Shield Outer Tracking Ring -->
+    <g id="icon-shield-ring">
+      <circle cx="26" cy="26" r="30" fill="none" stroke="currentColor"
+              stroke-width="1.5" stroke-dasharray="4 3" opacity="0.4"/>
+      <circle cx="26" cy="26" r="34" fill="none" stroke="currentColor"
+              stroke-width="0.8" stroke-dasharray="2 6" opacity="0.2"/>
+    </g>
+    <!-- Camera Core — crosshair + iris aperture -->
+    <g id="icon-camera">
+      <circle cx="20" cy="20" r="16" fill="none" stroke="currentColor" stroke-width="1.5"/>
+      <circle cx="20" cy="20" r="4" fill="none" stroke="currentColor" stroke-width="1.5"/>
+      <line x1="20" y1="0" x2="20" y2="8" stroke="currentColor" stroke-width="1.2"/>
+      <line x1="20" y1="32" x2="20" y2="40" stroke="currentColor" stroke-width="1.2"/>
+      <line x1="0" y1="20" x2="8" y2="20" stroke="currentColor" stroke-width="1.2"/>
+      <line x1="32" y1="20" x2="40" y2="20" stroke="currentColor" stroke-width="1.2"/>
+      <!-- Aperture blades -->
+      <path d="M20 10 Q26 14 26 20 Q26 26 20 26 Q14 26 14 20 Q14 14 20 10"
+            fill="none" stroke="currentColor" stroke-width="0.8" opacity="0.5"
+            class="aperture-blade"/>
+      <path d="M15 13 Q22 15 25 18 Q26 24 22 27 Q16 28 14 22 Q13 16 15 13"
+            fill="none" stroke="currentColor" stroke-width="0.8" opacity="0.4"
+            class="aperture-blade"/>
+    </g>
+    <!-- Voice Core — communication dot + concentric rings -->
+    <g id="icon-voice">
+      <circle cx="20" cy="20" r="4" fill="currentColor"/>
+      <circle cx="20" cy="20" r="10" fill="none" stroke="currentColor"
+              stroke-width="1" class="sound-ring" opacity="0.5"/>
+      <circle cx="20" cy="20" r="16" fill="none" stroke="currentColor"
+              stroke-width="0.8" class="sound-ring" opacity="0.3"/>
+      <circle cx="20" cy="20" r="22" fill="none" stroke="currentColor"
+              stroke-width="0.5" class="sound-ring" opacity="0.15"/>
+    </g>
+    <!-- Crosshair X (Close) -->
+    <g id="icon-close">
+      <line x1="4" y1="4" x2="20" y2="20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      <line x1="20" y1="4" x2="4" y2="20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </g>
+    <!-- Checkmark -->
+    <g id="icon-check">
+      <polyline points="4,14 12,22 24,6" fill="none" stroke="currentColor"
+                stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+    <!-- Gear (Settings) -->
+    <g id="icon-gear">
+      <circle cx="16" cy="16" r="6" fill="none" stroke="currentColor" stroke-width="2"/>
+      <path d="M16 4 L16 8 M16 24 L16 28 M4 16 L8 16 M24 16 L28 16
+               M7 7 L10 10 M22 22 L25 25 M7 25 L10 22 M22 10 L25 7"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </g>
+    <!-- Radar Dot -->
+    <g id="icon-radar-dot">
+      <circle cx="6" cy="6" r="5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+      <circle cx="6" cy="6" r="1.5" fill="currentColor"/>
+    </g>
+    <!-- Lock -->
+    <g id="icon-lock">
+      <rect x="6" y="14" width="20" height="16" rx="3" fill="none" stroke="currentColor" stroke-width="2"/>
+      <path d="M10 14 L10 10 Q10 4 16 4 Q22 4 22 10 L22 14"
+            fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      <circle cx="16" cy="22" r="2.5" fill="currentColor"/>
+      <line x1="16" y1="24" x2="16" y2="26" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </g>
+    <!-- Shield Dispatch (Magic Action) -->
+    <g id="icon-dispatch">
+      <path d="M16 2 L30 8 L30 20 Q30 32 16 38 Q4 32 4 20 L4 8 Z"
+            fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+      <path d="M12 20 L16 26 L22 14" fill="none" stroke="currentColor"
+            stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+  </defs>
+</svg>
+
+<!-- ════════════════════════════════════════════
+     [0] LOGIN / REGISTER OVERLAY
+     ════════════════════════════════════════════ -->
+<div id="login-overlay">
+  <div id="login-panel">
+    <div class="auth-header">
+      <svg class="auth-logo-shield" viewBox="0 0 52 52" width="40" height="40">
+        <use href="#icon-shield-ring"/>
+        <use href="#icon-shield" class="shield-core"/>
+      </svg>
+      <h1>ENCLAVE</h1>
+      <p class="auth-subtitle">Digital Identity Protection Vault</p>
+    </div>
+
+    <div id="login-form" class="login-form active">
+      <p class="form-title">Sign In</p>
+      <input type="email" id="login-email" class="reg-input" placeholder="Email address" autocomplete="email">
+      <input type="password" id="login-password" class="reg-input" placeholder="Password" autocomplete="current-password">
+      <button id="btn-login" class="btn btn-auth">Sign In</button>
+      <button id="btn-google-login" class="btn btn-google">
+        <svg viewBox="0 0 24 24" width="16" height="16" style="vertical-align:middle;margin-right:6px;">
+          <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/>
+          <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+          <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+          <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+        </svg>
+        Continue with Google
+      </button>
+      <p class="auth-switch"><a href="#" id="link-forgot-password">Forgot password?</a></p>
+      <p class="auth-switch"><a href="#" id="link-api-config">API Config</a></p>
+      <p class="auth-switch">No account? <a href="#" id="link-show-register">Create one</a></p>
+    </div>
+
+    <div id="register-form" class="login-form">
+      <p class="form-title">Create Account</p>
+      <input type="text" id="reg-email-name" class="reg-input" placeholder="Full legal name" autocomplete="name">
+      <input type="email" id="reg-email-addr" class="reg-input" placeholder="Email address" autocomplete="email">
+      <input type="password" id="reg-email-password" class="reg-input" placeholder="Password (min 8 chars)" autocomplete="new-password">
+      <button id="btn-register" class="btn btn-auth">Create Account</button>
+      <button id="btn-google-register" class="btn btn-google">
+        <svg viewBox="0 0 24 24" width="16" height="16" style="vertical-align:middle;margin-right:6px;">
+          <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/>
+          <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+          <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+          <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+        </svg>
+        Continue with Google
+      </button>
+      <p class="auth-switch">Already have an account? <a href="#" id="link-show-login">Sign in</a></p>
+    </div>
+
+    <div id="forgot-form" class="login-form">
+      <p class="form-title">Reset Password</p>
+      <p class="form-hint">Enter your email to receive a reset code</p>
+      <input type="email" id="forgot-email" class="reg-input" placeholder="Email address" autocomplete="email">
+      <button id="btn-forgot-send" class="btn btn-auth">Send Reset Code</button>
+      <div id="forgot-code-area" class="hidden" style="margin-top:0.5rem;">
+        <input type="text" id="forgot-code" class="reg-input" placeholder="Enter 6-digit code" style="margin-bottom:0.4rem;">
+        <input type="password" id="forgot-new-password" class="reg-input" placeholder="New password (min 8 chars)" style="margin-bottom:0.4rem;">
+        <button id="btn-forgot-reset" class="btn btn-auth">Reset Password</button>
+      </div>
+      <p class="auth-switch"><a href="#" id="link-back-to-login">Back to Sign In</a></p>
+    </div>
+
+    <div id="login-status" class="auth-status"></div>
+
+    <div id="api-config-area" class="hidden">
+      <input type="text" id="api-url-input" class="reg-input" placeholder="http://localhost:4000/api">
+      <button id="btn-api-apply" class="btn btn-ghost">Apply</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     [1] MULTI-MODAL IDENTITY VERIFICATION GATE
+     ════════════════════════════════════════════ -->
+<div id="auth-overlay" class="hidden" style="display:none !important">
+  <div id="auth-panel">
+    <div class="auth-header">
+      <h1>ENCLAVE</h1>
+      <p class="auth-subtitle">In-App Multi-Modal Identity Verification required to decrypt vault</p>
+    </div>
+
+    <div id="auth-video-container">
+      <video id="auth-video" autoplay playsinline muted></video>
+      <canvas id="auth-canvas" hidden></canvas>
+      <svg id="auth-face-guide" class="face-guide hidden" viewBox="0 0 200 160">
+        <use href="#icon-camera" x="72" y="52" width="56" height="56" opacity="0.4"/>
+        <ellipse cx="100" cy="72" rx="50" ry="60" fill="none" stroke="#00E5FF" stroke-width="1" stroke-dasharray="4 4" opacity="0.3"/>
+      </svg>
+    </div>
+
+    <div id="auth-challenge-area">
+      <div id="auth-stage-liveness" class="auth-stage active">
+        <p class="challenge-label">Visual Challenge</p>
+        <p id="liveness-instruction" class="challenge-text">Blink your eyes now</p>
+        <div id="liveness-progress" class="progress-bar">
+          <div id="liveness-fill" class="progress-fill"></div>
+        </div>
+        <p id="liveness-detected" class="detected-msg hidden">
+          <svg viewBox="0 0 28 28" width="14" height="14" style="vertical-align:middle;margin-right:4px;"><use href="#icon-check"/></svg>
+          <span>Blink detected</span>
+        </p>
+      </div>
+
+      <div id="auth-stage-voice" class="auth-stage">
+        <p class="challenge-label">Voice Challenge</p>
+        <p id="voice-code" class="challenge-code">7-4-1-9</p>
+        <p class="challenge-hint">Read the code aloud into your microphone</p>
+        <div id="voice-spectrum" class="spectrum-bar">
+          <canvas id="voice-canvas" width="320" height="40"></canvas>
+        </div>
+        <div id="voice-bursts" class="burst-indicator">
+          <span class="burst-dot" data-idx="0"></span>
+          <span class="burst-dot" data-idx="1"></span>
+          <span class="burst-dot" data-idx="2"></span>
+          <span class="burst-dot" data-idx="3"></span>
+        </div>
+        <div id="voice-profile-match" class="profile-match hidden">
+          <span class="profile-match-label">Voiceprint match:</span>
+          <span id="voice-profile-score" class="profile-match-score"></span>
+        </div>
+      </div>
+    </div>
+
+    <div id="auth-status" class="auth-status"></div>
+    <button id="btn-auth-start" class="btn btn-auth">Authenticate</button>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     [1B] INITIAL REGISTRATION PORTAL
+     ════════════════════════════════════════════ -->
+<div id="register-portal" class="hidden">
+  <div id="register-panel">
+    <div class="auth-header">
+      <h1>ENCLAVE</h1>
+      <p class="auth-subtitle">Enrollment — Establish your identity baseline to unlock the vault</p>
+    </div>
+
+    <div id="reg-error" class="reg-error hidden"></div>
+
+    <div id="reg-step-name" class="reg-step active">
+      <p class="reg-step-label">Step 1 of 3 — Official Name</p>
+      <input type="text" id="reg-input-name" class="reg-input" placeholder="Enter your full legal name" autocomplete="name">
+      <button id="btn-reg-name" class="btn btn-auth">Save &amp; Continue</button>
+    </div>
+
+    <div id="reg-step-face" class="reg-step">
+      <p class="reg-step-label">Step 2 of 3 — Portrait Capture</p>
+      <div class="reg-camera-box">
+        <video id="reg-video" autoplay playsinline muted></video>
+        <svg class="reg-camera-overlay" viewBox="0 0 40 40" width="60" height="60">
+          <use href="#icon-camera" class="camera-core-standby"/>
+        </svg>
+      </div>
+      <p class="reg-upload-hint">or <a href="#" id="reg-upload-link">upload a photo</a></p>
+      <input type="file" id="reg-portrait-file" accept="image/*">
+      <div id="reg-face-preview" class="reg-face-preview hidden"></div>
+      <div class="reg-step-actions">
+        <button id="btn-reg-capture" class="btn btn-auth">Capture</button>
+        <button id="btn-reg-face-done" class="btn btn-auth" disabled>Continue</button>
+      </div>
+    </div>
+
+    <div id="reg-step-audio" class="reg-step">
+      <p class="reg-step-label">Step 3 of 3 — Voice Baseline</p>
+      <svg class="reg-voice-icon" viewBox="0 0 40 40" width="48" height="48">
+        <use href="#icon-voice"/>
+      </svg>
+      <div class="reg-spectrum-bar">
+        <canvas id="reg-spectrum-canvas" width="320" height="40"></canvas>
+      </div>
+      <p id="reg-audio-status" class="reg-audio-status">Click Record and speak naturally for 10 seconds</p>
+      <div class="reg-step-actions">
+        <button id="btn-reg-record" class="btn btn-auth">Record</button>
+        <button id="btn-reg-audio-done" class="btn btn-auth" disabled>Continue</button>
+      </div>
+    </div>
+
+    <div id="reg-step-complete" class="reg-step">
+      <p class="reg-complete-msg">
+        <svg viewBox="0 0 28 28" width="18" height="18" style="vertical-align:middle;margin-right:6px;"><use href="#icon-check" stroke="#00FF66"/></svg>
+        Identity baseline established
+      </p>
+      <p class="reg-complete-sub">Your name, faceprint, and voiceprint are stored. Proceed to verification.</p>
+      <button id="btn-reg-complete" class="btn btn-auth">Begin Authentication</button>
+    </div>
+
+    <p id="reg-status" class="reg-status-msg"></p>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     [1C] SIGNATURE PAD MODAL
+     ════════════════════════════════════════════ -->
+<div id="signature-modal" class="hidden">
+  <div id="signature-panel">
+    <h3 class="sig-heading">Sign to Authorize</h3>
+    <p class="sig-hint">Sign your full legal name using your finger or cursor</p>
+    <div class="sig-canvas-wrap">
+      <canvas id="sig-canvas" width="400" height="150"></canvas>
+    </div>
+    <div class="sig-actions">
+      <button id="btn-sig-clear" class="btn btn-ghost">Clear</button>
+      <button id="btn-sig-confirm" class="btn btn-auth">Confirm Signature</button>
+    </div>
+    <p id="sig-status" class="status-msg"></p>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     [1D] SETTINGS PANEL
+     ════════════════════════════════════════════ -->
+<div id="settings-modal" class="hidden">
+  <div id="settings-panel">
+    <div class="settings-header">
+      <h3>Vault Settings</h3>
+      <button id="btn-settings-close" class="btn btn-icon">
+        <svg viewBox="0 0 24 24" width="16" height="16"><use href="#icon-close"/></svg>
+      </button>
+    </div>
+    <div id="settings-body" class="settings-body">
+      <div class="settings-section">
+        <p class="settings-section-title">Registered Name</p>
+        <p id="settings-name" class="settings-value">—</p>
+        <button id="btn-settings-rename" class="btn btn-triad btn-triad-safe">Change Name</button>
+      </div>
+      <div class="settings-section">
+        <p class="settings-section-title">Faceprint</p>
+        <p id="settings-face-status" class="settings-value">Not captured</p>
+        <div id="settings-face-preview" class="settings-face-preview"></div>
+        <button id="btn-settings-reface" class="btn btn-triad btn-triad-warn">Re-Capture</button>
+      </div>
+      <div class="settings-section">
+        <p class="settings-section-title">Voiceprint</p>
+        <p id="settings-voice-status" class="settings-value">Not captured</p>
+        <button id="btn-settings-revoice" class="btn btn-triad btn-triad-warn">Re-Record</button>
+      </div>
+      <div class="settings-section">
+        <p class="settings-section-title">Signature</p>
+        <p id="settings-sig-status" class="settings-value">—</p>
+        <button id="btn-settings-resig" class="btn btn-triad btn-triad-warn">Re-Sign</button>
+      </div>
+      <div class="settings-section">
+        <p class="settings-section-title">System Services</p>
+        <p style="font-size:0.65rem;color:#4a5a68;margin-bottom:0.3rem;">
+          Camera Immunizer Core
+          <span id="camera-service-status" class="service-badge inactive">OFF</span>
+        </p>
+        <p style="font-size:0.65rem;color:#4a5a68;margin-bottom:0.3rem;">
+          Voice Shield Tunnel
+          <span id="voice-service-status" class="service-badge inactive">OFF</span>
+        </p>
+      </div>
+      <div class="settings-section">
+        <p class="settings-section-title">Voice Frequency</p>
+        <p style="font-size:0.65rem;color:#4a5a68;margin-bottom:0.25rem;">Scrambling carrier frequency</p>
+        <select id="settings-voice-freq" class="settings-select">
+          <option value="400">400 Hz (Low)</option>
+          <option value="800" selected>800 Hz (Default)</option>
+          <option value="1600">1600 Hz (High)</option>
+          <option value="3200">3200 Hz (Extreme)</option>
+        </select>
+        <button id="btn-settings-apply-freq" class="btn btn-triad btn-triad-warn" style="margin-top:0.3rem;">Apply Frequency</button>
+      </div>
+      <div class="settings-section">
+        <p class="settings-section-title">System Widget</p>
+        <p style="font-size:0.65rem;color:#4a5a68;margin-bottom:0.25rem;">Floating bubble / Live Activity indicator</p>
+        <label class="toggle-switch" style="display:inline-block;">
+          <input type="checkbox" id="toggle-widget" checked>
+          <span class="toggle-track">
+            <span class="toggle-knob"></span>
+          </span>
+        </label>
+        <span id="widget-status-label" class="settings-value" style="margin-left:0.5rem;">Enabled</span>
+      </div>
+      <div class="settings-section">
+        <p class="settings-section-title">Data</p>
+        <button id="btn-settings-clear" class="btn btn-triad btn-triad-danger">Clear All Vault Data</button>
+        <button id="btn-settings-export" class="btn btn-triad btn-triad-safe">Export Identity Manifest</button>
+      </div>
+      <div class="settings-section">
+        <p class="settings-section-title">Session</p>
+        <button id="btn-settings-logout" class="btn btn-triad btn-triad-danger">Log Out</button>
+      </div>
+    </div>
+    <p id="settings-status" class="status-msg"></p>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     [2] MAIN APPLICATION — BENTO LAYOUT
+     ════════════════════════════════════════════ -->
+<div id="app-root" class="hidden">
+
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- Header -->
+  <header id="app-header">
+    <div class="header-left">
+      <svg class="header-shield" viewBox="0 0 52 52" width="28" height="28">
+        <use href="#icon-shield" class="shield-core"/>
+      </svg>
+      <h1>ENCLAVE</h1>
+    </div>
+    <div class="header-right">
+      <span id="header-profile" class="header-profile"></span>
+      <span id="crawler-status" class="crawler-badge">
+        <svg viewBox="0 0 12 12" width="12" height="12"><use href="#icon-radar-dot"/></svg>
+        SCANNING
+      </span>
+      <button id="btn-settings-open" class="btn btn-icon">
+        <svg viewBox="0 0 32 32" width="16" height="16"><use href="#icon-gear"/></svg>
+      </button>
+      <button id="btn-lock" class="btn btn-icon">
+        <svg viewBox="0 0 32 32" width="16" height="16"><use href="#icon-lock"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Bento Grid Body -->
+  <div id="app-body">
+
+    <!-- ─── Center Hero: Glassmorphic Shield ─── -->
+    <section id="panel-hero" class="panel panel-hero">
+      <button id="btn-hero-shield" class="hero-shield-btn">
+        <svg class="hero-shield-svg" viewBox="0 0 52 52" width="80" height="80">
+          <use href="#icon-shield-ring" class="shield-ring-track"/>
+          <use href="#icon-shield" class="shield-core-glow"/>
+        </svg>
+        <span class="hero-label">TAP TO VERIFY</span>
+        <span id="hero-status-text" class="hero-status">Vault Locked</span>
+      </button>
+    </section>
+
+    <!-- ─── Camera Immunizer Core Card ─── -->
+    <section id="panel-camera" class="panel panel-card">
+      <div class="card-header">
+        <svg class="card-icon" viewBox="0 0 40 40" width="32" height="32">
+          <use href="#icon-camera" class="camera-core-standby"/>
+        </svg>
+        <div class="card-title-group">
+          <h2 class="card-title">Camera Immunizer Core</h2>
+          <p class="card-subtitle">Real-time photo integrity shield</p>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="toggle-camera-shield">
+          <span class="toggle-track">
+            <span class="toggle-knob"></span>
+          </span>
+        </label>
+      </div>
+      <div class="card-body">
+        <p class="card-desc">Background file watcher intercepts newly captured photos, applies noise-matrix cloaking, appends ECDSA authenticity signature, and overwrites the originals before any app can read them.</p>
+        <div class="card-metrics">
+          <div class="metric">
+            <span id="camera-cloak-count" class="metric-value">0</span>
+            <span class="metric-label">Photos Cloaked</span>
+          </div>
+          <div class="metric">
+            <span id="camera-last-active" class="metric-value">—</span>
+            <span class="metric-label">Last Active</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── Voice Shield Tunnel Card ─── -->
+    <section id="panel-voice" class="panel panel-card">
+      <div class="card-header">
+        <svg class="card-icon" viewBox="0 0 40 40" width="32" height="32">
+          <use href="#icon-voice" class="voice-core-standby"/>
+        </svg>
+        <div class="card-title-group">
+          <h2 class="card-title">Voice Shield Tunnel</h2>
+          <p class="card-subtitle">System-wide audio scrambling</p>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="toggle-voice-shield">
+          <span class="toggle-track">
+            <span class="toggle-knob"></span>
+          </span>
+        </label>
+      </div>
+      <div class="card-body">
+        <p class="card-desc">Intercepts all outgoing microphone frequencies through a BiquadFilter scrambling matrix. Engages native Foreground Service on Android / CoreAudio background session on iOS.</p>
+        <div class="card-metrics">
+          <div class="metric">
+            <span id="voice-sessions-protected" class="metric-value">0</span>
+            <span class="metric-label">Sessions Protected</span>
+          </div>
+          <div class="metric">
+            <span id="voice-last-active" class="metric-value">—</span>
+            <span class="metric-label">Last Active</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── Alert Feed ─── -->
+    <section id="panel-alerts" class="panel panel-alerts">
+      <div class="panel-alerts-header">
+        <h2 class="panel-title">Intelligence Feed</h2>
+        <button id="btn-deep-scan" class="btn btn-ghost">Trigger Deep Scan</button>
+      </div>
+      <div id="alert-list" class="alert-list"></div>
+      <p id="dashboard-status" class="status-msg"></p>
+    </section>
+
+    <!-- ─── Scanner (Manual) ─── -->
+    <section id="panel-scanner" class="panel panel-scanner">
+      <h2 class="panel-title">Manual Scan</h2>
+      <input type="text" id="scanner-url" class="reg-input" placeholder="Paste suspicious URL...">
+      <div class="scanner-row">
+        <input type="file" id="scanner-file" accept="image/*">
+        <button id="btn-scanner" class="btn btn-triad btn-triad-warn">Scan</button>
+      </div>
+      <p id="scanner-status" class="status-msg"></p>
+    </section>
+
+  </div>
+
+  <footer id="app-footer">
+    <p>Enclave v2.0 — Offline · Local · Private</p>
+  </footer>
+</div>
+
+<!-- ════════════════════════════════════════════
+     [3] MAGIC RESOLUTION OVERLAY
+     ════════════════════════════════════════════ -->
+<div id="resolution-overlay" class="hidden">
+  <div id="resolution-panel">
+    <svg class="resolution-shield" viewBox="0 0 52 52" width="48" height="48">
+      <use href="#icon-dispatch" stroke="#00E5FF"/>
+    </svg>
+    <h3 id="resolution-title" class="resolution-title">Unauthorized copy of your identity detected</h3>
+    <p id="resolution-platform" class="resolution-platform">on unknown platform</p>
+    <p id="resolution-confidence" class="resolution-confidence"></p>
+    <button id="btn-magic-dispatch" class="btn btn-dispatch">
+      <svg viewBox="0 0 36 36" width="20" height="20" style="vertical-align:middle;margin-right:8px;"><use href="#icon-dispatch"/></svg>
+      MAGIC_DISPATCH_REMOVAL
+    </button>
+    <p id="resolution-status" class="resolution-status"></p>
+    <button id="btn-resolution-close" class="btn btn-ghost">
+      <svg viewBox="0 0 24 24" width="14" height="14"><use href="#icon-close"/></svg>
+      Dismiss
+    </button>
+  </div>
+</div>
+
+<script src="api.js?v=2"></script>
+<script src="native-bridge.js?v=2"></script>
+<script src="auth-ui.js?v=2"></script>
+<script src="app.js?v=2"></script>
+</body>
+</html>

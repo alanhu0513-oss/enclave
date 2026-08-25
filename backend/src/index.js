@@ -1,0 +1,123 @@
+require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
+
+const express = require('express');
+const cors = require('cors');
+const helmet = require('helmet');
+const morgan = require('morgan');
+const path = require('path');
+const rateLimit = require('express-rate-limit');
+const { error } = require('./utils/response');
+
+// ─── Env Validation ───
+const requiredEnvVars = ['PORT'];
+const missing = requiredEnvVars.filter(v => !process.env[v]);
+if (missing.length) {
+  console.error(`[FATAL] Missing required env vars: ${missing.join(', ')}`);
+  process.exit(1);
+}
+
+if (!process.env.JWT_SECRET || process.env.JWT_SECRET === 'change-me-in-production' || process.env.JWT_SECRET.startsWith('enclave_jwt_secret_change_in_production')) {
+  console.warn('[WARN] JWT_SECRET is not set — a random secret will be generated. Tokens will not persist across restarts.');
+}
+
+// ─── Rate Limiters ───
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  message: { success: false, message: 'Too many authentication attempts. Please try again in 15 minutes.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const globalLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000,
+  max: 120,
+  message: { success: false, message: 'Rate limit exceeded. Please slow down.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const app = express();
+const PORT = process.env.PORT || 4000;
+
+app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
+app.use(cors({
+  origin: process.env.CORS_ORIGIN
+    ? process.env.CORS_ORIGIN.split(',')
+    : ['http://localhost:3000', 'http://localhost:4000'],
+  credentials: true
+}));
+app.use(morgan('dev'));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+
+app.use('/api', globalLimiter);
+
+const authRoutes = require('./routes/auth');
+const biometricsRoutes = require('./routes/biometrics');
+const alertsRoutes = require('./routes/alerts');
+const crawlerRoutes = require('./routes/crawler');
+const userRoutes = require('./routes/user');
+const detectRoutes = require('./routes/detect');
+const notificationsRoutes = require('./routes/notifications');
+const takedownsRoutes = require('./routes/takedowns');
+const shieldsRoutes = require('./routes/shields');
+const billingRoutes = require('./routes/billing');
+const communityRoutes = require('./routes/community');
+const revenueRoutes = require('./routes/revenue');
+
+app.use('/api/auth', authLimiter, authRoutes);
+app.use('/api/biometrics', biometricsRoutes);
+app.use('/api/alerts', alertsRoutes);
+app.use('/api/crawler', crawlerRoutes);
+app.use('/api/user', userRoutes);
+app.use('/api/detect', detectRoutes);
+app.use('/api/notifications', notificationsRoutes);
+app.use('/api/takedowns', takedownsRoutes);
+app.use('/api/shields', shieldsRoutes);
+app.use('/api/billing', billingRoutes);
+app.use('/api/community', communityRoutes);
+app.use('/api/revenue', revenueRoutes);
+
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString(), version: '1.0.0' });
+});
+
+// Serve frontend static files
+const frontendPath = path.join(__dirname, '../../frontend');
+app.use(express.static(frontendPath));
+app.get('*', (req, res, next) => {
+  if (req.path.startsWith('/api/')) return next();
+  res.sendFile(path.join(frontendPath, 'index.html'), (err) => {
+    if (err) next();
+  });
+});
+
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  return error(res, err.message || 'Internal Server Error', 500);
+});
+
+async function start() {
+  try {
+    const { getEngine } = require('./db/adapter');
+    const db = await getEngine();
+    console.log(`[DB] Engine: ${db.engine}`);
+  } catch (e) {
+    console.warn('[DB] Init warning:', e.message);
+  }
+  try {
+    const billing = require('./services/billing');
+    billing.init();
+  } catch (e) {
+    console.warn('[BILLING] Init warning:', e.message);
+  }
+  app.listen(PORT, () => {
+    console.log(`Enclave API running on http://localhost:${PORT}`);
+  });
+}
+
+start();
+
+module.exports = app;

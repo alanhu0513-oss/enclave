@@ -1,0 +1,38 @@
+{
+  "appId": "app.enclave.vault",
+  "appName": "Enclave",
+  "webDir": "www",
+  "bundledWebRuntime": false,
+  "server": {
+    "androidScheme": "https",
+    "cleartext": true
+  },
+  "ios": {
+    "contentInset": "always",
+    "preferredContentMode": "mobile",
+    "infoPlist": {
+      "NSCameraUsageDescription": "Enclave uses your camera for biometric liveness verification and faceprint enrollment.",
+      "NSMicrophoneUsageDescription": "Enclave uses your microphone for voiceprint biometric authentication.",
+      "NSPhotoLibraryUsageDescription": "Enclave accesses your photo library to upload images for deepfake analysis.",
+      "NSFaceIDUsageDescription": "Enclave uses facial recognition for identity verification."
+    }
+  },
+  "android": {
+    "permissions": [
+      "android.permission.CAMERA",
+      "android.permission.RECORD_AUDIO",
+      "android.permission.READ_EXTERNAL_STORAGE",
+      "android.permission.WRITE_EXTERNAL_STORAGE",
+      "android.permission.INTERNET"
+    ]
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchAutoHide": false,
+      "backgroundColor": "#020406"
+    },
+    "Camera": {
+      "permissionType": "user"
+    }
+  }
+}

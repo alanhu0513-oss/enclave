@@ -1573,6 +1573,19 @@
     hide.forEach(function (el) { el.classList.remove('active'); });
     show.classList.add('active');
     hideRegError();
+    // Goal Gradient: update enrollment progress bar
+    var fill = document.getElementById('enrollment-progress-fill');
+    var text = document.getElementById('enrollment-progress-text');
+    if (fill && text) {
+      var stepMap = {};
+      stepMap[regStepName.id] = { pct: 33, num: 1 };
+      stepMap[regStepFace.id] = { pct: 66, num: 2 };
+      stepMap[regStepAudio.id] = { pct: 90, num: 3 };
+      stepMap[regStepComplete.id] = { pct: 100, num: 3 };
+      var info = stepMap[show.id] || { pct: 33, num: 1 };
+      fill.style.width = info.pct + '%';
+      text.textContent = 'Step ' + info.num + ' of 3 — ' + info.pct + '% complete';
+    }
   }
 
   /* ─── Step 1: Name ─── */
@@ -2587,5 +2600,113 @@
   // Also update shield status when service badges change
   window.addEventListener('enclave-camera-status', updateShieldStatus);
   window.addEventListener('enclave-voice-status', updateShieldStatus);
+
+  /* ═══════════════════════════════════════════════════════
+     UI LIBRARIES: Particles.js, Vanilla Tilt, Scroll Reveal
+     ═══════════════════════════════════════════════════════ */
+
+  /* ─── Particles.js — Login overlay background ─── */
+  function initParticles() {
+    var canvas = document.getElementById('particles-canvas');
+    if (!canvas || !window.tsParticles) return;
+    window.tsParticles.load('particles-canvas', {
+      particles: {
+        number: { value: 40, density: { enable: true, width: 600, height: 400 } },
+        color: { value: ['#00FF88', '#00BFFF', '#FF3366', '#FFD700'] },
+        shape: { type: 'circle' },
+        opacity: { value: { min: 0.1, max: 0.35 }, animation: { enable: true, speed: 0.4, minimumValue: 0.05 } },
+        size: { value: { min: 1, max: 3 }, animation: { enable: true, speed: 1, minimumValue: 0.5 } },
+        move: { enable: true, speed: 0.6, direction: 'none', random: true, straight: false, outModes: { default: 'out' } },
+        links: { enable: true, distance: 120, color: '#00FF88', opacity: 0.15, width: 0.5 }
+      },
+      interactivity: {
+        events: { onHover: { enable: true, mode: 'grab' }, resize: true },
+        modes: { grab: { distance: 140, links: { opacity: 0.3 } } }
+      },
+      detectRetina: true,
+      background: { color: 'transparent' }
+    }).then(function () {
+      canvas.style.pointerEvents = 'auto';
+    }).catch(function () {
+      canvas.style.display = 'none';
+    });
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initParticles);
+  } else {
+    setTimeout(initParticles, 500);
+  }
+
+  /* ─── Vanilla Tilt — 3D tilt on cards ─── */
+  function initTilt() {
+    if (!window.VanillaTilt) return;
+    var cards = document.querySelectorAll('.card');
+    cards.forEach(function (card) {
+      if (card.getAttribute('data-tilt')) return;
+      window.VanillaTilt.init(card, {
+        max: 6,
+        speed: 400,
+        glare: true,
+        'max-glare': 0.12,
+        perspective: 1000,
+        scale: 1.01
+      });
+      card.setAttribute('data-tilt', 'true');
+    });
+  }
+  // Re-init tilt after login when cards become visible
+  var tiltObserver = new MutationObserver(function () {
+    if (!appRoot.classList.contains('hidden')) {
+      setTimeout(initTilt, 800);
+      tiltObserver.disconnect();
+    }
+  });
+  tiltObserver.observe(appRoot, { attributes: true, attributeFilter: ['class'] });
+
+  /* ─── IntersectionObserver — Scroll reveal animations ─── */
+  function initScrollReveal() {
+    var revealEls = document.querySelectorAll('.card, .hero-card, .status-card, .tier-card, .forum-card, .notification-card');
+    revealEls.forEach(function (el) { el.classList.add('reveal-up'); });
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('revealed');
+          io.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+    revealEls.forEach(function (el) { io.observe(el); });
+  }
+  // Re-init scroll reveal after login
+  var scrollObserver = new MutationObserver(function () {
+    if (!appRoot.classList.contains('hidden')) {
+      setTimeout(initScrollReveal, 600);
+      scrollObserver.disconnect();
+    }
+  });
+  scrollObserver.observe(appRoot, { attributes: true, attributeFilter: ['class'] });
+
+  /* ─── Threat preview counter animation ─── */
+  function animateCounters() {
+    var counters = document.querySelectorAll('[data-count]');
+    counters.forEach(function (el) {
+      var target = parseInt(el.getAttribute('data-count'), 10);
+      if (isNaN(target)) return;
+      el.textContent = '0';
+      var current = 0;
+      var step = Math.max(1, Math.floor(target / 30));
+      var iv = setInterval(function () {
+        current += step;
+        if (current >= target) {
+          el.textContent = target.toLocaleString();
+          clearInterval(iv);
+        } else {
+          el.textContent = current.toLocaleString();
+        }
+      }, 40);
+    });
+  }
+  // Run counter animation when login overlay appears
+  setTimeout(animateCounters, 800);
 
 })();

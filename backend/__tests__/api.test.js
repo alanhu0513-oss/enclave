@@ -133,12 +133,19 @@ describe('Auth - Reset Password', () => {
   });
 });
 
-describe('Auth - Google (stub)', () => {
-  it('POST /api/auth/google returns 501 not implemented', async () => {
+describe('Auth - Google', () => {
+  it('POST /api/auth/google returns 500 when GOOGLE_CLIENT_ID not configured', async () => {
     const res = await request(app)
       .post('/api/auth/google')
       .send({ credential: 'some-google-token' });
-    expect(res.status).toBe(501);
+    expect(res.status).toBe(500);
+  });
+
+  it('POST /api/auth/google returns 400 without credential', async () => {
+    const res = await request(app)
+      .post('/api/auth/google')
+      .send({});
+    expect(res.status).toBe(400);
   });
 });
 

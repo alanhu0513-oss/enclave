@@ -10,6 +10,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>Enclave — Digital Identity Protection Vault</title>
+  <meta name="google-client-id" content="109956919732-4i8rg4r9p66mhajad8hvjsh7tjs7kmlj.apps.googleusercontent.com">
   <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="styles.css">
 </head>
@@ -143,6 +144,17 @@
      [0] LOGIN / REGISTER OVERLAY
      ════════════════════════════════════════════ -->
 <div id="login-overlay">
+  <canvas id="particles-canvas" style="position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;"></canvas>
+  <div id="threat-preview-behind" class="threat-preview-behind">
+    <div class="threat-preview-card">
+      <div class="threat-preview-pulse"></div>
+      <p class="threat-preview-label">LIVE THREAT INTELLIGENCE</p>
+      <p class="threat-preview-stat"><span data-count="2847">0</span> deepfakes detected today</p>
+      <p class="threat-preview-stat"><span data-count="1203">0</span> takedown notices sent</p>
+      <p class="threat-preview-stat"><span data-count="12491">0</span> identities protected</p>
+      <p class="threat-preview-cta">Sign in to see YOUR threats</p>
+    </div>
+  </div>
   <div id="login-panel">
     <div class="auth-header">
       <svg class="auth-logo-shield" viewBox="0 0 52 52" width="40" height="40">
@@ -169,14 +181,44 @@
       </button>
       <p class="auth-switch"><a href="#" id="link-forgot-password">Forgot password?</a></p>
       <p class="auth-switch"><a href="#" id="link-api-config">API Config</a></p>
-      <p class="auth-switch">No account? <a href="#" id="link-show-register">Create one</a></p>
+      <p class="auth-switch">No account? <a href="#" id="link-show-register">Create one — it's free</a></p>
     </div>
 
     <div id="register-form" class="login-form">
-      <p class="form-title">Create Account</p>
+      <p class="form-title">Protect Your Identity</p>
+      <div class="onboarding-progress">
+        <div class="onboarding-progress-bar"><div class="onboarding-progress-fill" style="width:33%"></div></div>
+        <p class="onboarding-progress-text">Step 1 of 3 — 33% complete</p>
+      </div>
       <input type="text" id="reg-email-name" class="reg-input" placeholder="Full legal name" autocomplete="name">
       <input type="email" id="reg-email-addr" class="reg-input" placeholder="Email address" autocomplete="email">
       <input type="password" id="reg-email-password" class="reg-input" placeholder="Password (min 8 chars)" autocomplete="new-password">
+      <div class="shield-prefs-section">
+        <p class="shield-prefs-title">Customize Your Shield</p>
+        <div class="shield-prefs-grid">
+          <label class="shield-pref-toggle">
+            <input type="checkbox" id="pref-camera" checked>
+            <span class="shield-pref-icon"><svg viewBox="0 0 40 40" width="18" height="18"><use href="#icon-camera"/></svg></span>
+            <span class="shield-pref-label">Camera Guard</span>
+          </label>
+          <label class="shield-pref-toggle">
+            <input type="checkbox" id="pref-voice" checked>
+            <span class="shield-pref-icon"><svg viewBox="0 0 40 40" width="18" height="18"><use href="#icon-voice"/></svg></span>
+            <span class="shield-pref-label">Voice Shield</span>
+          </label>
+          <label class="shield-pref-toggle">
+            <input type="checkbox" id="pref-crawler" checked>
+            <span class="shield-pref-icon"><svg viewBox="0 0 12 12" width="18" height="18"><use href="#icon-radar-dot"/></svg></span>
+            <span class="shield-pref-label">Web Crawler</span>
+          </label>
+          <label class="shield-pref-toggle">
+            <input type="checkbox" id="pref-ml">
+            <span class="shield-pref-icon"><svg viewBox="0 0 32 32" width="18" height="18"><use href="#icon-chart"/></svg></span>
+            <span class="shield-pref-label">On-Device ML</span>
+          </label>
+        </div>
+        <p class="shield-prefs-hint">You can change these anytime in Settings</p>
+      </div>
       <button id="btn-register" class="btn btn-auth">Create Account</button>
       <button id="btn-google-register" class="btn btn-google">
         <svg viewBox="0 0 24 24" width="16" height="16" style="vertical-align:middle;margin-right:6px;">
@@ -278,6 +320,11 @@
       <h1>ENCLAVE</h1>
       <p class="auth-subtitle">Enrollment — Establish your identity baseline to unlock the vault</p>
     </div>
+
+    <div class="enrollment-progress-bar">
+      <div class="enrollment-progress-fill" id="enrollment-progress-fill" style="width:33%"></div>
+    </div>
+    <p class="enrollment-progress-text" id="enrollment-progress-text">Step 1 of 3 — 33% complete</p>
 
     <div id="reg-error" class="reg-error hidden"></div>
 
@@ -603,7 +650,7 @@
       <p id="scanner-status" class="status-msg"></p>
     </section>
 
-    <!-- ─── Billing & Usage Card ─── -->
+    <!-- ─── Billing & Usage Card (ANCHORING + LOSS FRAMING) ─── -->
     <section id="panel-billing" class="panel panel-card">
       <div class="card-header">
         <svg class="card-icon" viewBox="0 0 32 32" width="24" height="24" style="color:var(--accent-secondary);">
@@ -634,10 +681,27 @@
           </div>
         </div>
         <p id="billing-next-reset" class="card-desc" style="margin-bottom:0.5rem;">Resets monthly</p>
-        <div style="display:flex;gap:0.5rem;">
-          <button id="btn-upgrade-pro" class="btn btn-triad btn-triad-safe" style="flex:1;">Pro $9.99/mo</button>
-          <button id="btn-upgrade-shield" class="btn btn-triad btn-triad-warn" style="flex:1;">Shield $19.99/mo</button>
+        <!-- ANCHORING: Show attack cost first, then protection cost -->
+        <div class="anchoring-block">
+          <p class="anchoring-high">Average deepfake attack costs victims <strong>$12,400</strong></p>
+          <p class="anchoring-vs">vs.</p>
+          <p class="anchoring-low">Enclave Shield protects you for <strong>$19.99/mo</strong></p>
+          <p class="anchoring-percentage">That's 0.16% of the cost of one attack</p>
         </div>
+        <!-- LOSS FRAMING: What you lose without upgrading -->
+        <div class="loss-framing-block">
+          <p class="loss-framing-title">Without Pro, you lose:</p>
+          <ul class="loss-framing-list">
+            <li>Unlimited deepfake scans</li>
+            <li>Priority takedown (48h SLA)</li>
+            <li>Dark web monitoring</li>
+            <li>Legal document generation</li>
+          </ul>
+        </div>
+        <div style="display:flex;gap:0.5rem;margin-top:0.75rem;">
+          <button id="btn-upgrade-pro" class="btn btn-triad btn-triad-safe" style="flex:1;">Don't Lose Protection — Pro $9.99/mo</button>
+        </div>
+        <p style="font-size:0.65rem;color:var(--text-muted);text-align:center;margin-top:0.4rem;">Cancel anytime. 14-day money-back guarantee.</p>
       </div>
     </section>
 
@@ -780,9 +844,13 @@
   </div>
 </div>
 
-<script src="api.js?v=2"></script>
-<script src="native-bridge.js?v=2"></script>
-<script src="auth-ui.js?v=2"></script>
-<script src="app.js?v=2"></script>
+<script src="https://accounts.google.com/gsi/client" async defer onerror="console.warn('Google Identity Services failed to load')"></script>
+<script src="https://cdn.jsdelivr.net/npm/tsparticles-engine@2/tsparticles.engine.min.js" defer onerror="console.warn('tsparticles-engine failed to load')"></script>
+<script src="https://cdn.jsdelivr.net/npm/tsparticles-slim@2/tsparticles.slim.bundle.min.js" defer onerror="console.warn('tsparticles-slim failed to load')"></script>
+<script src="https://cdn.jsdelivr.net/npm/vanilla-tilt@1.8.1/dist/vanilla-tilt.min.js" defer onerror="console.warn('vanilla-tilt failed to load')"></script>
+<script src="api.js?v=3"></script>
+<script src="native-bridge.js?v=3"></script>
+<script src="auth-ui.js?v=3"></script>
+<script src="app.js?v=3"></script>
 </body>
 </html>

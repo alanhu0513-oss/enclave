@@ -3,8 +3,11 @@
 CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,
   email TEXT UNIQUE NOT NULL,
-  password_hash TEXT NOT NULL,
+  password_hash TEXT,
   full_name TEXT NOT NULL,
+  provider TEXT DEFAULT 'email',
+  provider_id TEXT,
+  avatar_url TEXT,
   email_notifications BOOLEAN DEFAULT TRUE,
   fcm_token TEXT,
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
@@ -340,3 +343,21 @@ CREATE INDEX IF NOT EXISTS idx_partners_code ON partners(partner_code);
 CREATE INDEX IF NOT EXISTS idx_partners_user ON partners(user_id);
 CREATE INDEX IF NOT EXISTS idx_partner_conversions_partner ON partner_conversions(partner_id);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email);
+
+-- Migrations for Google Sign-In support
+DO $$ BEGIN
+  ALTER TABLE users ADD COLUMN provider TEXT DEFAULT 'email';
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE users ADD COLUMN provider_id TEXT;
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE users ADD COLUMN avatar_url TEXT;
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL;
+EXCEPTION WHEN others THEN NULL;
+END $$;

@@ -6,6 +6,14 @@ const { table } = require('../db/query');
 const { generateToken } = require('../middleware/auth');
 const { success, error } = require('../utils/response');
 
+let OAuth2Client = null;
+try {
+  const { OAuth2Client: O2C } = require('google-auth-library');
+  OAuth2Client = O2C;
+} catch (e) {
+  console.warn('[AUTH] google-auth-library not installed — Google Sign-In disabled');
+}
+
 const router = express.Router();
 
 const passwordResetCodes = new Map();
@@ -113,9 +121,44 @@ router.post('/google', async (req, res) => {
     const { credential } = req.body;
     if (!credential) return error(res, 'Google credential required', 400);
 
-    return error(res, 'Google Sign-In requires configuring Google OAuth. See docs for setup.', 501);
+    if (!OAuth2Client) return error(res, 'Google Auth library not installed', 500);
+
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+    if (!clientId) return error(res, 'Google Sign-In not configured on this server', 500);
+
+    const client = new OAuth2Client(clientId);
+    const ticket = await client.verifyIdToken({ idToken: credential, audience: clientId });
+    const payload = ticket.getPayload();
+
+    const { sub: googleId, email, name, picture } = payload;
+
+    const users = await table('users');
+    let user = await users.find({ email: email.toLowerCase() });
+
+    if (!user) {
+      const id = uuidv4();
+      const now = new Date().toISOString();
+      await users.insert({
+        id, email: email.toLowerCase(), password_hash: null,
+        full_name: name || email.split('@')[0],
+        provider: 'google', provider_id: googleId,
+        avatar_url: picture || null,
+        created_at: now, updated_at: now
+      });
+      user = { id, email: email.toLowerCase(), full_name: name || email.split('@')[0], provider: 'google' };
+    } else if (!user.provider_id) {
+      await users.update({ id: user.id }, {
+        provider: 'google', provider_id: googleId,
+        avatar_url: picture || user.avatar_url,
+        updated_at: new Date().toISOString()
+      });
+    }
+
+    const token = generateToken(user.id, user.email);
+    return success(res, { token, user: { id: user.id, email: user.email, fullName: user.full_name } }, 'Google sign-in successful');
   } catch (e) {
-    return error(res, e.message);
+    console.error('[AUTH] Google sign-in error:', e.message);
+    return error(res, 'Invalid Google credential', 401);
   }
 });
 

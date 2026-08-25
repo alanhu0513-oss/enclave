@@ -2,8 +2,11 @@ const SCHEMA = `
 CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,
   email TEXT UNIQUE NOT NULL,
-  password_hash TEXT NOT NULL,
+  password_hash TEXT,
   full_name TEXT NOT NULL,
+  provider TEXT DEFAULT 'email',
+  provider_id TEXT,
+  avatar_url TEXT,
   email_notifications INTEGER DEFAULT 1,
   fcm_token TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),

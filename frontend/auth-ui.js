@@ -95,6 +95,13 @@
     var password = regPassword.value;
     if (!name || !email || !password) { setStatus('All fields required', true); return; }
     if (password.length < 8) { setStatus('Password must be at least 8 characters', true); return; }
+    // IKEA Effect: read shield preferences before account creation
+    var shieldPrefs = {
+      camera: !!document.getElementById('pref-camera')?.checked,
+      voice: !!document.getElementById('pref-voice')?.checked,
+      crawler: !!document.getElementById('pref-crawler')?.checked,
+      ml: !!document.getElementById('pref-ml')?.checked
+    };
     btnRegister.disabled = true;
     btnRegister.textContent = 'Creating account...';
     try {
@@ -106,6 +113,13 @@
       } else {
         throw new Error('No token in response');
       }
+      // IKEA Effect: persist user's shield preferences (they designed these!)
+      localStorage.setItem('enclave_shield_prefs', JSON.stringify(shieldPrefs));
+      // Goal Gradient: animate progress to 100% after account created
+      var fill = document.querySelector('.onboarding-progress-fill');
+      var ptext = document.querySelector('.onboarding-progress-text');
+      if (fill) fill.style.width = '100%';
+      if (ptext) ptext.textContent = 'Step 3 of 3 — 100% complete';
       setStatus('Account created successfully', false);
       if (onAuthenticated) onAuthenticated(result.data ? result.data.user : result.user);
     } catch (e) {
@@ -117,15 +131,91 @@
   });
 
   /* ─── Google Sign-In ─── */
+  function getGoogleClientId() {
+    var meta = document.querySelector('meta[name="google-client-id"]');
+    return meta ? meta.getAttribute('content') : '';
+  }
+
+  async function handleGoogleCredential(credential) {
+    try {
+      setStatus('Signing in with Google...', false);
+      var result = await window.EnclaveAPI.googleAuth(credential);
+      if (result && result.data && result.data.token) {
+        window.EnclaveAPI.setToken(result.data.token);
+      } else if (result && result.token) {
+        window.EnclaveAPI.setToken(result.token);
+      } else {
+        throw new Error('No token in response');
+      }
+      setStatus('Signed in with Google', false);
+      if (onAuthenticated) onAuthenticated(result.data ? result.data.user : result.user);
+    } catch (e) {
+      setStatus(e.message || 'Google sign-in failed', true);
+    }
+  }
+
+  function initGoogleSignIn() {
+    var clientId = getGoogleClientId();
+    if (!clientId || clientId === 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com') return;
+    if (typeof google === 'undefined' || !google.accounts) return;
+
+    google.accounts.id.initialize({
+      client_id: clientId,
+      callback: function (response) {
+        if (response.credential) handleGoogleCredential(response.credential);
+      },
+      auto_select: false
+    });
+
+    if (btnGoogleLogin) {
+      btnGoogleLogin.addEventListener('click', function () {
+        google.accounts.id.prompt(function (notification) {
+          if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+            google.accounts.id.renderButton(btnGoogleLogin.parentElement, {
+              theme: 'outline', size: 'large', width: btnGoogleLogin.offsetWidth || 320, type: 'standard',
+              text: 'continue_with', shape: 'rectangular'
+            });
+          }
+        });
+      });
+    }
+
+    if (btnGoogleReg) {
+      btnGoogleReg.addEventListener('click', function () {
+        google.accounts.id.prompt();
+      });
+    }
+  }
+
   if (btnGoogleLogin) {
     btnGoogleLogin.addEventListener('click', function () {
-      setStatus('Google Sign-In requires configuring a Google OAuth client ID in auth-ui.js', true);
+      if (!getGoogleClientId() || getGoogleClientId() === 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com') {
+        setStatus('Google Sign-In: set GOOGLE_CLIENT_ID in index.html meta tag', true);
+        return;
+      }
+      if (typeof google === 'undefined' || !google.accounts) {
+        setStatus('Google Identity Services not loaded. Check your connection.', true);
+        return;
+      }
     });
   }
   if (btnGoogleReg) {
     btnGoogleReg.addEventListener('click', function () {
-      setStatus('Google Sign-In requires configuring a Google OAuth client ID in auth-ui.js', true);
+      if (!getGoogleClientId() || getGoogleClientId() === 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com') {
+        setStatus('Google Sign-In: set GOOGLE_CLIENT_ID in index.html meta tag', true);
+        return;
+      }
+      if (typeof google === 'undefined' || !google.accounts) {
+        setStatus('Google Identity Services not loaded. Check your connection.', true);
+        return;
+      }
     });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initGoogleSignIn);
+  } else {
+    setTimeout(initGoogleSignIn, 100);
   }
 
   /* ─── Forgot Password (Email Code) ─── */

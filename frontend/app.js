@@ -1073,7 +1073,7 @@
     authOverlay.classList.add('hidden');
     registerPortal.classList.add('hidden');
     appRoot.classList.add('hidden');
-    window.EnclaveAuthUI.show();
+    showLoginOverlay();
   });
 
   /* ═══════════════════════════════════════════════════════
@@ -1188,7 +1188,12 @@
     authStep = 'idle';
     authOverlay.classList.add('hidden');
     registerPortal.classList.add('hidden');
-    window.EnclaveAuthUI.show();
+    // Sign out from Clerk
+    if (window.Clerk && window.Clerk.signOut) {
+      window.Clerk.signOut().then(function () { showLoginOverlay(); });
+    } else {
+      showLoginOverlay();
+    }
     }
   });
 
@@ -1302,9 +1307,7 @@
       authStatus.textContent = '';
       stageLiveness.classList.add('active');
       stageVoice.classList.remove('active');
-      if (window.EnclaveAuthUI) {
-        window.EnclaveAuthUI.show();
-      }
+      showLoginOverlay();
     });
   }
 
@@ -2192,7 +2195,7 @@
   window.addEventListener('enclave-voice-status', updateServiceBadges);
 
   /* ═══════════════════════════════════════════════════════
-     INIT — with API login/register
+     INIT — Clerk-based auth
      ═══════════════════════════════════════════════════════ */
   loadState();
 
@@ -2201,10 +2204,12 @@
     registeredUserId = user.id;
     saveName();
     if (headerProfile) headerProfile.textContent = registeredName;
-    window.EnclaveAuthUI.hide();
     authOverlay.classList.add('hidden');
     appRoot.classList.remove('hidden');
     loginInitDone = true;
+
+    // Mount Clerk UserButton in header
+    mountClerkUserButton();
 
     // Check if biometric enrollment exists, route to registration if not
     window.EnclaveAPI.getBiometricStatus().then(function (status) {
@@ -2215,33 +2220,137 @@
       }
       renderDashboard();
     }).catch(function () {
-      // API unavailable — show registration portal for enrollment
       if (registerPortal) registerPortal.classList.remove('hidden');
       renderDashboard();
     });
   }
 
-  // Check JWT first (isLoggedIn is async — properly await it)
-  (async function () {
-    var hasToken = window.EnclaveAPI ? await window.EnclaveAPI.isLoggedIn() : false;
-    if (hasToken) {
+  function mountClerkUserButton() {
+    var container = document.getElementById('clerk-user-button');
+    if (!container || !window.Clerk || !window.Clerk.mountUserButton) return;
+    try {
+      window.Clerk.mountUserButton(container, {
+        afterSignOutUrl: '/',
+        appearance: { elements: { avatarBox: 'width:32px;height:32px' } }
+      });
+    } catch (_) {}
+  }
+
+  async function initClerkAuth() {
+    // Wait for Clerk SDK to load
+    var attempts = 0;
+    while (!window.Clerk && attempts < 50) {
+      await new Promise(function (r) { setTimeout(r, 200); });
+      attempts++;
+    }
+    if (!window.Clerk) {
+      console.warn('[Enclave] Clerk SDK not loaded — falling back to API login');
+      showLoginOverlay();
+      return;
+    }
+
+    try {
+      await window.Clerk.load();
+    } catch (e) {
+      console.warn('[Enclave] Clerk.load() failed:', e);
+      showLoginOverlay();
+      return;
+    }
+
+    if (window.Clerk.user) {
+      // User is signed in via Clerk — sync with our backend
       try {
-        var data = await window.EnclaveAPI.getUserData();
-        if (data && data.user) {
-          afterLogin(data.user);
-          return;
+        var clerkToken = await window.Clerk.session.getToken();
+        if (clerkToken) {
+          var response = await fetch((window.EnclaveAPI && window.EnclaveAPI.getBaseUrl ? window.EnclaveAPI.getBaseUrl() : 'http://localhost:4000') + '/api/auth/clerk', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ clerkToken: clerkToken })
+          });
+          var result = await response.json();
+          if (result.success && result.data && result.data.token) {
+            window.EnclaveAPI.setToken(result.data.token);
+            afterLogin(result.data.user);
+            return;
+          }
         }
       } catch (_) {}
-      // Token invalid or API down — clear it and show login
-      window.EnclaveAPI.logout();
+      // Backend sync failed — use Clerk user data directly
+      var clerkUser = window.Clerk.user;
+      afterLogin({
+        id: clerkUser.id,
+        email: clerkUser.primaryEmailAddress ? clerkUser.primaryEmailAddress.emailAddress : '',
+        fullName: [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(' ') || clerkUser.username || 'User'
+      });
+    } else {
+      // Not signed in — show Clerk sign-in
+      showLoginOverlay();
     }
-    // No valid token — always show the login screen first
-    // Never jump to biometric gate without explicit login
+  }
+
+  function showLoginOverlay() {
     authOverlay.classList.add('hidden');
     registerPortal.classList.add('hidden');
-    window.EnclaveAuthUI.show();
-    window.EnclaveAuthUI.onAuthenticated(afterLogin);
-  })();
+    loginOverlay.classList.remove('hidden');
+
+    // Mount Clerk SignIn component
+    var signInEl = document.getElementById('clerk-sign-in');
+    if (signInEl && window.Clerk && window.Clerk.mountSignIn) {
+      signInEl.innerHTML = '';
+      try {
+        window.Clerk.mountSignIn(signInEl, {
+          routing: 'hash',
+          appearance: {
+            elements: {
+              rootBox: 'width:100%',
+              card: 'background:rgba(15,15,20,0.95);border:1px solid rgba(255,255,255,0.08);box-shadow:none;'
+            }
+          }
+        });
+      } catch (_) {}
+    }
+
+    // Listen for Clerk sign-in completion
+    if (window.Clerk && window.Clerk.addListener) {
+      window.Clerk.addListener(function (event) {
+        if (event.type === 'session' && event.session) {
+          syncClerkSession(event.session);
+        }
+      });
+    }
+  }
+
+  async function syncClerkSession(session) {
+    try {
+      var clerkToken = await session.getToken();
+      if (clerkToken) {
+        // Exchange Clerk token for our backend JWT
+        var response = await fetch((window.EnclaveAPI && window.EnclaveAPI.getBaseUrl ? window.EnclaveAPI.getBaseUrl() : 'http://localhost:4000') + '/api/auth/clerk', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ clerkToken: clerkToken })
+        });
+        var result = await response.json();
+        if (result.success && result.data && result.data.token) {
+          window.EnclaveAPI.setToken(result.data.token);
+          afterLogin(result.data.user);
+          return;
+        }
+      }
+    } catch (_) {}
+    // Fallback: use Clerk user data directly
+    var clerkUser = session.user;
+    afterLogin({
+      id: clerkUser.id,
+      email: clerkUser.primaryEmailAddress ? clerkUser.primaryEmailAddress.emailAddress : '',
+      fullName: [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(' ') || clerkUser.username || 'User'
+    });
+  }
+
+  var loginOverlay = document.getElementById('login-overlay');
+
+  // Initialize Clerk auth
+  initClerkAuth();
 
   // spawn crawler when app is unlocked
   var unlockObserver = new MutationObserver(function () {

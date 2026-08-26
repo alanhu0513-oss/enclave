@@ -133,19 +133,19 @@ describe('Auth - Reset Password', () => {
   });
 });
 
-describe('Auth - Google', () => {
-  it('POST /api/auth/google returns 500 when GOOGLE_CLIENT_ID not configured', async () => {
+describe('Auth - Clerk', () => {
+  it('POST /api/auth/clerk returns 400 without clerkToken', async () => {
     const res = await request(app)
-      .post('/api/auth/google')
-      .send({ credential: 'some-google-token' });
-    expect(res.status).toBe(500);
-  });
-
-  it('POST /api/auth/google returns 400 without credential', async () => {
-    const res = await request(app)
-      .post('/api/auth/google')
+      .post('/api/auth/clerk')
       .send({});
     expect(res.status).toBe(400);
+  });
+
+  it('POST /api/auth/clerk returns 401 with invalid token', async () => {
+    const res = await request(app)
+      .post('/api/auth/clerk')
+      .send({ clerkToken: 'invalid-token' });
+    expect(res.status).toBe(401);
   });
 });
 

@@ -1294,6 +1294,39 @@
     });
   }
 
+  /* ─── Notification Preferences (Phase 4) ─── */
+  var toggleEmailNotifications = document.getElementById('toggle-email-notifications');
+  var notificationPrefStatus = document.getElementById('notification-pref-status');
+
+  function initNotificationPrefs() {
+    if (!toggleEmailNotifications || !window.EnclaveAPI || !window.EnclaveAPI.isLoggedIn()) return;
+    window.EnclaveAPI.getNotificationPreferences().then(function (prefs) {
+      if (prefs && typeof prefs.emailNotifications === 'boolean') {
+        toggleEmailNotifications.checked = prefs.emailNotifications;
+      }
+    }).catch(function () {});
+  }
+
+  if (toggleEmailNotifications) {
+    toggleEmailNotifications.addEventListener('change', async function () {
+      if (!window.EnclaveAPI || !window.EnclaveAPI.isLoggedIn()) return;
+      var enabled = toggleEmailNotifications.checked;
+      try {
+        await window.EnclaveAPI.updateNotificationPreferences({ emailNotifications: enabled });
+        if (notificationPrefStatus) {
+          notificationPrefStatus.textContent = enabled ? 'Email alerts on' : 'Email alerts off';
+          setTimeout(function () { notificationPrefStatus.textContent = ''; }, 2500);
+        }
+      } catch (e) {
+        if (notificationPrefStatus) notificationPrefStatus.textContent = 'Failed to save preference';
+        toggleEmailNotifications.checked = !enabled;
+      }
+    });
+    // Load current pref when settings open
+    var btnSettingsOpenEl = document.getElementById('btn-settings-open');
+    if (btnSettingsOpenEl) btnSettingsOpenEl.addEventListener('click', initNotificationPrefs);
+  }
+
   /* ─── Logout ─── */
   if (btnSettingsLogout) {
     btnSettingsLogout.addEventListener('click', function () {
@@ -2678,28 +2711,122 @@
 
   if (btnUpgradePro) {
     btnUpgradePro.addEventListener('click', function () {
-      if (!window.EnclaveAPI) return;
-      window.EnclaveAPI.createCheckout('pro', window.location.href, window.location.href)
-        .then(function (session) {
-          if (session && session.url) window.location.href = session.url;
-          else showToastAlert('Checkout session created. Check your email.');
-        }).catch(function (e) {
-          showToastAlert('Checkout failed: ' + (e.message || 'Unknown error'));
-        });
+      openPlansModal();
     });
   }
 
   if (btnUpgradeShield) {
     btnUpgradeShield.addEventListener('click', function () {
-      if (!window.EnclaveAPI) return;
-      window.EnclaveAPI.createCheckout('shield', window.location.href, window.location.href)
-        .then(function (session) {
-          if (session && session.url) window.location.href = session.url;
-          else showToastAlert('Checkout session created. Check your email.');
-        }).catch(function (e) {
-          showToastAlert('Checkout failed: ' + (e.message || 'Unknown error'));
-        });
+      openPlansModal();
     });
+  }
+
+  /* ─── Choose Plan Modal (Phase 4) ─── */
+  var plansModal = document.getElementById('plans-modal');
+  var plansComparison = document.getElementById('plans-comparison');
+  var btnPlansClose = document.getElementById('btn-plans-close');
+  var plansStatus = document.getElementById('plans-status');
+  var _currentTier = 'free';
+  var PLAN_ORDER = ['free', 'detection_only', 'pro', 'shield', 'business'];
+  var POPULAR_TIER = 'pro';
+
+  function closePlansModal() { if (plansModal) plansModal.classList.add('hidden'); }
+  if (btnPlansClose) btnPlansClose.addEventListener('click', closePlansModal);
+  if (plansModal) plansModal.addEventListener('click', function (e) {
+    if (e.target === plansModal) closePlansModal();
+  });
+
+  function fmtPrice(cents) {
+    if (!cents) return '$0';
+    return '$' + (cents / 100).toFixed(2).replace(/\.00$/, '');
+  }
+
+  function openPlansModal() {
+    if (!plansModal || !window.EnclaveAPI) return;
+    plansModal.classList.remove('hidden');
+    plansComparison.innerHTML = '<p style="color:var(--text-muted);font-size:0.8rem;">Loading plans…</p>';
+    if (plansStatus) plansStatus.textContent = '';
+
+    window.EnclaveAPI.getSubscription().then(function (data) {
+      _currentTier = (data && data.subscription && data.subscription.tier) || 'free';
+      return window.EnclaveAPI.getTiers();
+    }).then(function (data) {
+      renderPlans((data && data.tiers) || []);
+    }).catch(function () {
+      plansComparison.innerHTML = '<p style="color:var(--red);font-size:0.8rem;">Failed to load plans.</p>';
+    });
+  }
+
+  function renderPlans(tiers) {
+    if (!plansComparison) return;
+    plansComparison.innerHTML = '';
+    var ordered = PLAN_ORDER.map(function (id) { return tiers[id]; }).filter(Boolean);
+
+    ordered.forEach(function (t) {
+      var isCurrent = t.id === _currentTier;
+      var card = document.createElement('div');
+      card.className = 'plan-card' + (isCurrent ? ' current' : (t.id === POPULAR_TIER ? ' popular' : ''));
+
+      var head = document.createElement('div');
+      head.className = 'plan-head';
+      head.innerHTML = '<span class="plan-name">' + t.name + '</span>'
+        + '<span class="plan-price">' + fmtPrice(t.price) + '/mo</span>'
+        + (isCurrent ? '<span class="plan-badge current">Current</span>'
+          : (t.id === POPULAR_TIER ? '<span class="plan-badge popular">Most Popular</span>' : ''));
+
+      var feats = document.createElement('ul');
+      feats.className = 'plan-features';
+      (t.features || []).forEach(function (f) {
+        var li = document.createElement('li');
+        li.textContent = f;
+        feats.appendChild(li);
+      });
+
+      var actions = document.createElement('div');
+      actions.className = 'plan-actions';
+      var btn = document.createElement('button');
+      btn.className = 'btn ' + (isCurrent ? 'btn-ghost' : (t.id === POPULAR_TIER ? 'btn-dispatch' : 'btn-safe'));
+      btn.textContent = isCurrent ? 'Current Plan'
+        : (t.id === 'free' ? 'Downgrade to Free' : 'Choose ' + t.name);
+      btn.disabled = isCurrent;
+      btn.addEventListener('click', function () { selectPlan(t.id, btn); });
+      actions.appendChild(btn);
+
+      card.appendChild(head);
+      card.appendChild(feats);
+      card.appendChild(actions);
+      plansComparison.appendChild(card);
+    });
+  }
+
+  function selectPlan(tierId, btn) {
+    if (!window.EnclaveAPI) return;
+    btn.disabled = true;
+    btn.textContent = 'Processing…';
+    if (tierId === 'free') {
+      // Downgrade goes through billing portal when live; mock just notes it
+      showToastAlert('To cancel, use Manage → billing portal.');
+      btn.disabled = false;
+      btn.textContent = 'Downgrade to Free';
+      return;
+    }
+    window.EnclaveAPI.startCheckout(tierId, window.location.href, window.location.href)
+      .then(function (session) {
+        if (session && session.url && session.url.indexOf('#mock') !== 0 && session.url !== '#mock-checkout') {
+          window.location.href = session.url;
+        } else if (session && session.mock) {
+          showToastAlert('Mock checkout: ' + tierId + ' activated (no Stripe key configured).');
+          closePlansModal();
+          loadBilling();
+        } else if (session && session.url) {
+          window.location.href = session.url;
+        }
+        btn.disabled = false;
+      })
+      .catch(function (e) {
+        if (plansStatus) plansStatus.textContent = 'Checkout failed: ' + (e.message || 'unknown');
+        btn.disabled = false;
+      });
   }
 
   if (btnBillingManage) {

@@ -8,9 +8,10 @@ const { table } = require('../db/query');
 const { getTierLimits } = require('./billing');
 
 const DEFAULT_LIMITS = {
-  free: { scans: 5, alerts: 10, takedowns: 0, deepScans: 1, apiCalls: 0 },
-  pro: { scans: 100, alerts: 500, takedowns: 10, deepScans: 20, apiCalls: 0 },
-  shield: { scans: -1, alerts: -1, takedowns: -1, deepScans: -1, apiCalls: 0 },
+  free: { scans: 3, alerts: 10, takedowns: 0, deepScans: 1, apiCalls: 0 },
+  detection_only: { scans: -1, alerts: 50, takedowns: 0, deepScans: 2, apiCalls: 0 },
+  pro: { scans: 50, alerts: 500, takedowns: 2, deepScans: 20, apiCalls: 0 },
+  shield: { scans: 200, alerts: -1, takedowns: 10, deepScans: -1, apiCalls: 0 },
   business: { scans: -1, alerts: -1, takedowns: -1, deepScans: -1, apiCalls: 10000 }
 };
 

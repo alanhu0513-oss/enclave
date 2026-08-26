@@ -230,6 +230,13 @@
     getUnreadCount: function () { return apiFetch('/notifications/unread-count'); },
     markNotificationRead: function (id) { return apiFetch('/notifications/' + id + '/read', { method: 'PATCH' }); },
     markAllNotificationsRead: function () { return apiFetch('/notifications/read-all', { method: 'POST' }); },
+    getNotificationPreferences: function () { return apiFetch('/notifications/preferences'); },
+    updateNotificationPreferences: function (prefs) {
+      return apiFetch('/notifications/preferences', {
+        method: 'PATCH',
+        body: JSON.stringify(prefs)
+      });
+    },
 
     // Takedowns
     getTakedowns: function () { return apiFetch('/takedowns'); },
@@ -255,6 +262,12 @@
     // Billing & Subscription
     getSubscription: function () { return apiFetch('/billing/subscription'); },
     getTiers: function () { return apiFetch('/billing/tiers'); },
+    startCheckout: function (tier, successUrl, cancelUrl) {
+      return apiFetch('/billing/checkout', {
+        method: 'POST',
+        body: JSON.stringify({ tier: tier, successUrl: successUrl, cancelUrl: cancelUrl })
+      });
+    },
     createCheckout: function (tier, successUrl, cancelUrl) {
       return apiFetch('/billing/checkout', {
         method: 'POST',

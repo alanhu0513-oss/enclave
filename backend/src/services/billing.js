@@ -10,31 +10,38 @@ const TABLES = { table: null };
 const TIERS = {
   free: {
     id: 'free', name: 'Free', price: 0,
-    scanLimit: 5, alertLimit: 10, takedownLimit: 0,
+    scanLimit: 3, alertLimit: 10, takedownLimit: 0,
     deepScanLimit: 1, crawlerAccess: false, apiAccess: false,
-    features: ['Basic deepfake detection', '5 scans/month', 'Email alerts']
+    features: ['3 deepfake scans/month', 'On-demand web search', 'Email alerts', 'Local heuristic fallback']
+  },
+  detection_only: {
+    id: 'detection_only', name: 'Detection Only', price: 499,
+    scanLimit: -1, alertLimit: 50, takedownLimit: 0,
+    deepScanLimit: 2, crawlerAccess: false, apiAccess: false,
+    features: ['Unlimited AI scans (image/audio/text)', 'Gemini + Mistral engine access', 'Result caching', 'Confidence breakdowns']
   },
   pro: {
-    id: 'pro', name: 'Pro', price: 999,
-    scanLimit: 100, alertLimit: 500, takedownLimit: 10,
+    id: 'pro', name: 'Individual Pro', price: 999,
+    scanLimit: 50, alertLimit: 500, takedownLimit: 2,
     deepScanLimit: 20, crawlerAccess: true, apiAccess: false,
-    features: ['100 scans/month', 'Auto takedowns (10/mo)', 'Crawler monitoring', 'Priority alerts']
+    features: ['50 scans/month', 'Hourly surface monitoring (web/Reddit/paste)', '2 takedowns/mo with evidence chain', '24h-30d verification re-crawls', 'Priority alerts']
   },
   shield: {
-    id: 'shield', name: 'Shield', price: 1999,
-    scanLimit: -1, alertLimit: -1, takedownLimit: -1,
+    id: 'shield', name: 'Family', price: 1999,
+    scanLimit: 200, alertLimit: -1, takedownLimit: 10,
     deepScanLimit: -1, crawlerAccess: true, apiAccess: false,
-    features: ['Unlimited scans', 'Unlimited takedowns', 'Crawler monitoring', 'Voice authentication', 'C2PA + watermarks']
+    features: ['200 scans/month, up to 5 members', 'Dark web monitoring (Ahmia)', '10 takedowns/mo', 'Filing helper for all platforms', 'Voice authentication']
   },
   business: {
     id: 'business', name: 'Business', price: 4999,
     scanLimit: -1, alertLimit: -1, takedownLimit: -1,
     deepScanLimit: -1, crawlerAccess: true, apiAccess: true,
-    features: ['Everything in Shield', 'API access (10k calls/mo)', 'Bulk scanning', 'Team accounts', 'SLA guarantee']
+    features: ['Unlimited scans, 10 seats', '15-min real-time monitoring incl. social', 'Unlimited takedowns', 'API access (10k calls/mo)', 'Bulk scanning + SLA']
   }
 };
 
 const STRIPE_PRICES = {
+  detection_only: process.env.STRIPE_PRICE_DETECTION_ONLY || 'price_detection_only_monthly',
   pro: process.env.STRIPE_PRICE_PRO || 'price_pro_monthly',
   shield: process.env.STRIPE_PRICE_SHIELD || 'price_shield_monthly',
   business: process.env.STRIPE_PRICE_BUSINESS || 'price_business_monthly'
@@ -218,7 +225,15 @@ async function getSubscriptionStatus(userId) {
 }
 
 function getTierInfo(tier) {
-  return TIERS[tier] || TIERS.free;
+  const t = TIERS[tier] || TIERS.free;
+  return {
+    ...t,
+    limits: {
+      scansPerMonth: t.scanLimit,
+      takedownsPerMonth: t.takedownLimit,
+      deepScansPerMonth: t.deepScanLimit,
+    },
+  };
 }
 
 function getTierLimits(tier) {

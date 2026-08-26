@@ -477,6 +477,17 @@
         <span id="widget-status-label" class="settings-value" style="margin-left:0.5rem;">Enabled</span>
       </div>
       <div class="settings-section">
+        <p class="settings-section-title">Notifications</p>
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <span style="font-size:0.78rem;color:var(--text-secondary);">Email alerts</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="toggle-email-notifications" checked>
+            <span class="toggle-track"><span class="toggle-knob"></span></span>
+          </label>
+        </div>
+        <p id="notification-pref-status" class="status-msg"></p>
+      </div>
+      <div class="settings-section">
         <p class="settings-section-title">Data</p>
         <button id="btn-settings-clear" class="btn btn-danger">Clear All Vault Data</button>
         <button id="btn-settings-export" class="btn btn-safe">Export Identity Manifest</button>
@@ -934,6 +945,23 @@
     <p class="form-hint">Platforms without automated APIs require manual submission. Follow the guide for each platform.</p>
     <select id="filing-platform-select" class="settings-select" style="margin-bottom:0.75rem;"></select>
     <div id="filing-guide-body"></div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     [6] CHOOSE PLAN MODAL (Phase 4)
+     ════════════════════════════════════════════ -->
+<div id="plans-modal" class="hidden">
+  <div id="plans-panel">
+    <div class="settings-header">
+      <h3>Choose Your Protection</h3>
+      <button id="btn-plans-close" class="btn btn-icon">
+        <svg viewBox="0 0 24 24" width="16" height="16"><use href="#icon-close"/></svg>
+      </button>
+    </div>
+    <p class="form-hint">Every paid tier includes the full AI detection engine with automatic provider failover.</p>
+    <div id="plans-comparison"></div>
+    <p id="plans-status" class="status-msg"></p>
   </div>
 </div>
 

@@ -2318,6 +2318,63 @@
         }
       });
     }
+
+    // Init native Google Sign-In
+    initGoogleSignIn();
+  }
+
+  /* ─── Native Google Sign-In (Google Identity Services) ─── */
+  function getGoogleClientId() {
+    var meta = document.querySelector('meta[name="google-client-id"]');
+    return meta ? meta.getAttribute('content') : '';
+  }
+
+  async function handleGoogleCredential(response) {
+    try {
+      var backendUrl = (window.EnclaveAPI && window.EnclaveAPI.getBaseUrl ? window.EnclaveAPI.getBaseUrl() : 'http://localhost:4000');
+      var res = await fetch(backendUrl + '/api/auth/google', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ credential: response.credential })
+      });
+      var result = await res.json();
+      if (result.success && result.data && result.data.token) {
+        window.EnclaveAPI.setToken(result.data.token);
+        afterLogin(result.data.user);
+      } else {
+        console.error('[Google Auth] Backend rejected:', result.message);
+      }
+    } catch (e) {
+      console.error('[Google Auth] Error:', e);
+    }
+  }
+
+  function initGoogleSignIn() {
+    var clientId = getGoogleClientId();
+    if (!clientId || !window.google || !window.google.accounts) return;
+
+    try {
+      window.google.accounts.id.initialize({
+        client_id: clientId,
+        callback: handleGoogleCredential,
+        auto_select: false
+      });
+
+      // Render the Google One Tap button
+      var googleBtnContainer = document.getElementById('google-signin-btn');
+      if (googleBtnContainer) {
+        googleBtnContainer.innerHTML = '';
+        window.google.accounts.id.renderButton(googleBtnContainer, {
+          theme: 'filled_black',
+          size: 'large',
+          width: '100%',
+          text: 'continue_with',
+          shape: 'rectangular'
+        });
+      }
+    } catch (e) {
+      console.warn('[Google] Init failed:', e);
+    }
   }
 
   async function syncClerkSession(session) {
@@ -2351,6 +2408,25 @@
 
   // Initialize Clerk auth
   initClerkAuth();
+
+  // Google Sign-In button click handler
+  var btnGoogleLogin = document.getElementById('btn-google-login');
+  if (btnGoogleLogin) {
+    btnGoogleLogin.addEventListener('click', function () {
+      var clientId = getGoogleClientId();
+      if (!clientId || !window.google || !window.google.accounts) {
+        alert('Google Sign-In is loading, please try again in a moment.');
+        return;
+      }
+      // Trigger Google One Tap prompt
+      window.google.accounts.id.prompt(function (notification) {
+        if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+          // One Tap not shown — fall back to redirect
+          window.google.accounts.id.prompt();
+        }
+      });
+    });
+  }
 
   // spawn crawler when app is unlocked
   var unlockObserver = new MutationObserver(function () {

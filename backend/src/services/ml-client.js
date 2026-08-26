@@ -318,12 +318,22 @@ async function detectText(text) {
 
 /** Merged provider status across primary AI + Gemini + Python ML service. */
 async function getStatus() {
-  const [geminiStatus, pythonHealth] = await Promise.all([
+  const [aiStatus, geminiStatus, pythonHealth] = await Promise.all([
+    Promise.resolve(primaryAi.getStatus()),
     Promise.resolve(gemini.getStatus()),
     getHealth().catch(() => ({ status: 'unavailable' })),
   ]);
   return {
-    primaryAi: primaryAi.getStatus(),
+    primaryAi: {
+      // Flattened failover layer -> legacy badge shape
+      configured: aiStatus.configured,
+      provider: aiStatus.provider,
+      vision: { available: !!aiStatus.visionAvailable },
+      text: { available: !!aiStatus.textAvailable },
+      cache: aiStatus.cache,
+      requestsToday: aiStatus.requestsToday,
+      providers: aiStatus.providers,
+    },
     gemini: geminiStatus,
     pythonService: {
       url: ML_SERVICE_URL,

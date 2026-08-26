@@ -9,6 +9,7 @@ const rateLimit = require('express-rate-limit');
 const { error } = require('./utils/response');
 
 // ─── Env Validation ───
+process.env.PORT = process.env.PORT || '3000';
 const requiredEnvVars = ['PORT'];
 const missing = requiredEnvVars.filter(v => !process.env[v]);
 if (missing.length) {

@@ -284,3 +284,68 @@ describe('Crawler', () => {
     expect(res.status).toBe(200);
   });
 });
+
+describe('Monitoring', () => {
+  let token;
+
+  beforeAll(async () => {
+    const res = await request(app)
+      .post('/api/auth/login')
+      .send({ email: 'test@example.com', password: 'TestPass123!' });
+    token = res.body.data.token;
+  });
+
+  it('GET /api/monitoring/status requires authentication', async () => {
+    const res = await request(app).get('/api/monitoring/status');
+    expect(res.status).toBe(401);
+  });
+
+  it('GET /api/monitoring/status returns tier, schedule and sources', async () => {
+    const res = await request(app)
+      .get('/api/monitoring/status')
+      .set('Authorization', `Bearer ${token}`);
+    expect(res.status).toBe(200);
+    expect(res.body.data.tier).toBeDefined();
+    expect(typeof res.body.data.schedule).toBe('string');
+    expect(Array.isArray(res.body.data.sources)).toBe(true);
+    expect(res.body.data.sources.length).toBeGreaterThanOrEqual(5);
+    for (const src of res.body.data.sources) {
+      expect(src.id).toBeDefined();
+      expect(src.label).toBeDefined();
+      expect(['idle', 'ok', 'degraded', 'down', 'cooldown', 'locked']).toContain(src.status);
+    }
+    // Free tier: darkweb + social must be locked
+    const ids = res.body.data.sources.map((s) => s.id);
+    const darkweb = res.body.data.sources[ids.indexOf('darkweb')];
+    const social = res.body.data.sources[ids.indexOf('social')];
+    expect(darkweb.enabled).toBe(false);
+    expect(darkweb.status).toBe('locked');
+    expect(social.enabled).toBe(false);
+    expect(social.fragile).toBe(true);
+  });
+
+  it('POST /api/monitoring/start then /stop toggles session', async () => {
+    const startRes = await request(app)
+      .post('/api/monitoring/start')
+      .set('Authorization', `Bearer ${token}`);
+    expect(startRes.status).toBe(200);
+
+    const statusRes = await request(app)
+      .get('/api/monitoring/status')
+      .set('Authorization', `Bearer ${token}`);
+    expect(statusRes.body.data.active).toBe(true);
+
+    const stopRes = await request(app)
+      .post('/api/monitoring/stop')
+      .set('Authorization', `Bearer ${token}`);
+    expect(stopRes.status).toBe(200);
+    expect(stopRes.body.data.stopped).toBe(true);
+  });
+
+  it('POST /api/monitoring/run-once rejects users without registered name or completes cleanly', async () => {
+    const res = await request(app)
+      .post('/api/monitoring/run-once')
+      .set('Authorization', `Bearer ${token}`);
+    expect([200, 400]).toContain(res.status);
+  }, 60000);
+});

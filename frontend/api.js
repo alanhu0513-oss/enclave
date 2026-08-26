@@ -203,6 +203,12 @@
     startCrawler: function () { return apiFetch('/crawler/start', { method: 'POST' }); },
     stopCrawler: function () { return apiFetch('/crawler/stop', { method: 'POST' }); },
 
+    // Monitoring (Phase 2)
+    getMonitoringStatus: function () { return apiFetch('/monitoring/status'); },
+    startMonitoring: function () { return apiFetch('/monitoring/start', { method: 'POST' }); },
+    stopMonitoring: function () { return apiFetch('/monitoring/stop', { method: 'POST' }); },
+    runMonitoringOnce: function () { return apiFetch('/monitoring/run-once', { method: 'POST' }); },
+
     // User
     getUserData: function () { return apiFetch('/user/data'); },
     deleteUserData: function () { return apiFetch('/user/data', { method: 'DELETE' }); },

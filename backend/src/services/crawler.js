@@ -217,7 +217,8 @@ async function matchFaceAgainstEnrolled(imageBuffer, filename, userId) {
 
 /* ─── Core Search Logic ─── */
 
-async function searchIdentity(userName) {
+/* Surface-web engine search (DuckDuckGo + Yandex). Exported for monitoring service. */
+async function searchWebEngines(userName) {
   const allResults = [];
   const queries = [
     `"${userName}" deepfake OR "face swap" OR impersonation OR "identity theft" OR "unauthorized"`,
@@ -225,14 +226,32 @@ async function searchIdentity(userName) {
     `"${userName}" nonconsensual OR "revenge" OR "sextortion" OR "ncii"`,
   ];
 
-  // Text search engines
   for (const engine of SEARCH_ENGINES) {
+    // Skip engines in block-cooldown (rate limit / CAPTCHA graceful handling)
+    const coolUntil = _engineCooldowns.get(engine.name) || 0;
+    if (Date.now() < coolUntil) continue;
+
     for (const q of queries) {
       try {
         const res = await fetchWithTimeout(engine.url(q));
-        if (!res.ok) continue;
+        if (!res.ok) {
+          if (res.status === 429) _blockEngine(engine.name, 5 * 60 * 1000);
+          continue;
+        }
         const html = await res.text();
+
+        // CAPTCHA / anomaly detection
+        if (/anomaly|captcha|challenge/i.test(html.slice(0, 3000)) && !html.includes('result__a')) {
+          console.warn(`[Crawler] ${engine.name} appears blocked (challenge page) — cooling down`);
+          _blockEngine(engine.name, 10 * 60 * 1000);
+          continue;
+        }
+
         const results = engine.parser(html);
+        if (res.ok && results.length === 0 && html.length > 5000) {
+          // Page loaded but zero parsed results may indicate layout change / soft block
+          _blockEngine(engine.name, 5 * 60 * 1000);
+        }
         for (const r of results) {
           if (!r.url || scannedUrls.has(r.url)) continue;
           scannedUrls.set(r.url, { timestamp: Date.now(), engine: engine.name });
@@ -268,7 +287,18 @@ async function searchIdentity(userName) {
     }
   }
 
-  // Dark web monitoring
+  return allResults;
+}
+
+/* Per-engine block cooldowns (rate-limit/CAPTCHA backoff) */
+const _engineCooldowns = new Map();
+function _blockEngine(name, ms) {
+  _engineCooldowns.set(name, Date.now() + ms);
+}
+
+/* Dark web search (Ahmia). Exported for monitoring service. */
+async function searchDarkWebSources(userName) {
+  const allResults = [];
   for (const kw of DARK_WEB_KEYWORDS) {
     const darkResults = await searchAhmia(`${userName} ${kw}`);
     for (const r of darkResults) {
@@ -287,8 +317,16 @@ async function searchIdentity(userName) {
       });
     }
   }
-
   return allResults;
+}
+
+/* Original combined search (backward compatible) */
+async function searchIdentity(userName) {
+  const [web, dark] = await Promise.all([
+    searchWebEngines(userName),
+    searchDarkWebSources(userName),
+  ]);
+  return [...web, ...dark];
 }
 
 async function deepAnalyzeResult(result, userId) {
@@ -470,5 +508,8 @@ module.exports = {
   getSessionStatus,
   scanCycle,
   searchIdentity,
+  searchWebEngines,
+  searchDarkWebSources,
+  deepAnalyzeResult,
   searchAhmia,
 };

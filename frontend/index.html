@@ -582,6 +582,40 @@
       </div>
     </section>
 
+    <!-- ─── Monitoring Sources Card (Phase 2) ─── -->
+    <section id="panel-monitoring" class="panel panel-card">
+      <div class="card-header">
+        <svg class="card-icon" viewBox="0 0 12 12" width="26" height="26">
+          <use href="#icon-radar-dot"/>
+        </svg>
+        <div class="card-title-group">
+          <h2 class="card-title">Monitoring Sources</h2>
+          <p class="card-subtitle" id="monitoring-schedule-label">Loading…</p>
+        </div>
+        <button id="btn-monitoring-toggle" class="btn btn-safe" style="font-size:0.7rem;">Start</button>
+      </div>
+      <div class="card-body">
+        <div id="monitoring-sources" class="shield-modules">
+          <p style="color:var(--text-muted);font-size:0.75rem;">No source data yet.</p>
+        </div>
+        <div class="card-metrics" style="margin-top:0.75rem;">
+          <div class="metric">
+            <span id="monitoring-last-scan" class="metric-value">—</span>
+            <span class="metric-label">Last Scan</span>
+          </div>
+          <div class="metric">
+            <span id="monitoring-next-run" class="metric-value">—</span>
+            <span class="metric-label">Next Scan</span>
+          </div>
+          <div class="metric">
+            <span id="monitoring-total-findings" class="metric-value">0</span>
+            <span class="metric-label">Findings</span>
+          </div>
+        </div>
+        <p id="monitoring-status-msg" class="status-msg" style="margin-top:0.4rem;"></p>
+      </div>
+    </section>
+
     <!-- ─── Camera Immunizer Core Card ─── -->
     <section id="panel-camera" class="panel panel-card">
       <div class="card-header">

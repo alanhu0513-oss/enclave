@@ -2474,6 +2474,142 @@
     updateMlEngineStatus();
   }
 
+  /* ─── Monitoring Sources (Phase 2) ─── */
+  var monitoringSourcesEl = document.getElementById('monitoring-sources');
+  var monitoringScheduleLabel = document.getElementById('monitoring-schedule-label');
+  var monitoringToggleBtn = document.getElementById('btn-monitoring-toggle');
+  var monitoringLastScan = document.getElementById('monitoring-last-scan');
+  var monitoringNextRun = document.getElementById('monitoring-next-run');
+  var monitoringFindings = document.getElementById('monitoring-total-findings');
+  var monitoringStatusMsg = document.getElementById('monitoring-status-msg');
+  var monitoringActive = false;
+  var monitoringLastScanAt = null;
+
+  function timeAgo(iso) {
+    if (!iso) return '—';
+    var diff = Date.now() - new Date(iso).getTime();
+    if (diff < 0) diff = 0;
+    var m = Math.floor(diff / 60000);
+    if (m < 1) return 'just now';
+    if (m < 60) return m + 'm ago';
+    var h = Math.floor(m / 60);
+    if (h < 24) return h + 'h ago';
+    return Math.floor(h / 24) + 'd ago';
+  }
+
+  function timeUntil(iso) {
+    if (!iso) return '—';
+    var diff = new Date(iso).getTime() - Date.now();
+    if (diff <= 0) return 'soon';
+    var m = Math.floor(diff / 60000);
+    if (m < 60) return m + 'm';
+    var h = Math.floor(m / 60);
+    return h + 'h ' + (m % 60) + 'm';
+  }
+
+  function renderMonitoringSources(sources) {
+    if (!monitoringSourcesEl) return;
+    monitoringSourcesEl.innerHTML = '';
+    sources.forEach(function (s) {
+      var row = document.createElement('div');
+      row.className = 'shield-module';
+
+      var name = document.createElement('span');
+      name.className = 'shield-module-name';
+      name.textContent = s.label + (s.fragile ? ' ⚠' : '');
+      if (s.fragile) name.title = 'Best-effort source — availability depends on third-party mirrors';
+
+      var badge = document.createElement('span');
+      var cls = 'shield-module-badge inactive';
+      var text = 'IDLE';
+      switch (s.status) {
+        case 'ok': cls = 'shield-module-badge active'; text = 'LIVE'; break;
+        case 'degraded': cls = 'shield-module-badge partial'; text = 'SLOW'; break;
+        case 'down': cls = 'shield-module-badge inactive'; text = 'DOWN'; break;
+        case 'cooldown':
+          cls = 'shield-module-badge partial';
+          text = 'WAIT ' + (s.cooldownRemainingMin || 0) + 'M';
+          break;
+        case 'locked':
+          cls = 'shield-module-badge inactive';
+          text = (s.requiredTier || 'PRO').toUpperCase();
+          break;
+      }
+      badge.className = cls;
+      badge.textContent = text;
+
+      row.appendChild(name);
+      row.appendChild(badge);
+      monitoringSourcesEl.appendChild(row);
+    });
+  }
+
+  function loadMonitoring() {
+    if (!window.EnclaveAPI || !window.EnclaveAPI.isLoggedIn()) return;
+
+    window.EnclaveAPI.getMonitoringStatus().then(function (data) {
+      if (!data) return;
+      monitoringActive = !!data.active;
+      if (monitoringScheduleLabel) {
+        monitoringScheduleLabel.textContent = data.schedule.charAt(0).toUpperCase() + data.schedule.slice(1);
+      }
+      if (monitoringToggleBtn) {
+        monitoringToggleBtn.textContent = monitoringActive ? 'Stop' : 'Start';
+        monitoringToggleBtn.className = 'btn ' + (monitoringActive ? 'btn-danger' : 'btn-safe');
+      }
+
+      // Track most recent successful scan across sources
+      var lastSuccess = null;
+      (data.sources || []).forEach(function (s) {
+        if (s.lastSuccessAt && (!lastSuccess || s.lastSuccessAt > lastSuccess)) lastSuccess = s.lastSuccessAt;
+      });
+      monitoringLastScanAt = lastSuccess;
+      if (monitoringLastScan) monitoringLastScan.textContent = timeAgo(lastSuccess);
+      if (monitoringNextRun) {
+        monitoringNextRun.textContent = data.active ? timeUntil(data.nextRunAt) : '—';
+      }
+      var totalFindings = 0;
+      (data.sources || []).forEach(function (s) { totalFindings += s.totalFindings || 0; });
+      if (monitoringFindings) monitoringFindings.textContent = totalFindings;
+
+      renderMonitoringSources(data.sources || []);
+
+      if (monitoringStatusMsg) {
+        var locked = (data.sources || []).filter(function (s) { return !s.enabled; }).length;
+        monitoringStatusMsg.textContent = monitoringActive
+          ? 'Scheduled monitoring active — ' + data.cyclesCompleted + ' cycle(s) completed.'
+          : (locked > 0
+            ? 'Manual scans available. Start monitoring or upgrade to unlock ' + locked + ' more source(s).'
+            : 'Start scheduled monitoring to scan automatically.');
+      }
+
+      // Header badge: show scanning state vs last-scan age
+      var headerBadge = document.getElementById('crawler-status');
+      if (headerBadge) {
+        if (monitoringActive) {
+          headerBadge.innerHTML = '<svg viewBox="0 0 12 12" width="10" height="10"><use href="#icon-radar-dot"/></svg> SCANNING';
+        } else if (lastSuccess) {
+          headerBadge.textContent = 'LAST SCAN ' + timeAgo(lastSuccess).toUpperCase();
+        } else {
+          headerBadge.textContent = 'IDLE';
+        }
+      }
+    }).catch(function () {});
+  }
+
+  if (monitoringToggleBtn) {
+    monitoringToggleBtn.addEventListener('click', async function () {
+      if (!window.EnclaveAPI || !window.EnclaveAPI.isLoggedIn()) return;
+      monitoringToggleBtn.disabled = true;
+      try {
+        if (monitoringActive) await window.EnclaveAPI.stopMonitoring();
+        else await window.EnclaveAPI.startMonitoring();
+      } catch (_) {}
+      monitoringToggleBtn.disabled = false;
+      loadMonitoring();
+    });
+  }
+
   /* ─── Billing & Usage ─── */
   var billingPlanLabel = document.getElementById('billing-plan-label');
   var usageScansBar = document.getElementById('usage-scans-bar');
@@ -2736,6 +2872,7 @@
     loadTakedowns();
     loadNotifications();
     loadStats();
+    loadMonitoring();
   }
 
   // Initial load after login

@@ -489,8 +489,10 @@
       </div>
       <div class="settings-section">
         <p class="settings-section-title">Data</p>
-        <button id="btn-settings-clear" class="btn btn-danger">Clear All Vault Data</button>
+        <p class="card-desc" style="margin-bottom:0.5rem;">Evidence & takedown records are retained 2 years for legal integrity; other data 90 days. Export or erase everything anytime.</p>
         <button id="btn-settings-export" class="btn btn-safe">Export Identity Manifest</button>
+        <button id="btn-settings-gdpr-export" class="btn btn-ghost" style="margin-top:0.4rem;">Export All My Data (GDPR)</button>
+        <button id="btn-settings-clear" class="btn btn-danger" style="margin-top:0.4rem;">Clear All Vault Data</button>
       </div>
       <div class="settings-section">
         <p class="settings-section-title">Session</p>
@@ -889,7 +891,28 @@
 
   <footer id="app-footer">
     <p>Enclave v5.0 — Offline · Local · Private · Zero-Knowledge</p>
+    <p style="margin-top:0.3rem;display:flex;gap:0.9rem;justify-content:center;flex-wrap:wrap;">
+      <a href="#" class="footer-link" data-legal="tos">Terms of Service</a>
+      <a href="#" class="footer-link" data-legal="privacy">Privacy Policy</a>
+      <a href="#" class="footer-link" data-legal="dmca">DMCA Policy</a>
+    </p>
   </footer>
+</div>
+
+<!-- ════════════════════════════════════════════
+     [7] LEGAL DOCUMENT MODAL (Phase 5)
+     ════════════════════════════════════════════ -->
+<div id="legal-modal" class="hidden">
+  <div id="legal-panel">
+    <div class="settings-header">
+      <h3 id="legal-title">Legal</h3>
+      <button id="btn-legal-close" class="btn btn-icon">
+        <svg viewBox="0 0 24 24" width="16" height="16"><use href="#icon-close"/></svg>
+      </button>
+    </div>
+    <p id="legal-meta" class="form-hint"></p>
+    <div id="legal-body"></div>
+  </div>
 </div>
 
 <!-- ════════════════════════════════════════════

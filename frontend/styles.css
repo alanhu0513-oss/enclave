@@ -1837,8 +1837,17 @@ button, a, [role="button"] { font-family: var(--font-sans); }
 .takedown-item-status.counter { background: var(--amber-dim); color: var(--amber); }
 .takedown-item-status.closed { background: rgba(255,255,255,0.05); color: var(--text-muted); }
 
+/* ─── Footer legal links (Phase 5) ─── */
+.footer-link {
+  color: var(--text-muted);
+  text-decoration: none;
+  font-weight: 500;
+  transition: color var(--duration-fast);
+}
+.footer-link:hover { color: var(--green); }
+
 /* ═══════════════════════════════════════════════════════════════
-   CHOOSE PLAN MODAL (Phase 4)
+   RESPONSIVE
    ═══════════════════════════════════════════════════════════════ */
 
 #plans-modal {
@@ -1934,6 +1943,12 @@ button, a, [role="button"] { font-family: var(--font-sans); }
   .shield-prefs-grid { grid-template-columns: 1fr; }
 
   .usage-bar-row { grid-template-columns: 60px 1fr 50px; }
+
+  /* Phase 3-5 modals: tighter on mobile */
+  #evidence-panel, #filing-panel, #plans-panel, #legal-panel { padding: 1.15rem; max-height: 92vh; }
+  .plan-head { flex-wrap: wrap; gap: 0.4rem; }
+  .chain-row .chain-hash { display: none; }
+  .card-metrics { flex-wrap: wrap; gap: 0.8rem; }
 }
 
 @media (min-width: 641px) and (max-width: 1024px) {

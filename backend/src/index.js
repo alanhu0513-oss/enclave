@@ -64,6 +64,7 @@ const biometricsRoutes = require('./routes/biometrics');
 const alertsRoutes = require('./routes/alerts');
 const crawlerRoutes = require('./routes/crawler');
 const monitoringRoutes = require('./routes/monitoring');
+const legalRoutes = require('./routes/legal');
 const userRoutes = require('./routes/user');
 const detectRoutes = require('./routes/detect');
 const notificationsRoutes = require('./routes/notifications');
@@ -86,6 +87,7 @@ app.use('/api/shields', shieldsRoutes);
 app.use('/api/billing', billingRoutes);
 app.use('/api/community', communityRoutes);
 app.use('/api/revenue', revenueRoutes);
+app.use('/api/legal', legalRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString(), version: '1.0.0' });

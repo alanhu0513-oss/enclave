@@ -46,9 +46,67 @@ router.delete('/data', async (req, res) => {
       (await table('signatures')).remove({ user_id: uid }),
       (await table('voiceprints')).remove({ user_id: uid }),
       (await table('faceprints')).remove({ user_id: uid }),
+      (await table('takedowns')).remove({ user_id: uid }),
+      (await table('notifications')).remove({ user_id: uid }),
+      (await table('usage_tracking')).remove({ user_id: uid }),
+      (await table('monitoring_state')).remove({ user_id: uid }),
+      (await table('scan_sessions')).remove({ user_id: uid }),
       (await table('users')).remove({ id: uid })
     ]);
     return success(res, null, 'All user data deleted');
+  } catch (e) {
+    return error(res, e.message);
+  }
+});
+
+/** GDPR Art. 20 export — complete machine-readable dump as a download. */
+router.get('/export', async (req, res) => {
+  try {
+    const uid = req.user.userId;
+    const [
+      users, faceprints, voiceprints, signatures, alertsTbl,
+      documentsTbl, takedownsTbl, notificationsTbl, usageTbl
+    ] = await Promise.all([
+      table('users'), table('faceprints'), table('voiceprints'),
+      table('signatures'), table('alerts'), table('documents'),
+      table('takedowns'), table('notifications'), table('usage_tracking')
+    ]);
+
+    const [user, faceprintsRows, voiceprintsRows, signaturesRows,
+      alerts, documents, takedowns, notifications, usage] = await Promise.all([
+      users.find({ id: uid }),
+      faceprints.filter({ user_id: uid }),
+      voiceprints.filter({ user_id: uid }),
+      signatures.filter({ user_id: uid }),
+      alertsTbl.filter({ user_id: uid }),
+      documentsTbl.filter({ user_id: uid }),
+      takedownsTbl.filter({ user_id: uid }),
+      notificationsTbl.filter({ user_id: uid }),
+      usageTbl.filter({ user_id: uid })
+    ]);
+
+    // Strip secrets from the account record
+    const { password_hash, ...safeUser } = user || {};
+
+    const dump = {
+      exportedAt: new Date().toISOString(),
+      format: 'enclave-gdpr-export/1.0',
+      account: safeUser,
+      biometrics: {
+        faceprints: faceprintsRows.map(({ embedding_file, ...rest }) => ({ ...rest, embedding_file: embedding_file ? '<file on disk>' : null })),
+        voiceprints: voiceprintsRows,
+        signatures: signaturesRows,
+      },
+      alerts,
+      documents,
+      takedowns,
+      notifications,
+      usageHistory: usage,
+    };
+
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', `attachment; filename="enclave-export-${uid.slice(0, 8)}-${new Date().toISOString().slice(0, 10)}.json"`);
+    return res.send(JSON.stringify(dump, null, 2));
   } catch (e) {
     return error(res, e.message);
   }

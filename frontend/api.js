@@ -238,6 +238,19 @@
       });
     },
 
+    // Legal (Phase 5)
+    getLegalDoc: function (id) { return apiFetch('/legal/' + id); },
+
+    // GDPR export — returns a Blob
+    getUserExport: async function () {
+      var token = await getToken();
+      var headers = {};
+      if (token) headers['Authorization'] = 'Bearer ' + token;
+      var res = await fetch(API_BASE + '/user/export', { headers: headers });
+      if (!res.ok) throw new Error('Export failed');
+      return res.blob();
+    },
+
     // Takedowns
     getTakedowns: function () { return apiFetch('/takedowns'); },
     getTakedown: function (id) { return apiFetch('/takedowns/' + id); },

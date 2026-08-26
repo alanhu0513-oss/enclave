@@ -1327,6 +1327,71 @@
     if (btnSettingsOpenEl) btnSettingsOpenEl.addEventListener('click', initNotificationPrefs);
   }
 
+  /* ─── Legal Documents Modal (Phase 5) ─── */
+  var legalModal = document.getElementById('legal-modal');
+  var legalTitle = document.getElementById('legal-title');
+  var legalMeta = document.getElementById('legal-meta');
+  var legalBody = document.getElementById('legal-body');
+  var btnLegalClose = document.getElementById('btn-legal-close');
+
+  function closeLegalModal() { if (legalModal) legalModal.classList.add('hidden'); }
+  if (btnLegalClose) btnLegalClose.addEventListener('click', closeLegalModal);
+  if (legalModal) legalModal.addEventListener('click', function (e) {
+    if (e.target === legalModal) closeLegalModal();
+  });
+
+  function openLegalModal(docId) {
+    if (!legalModal || !window.EnclaveAPI) return;
+    legalModal.classList.remove('hidden');
+    legalBody.innerHTML = '<p style="color:var(--text-muted);font-size:0.8rem;">Loading…</p>';
+    window.EnclaveAPI.getLegalDoc(docId).then(function (doc) {
+      legalTitle.textContent = doc.title;
+      legalMeta.textContent = 'Version ' + doc.version + ' · Effective ' + doc.updatedAt;
+      var html = '<p class="card-desc" style="margin-bottom:0.75rem;">' + (doc.intro || '') + '</p>';
+      (doc.sections || []).forEach(function (s) {
+        html += '<div class="settings-section" style="margin-bottom:0.5rem;">'
+          + '<p class="settings-section-title">' + s.heading + '</p>'
+          + '<p class="settings-value" style="font-size:0.76rem;line-height:1.65;">' + s.body + '</p></div>';
+      });
+      legalBody.innerHTML = html;
+    }).catch(function () {
+      legalBody.innerHTML = '<p style="color:var(--red);font-size:0.8rem;">Failed to load document.</p>';
+    });
+  }
+
+  document.querySelectorAll('.footer-link[data-legal]').forEach(function (link) {
+    link.addEventListener('click', function (e) {
+      e.preventDefault();
+      openLegalModal(link.getAttribute('data-legal'));
+    });
+  });
+
+  /* ─── GDPR Export (Phase 5) ─── */
+  var btnGdprExport = document.getElementById('btn-settings-gdpr-export');
+  if (btnGdprExport) {
+    btnGdprExport.addEventListener('click', function () {
+      if (!window.EnclaveAPI || !window.EnclaveAPI.isLoggedIn()) return;
+      btnGdprExport.disabled = true;
+      btnGdprExport.textContent = 'Preparing export…';
+      window.EnclaveAPI.getUserExport().then(function (blob) {
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = 'enclave-export-' + new Date().toISOString().slice(0, 10) + '.json';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        btnGdprExport.disabled = false;
+        btnGdprExport.textContent = 'Export All My Data (GDPR)';
+      }).catch(function () {
+        showToastAlert('Export failed. Try again.');
+        btnGdprExport.disabled = false;
+        btnGdprExport.textContent = 'Export All My Data (GDPR)';
+      });
+    });
+  }
+
   /* ─── Logout ─── */
   if (btnSettingsLogout) {
     btnSettingsLogout.addEventListener('click', function () {

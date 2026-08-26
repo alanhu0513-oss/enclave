@@ -1313,7 +1313,7 @@
 
   /* ─── Encrypted Voice Tunnel ─── */
   function startVoiceTunnel() {
-    if (tunnelActive) return;
+    if (tunnelActive || !tunnelStatus || !btnTunnel || !tunnelInfo || !tunnelSpectrum) return;
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       tunnelInfo.textContent = 'Microphone unavailable.';
       return;
@@ -1361,6 +1361,7 @@
   }
 
   function stopVoiceTunnel() {
+    if (!tunnelStatus || !btnTunnel || !tunnelInfo || !tunnelSpectrum) return;
     tunnelActive = false;
     if (tunnelAnimId) { cancelAnimationFrame(tunnelAnimId); tunnelAnimId = null; }
     terminateActiveMediaStreams();
@@ -1373,10 +1374,12 @@
     tunnelInfo.textContent = '';
   }
 
-  btnTunnel.addEventListener('click', function () {
-    if (tunnelActive) { stopVoiceTunnel(); }
-    else { startVoiceTunnel(); }
-  });
+  if (btnTunnel) {
+    btnTunnel.addEventListener('click', function () {
+      if (tunnelActive) { stopVoiceTunnel(); }
+      else { startVoiceTunnel(); }
+    });
+  }
 
   /* ═══════════════════════════════════════════════════════
      CAMERA CLOAKING PROTECTION
@@ -1625,7 +1628,7 @@
   }
 
   btnRegCapture.addEventListener('click', function () {
-    if (!regStream) return;
+    if (!regStream || !regFaceCanvas) return;
     var w = 64, h = 48;
     regFaceCanvas.width = w;
     regFaceCanvas.height = h;
@@ -1944,6 +1947,7 @@
       var img = new Image();
       img.onload = function () {
         var w = 120, h = Math.round(120 * img.height / img.width);
+        if (!regFaceCanvas) return;
         regFaceCanvas.width = w; regFaceCanvas.height = h;
         var ctx = regFaceCanvas.getContext('2d');
         ctx.drawImage(img, 0, 0, w, h);
@@ -2638,7 +2642,7 @@
   /* ─── Vanilla Tilt — 3D tilt on cards ─── */
   function initTilt() {
     if (!window.VanillaTilt) return;
-    var cards = document.querySelectorAll('.card');
+    var cards = document.querySelectorAll('.panel-card, .glass-card, .glass-card-glow');
     cards.forEach(function (card) {
       if (card.getAttribute('data-tilt')) return;
       window.VanillaTilt.init(card, {
@@ -2663,12 +2667,17 @@
 
   /* ─── IntersectionObserver — Scroll reveal animations ─── */
   function initScrollReveal() {
-    var revealEls = document.querySelectorAll('.card, .hero-card, .status-card, .tier-card, .forum-card, .notification-card');
-    revealEls.forEach(function (el) { el.classList.add('reveal-up'); });
+    var revealEls = document.querySelectorAll('.panel-card, .panel-alerts, .panel-scanner, .glass-card-glow');
+    revealEls.forEach(function (el) {
+      el.style.opacity = '0';
+      el.style.transform = 'translateY(24px)';
+      el.style.transition = 'opacity 0.6s cubic-bezier(0.16,1,0.3,1), transform 0.6s cubic-bezier(0.16,1,0.3,1)';
+    });
     var io = new IntersectionObserver(function (entries) {
       entries.forEach(function (entry) {
         if (entry.isIntersecting) {
-          entry.target.classList.add('revealed');
+          entry.target.style.opacity = '1';
+          entry.target.style.transform = 'translateY(0)';
           io.unobserve(entry.target);
         }
       });

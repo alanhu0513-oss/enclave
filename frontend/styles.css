@@ -1324,6 +1324,11 @@ button, a, [role="button"] { font-family: var(--font-sans); }
   border-color: rgba(244, 63, 94, 0.25);
   background: rgba(244, 63, 94, 0.03);
 }
+.alert-item.selected {
+  border-color: var(--green);
+  background: rgba(0, 255, 136, 0.05);
+  box-shadow: 0 0 12px rgba(0, 255, 136, 0.08);
+}
 
 .alert-confidence {
   font-weight: 700;

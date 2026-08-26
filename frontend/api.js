@@ -165,6 +165,15 @@
         body: JSON.stringify({ url: url })
       });
     },
+    detectText: function (text) {
+      return apiFetch('/detect/text', {
+        method: 'POST',
+        body: JSON.stringify({ text: text })
+      });
+    },
+    getDetectStatus: function () {
+      return apiFetch('/detect/status');
+    },
 
     // Alerts
     getAlerts: function () { return apiFetch('/alerts'); },

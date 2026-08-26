@@ -101,4 +101,28 @@ router.post('/face/match', faceUpload.fields([
   }
 });
 
+/** AI-generated text detection (Gemini Flash-Lite). */
+router.post('/text', async (req, res) => {
+  try {
+    const { text } = req.body;
+    if (!text || typeof text !== 'string') return error(res, 'Text is required', 400);
+    const result = await mlClient.detectText(text);
+    if (!result) return error(res, 'AI text detection unavailable — no provider configured', 503);
+    if (result.error) return error(res, result.error, 400);
+    return success(res, result, 'Text analysis complete');
+  } catch (e) {
+    return error(res, e.message);
+  }
+});
+
+/** Detection engine status — provider health, rate limits, cache stats. */
+router.get('/status', async (req, res) => {
+  try {
+    const status = await mlClient.getStatus();
+    return success(res, status);
+  } catch (e) {
+    return error(res, e.message);
+  }
+});
+
 module.exports = router;

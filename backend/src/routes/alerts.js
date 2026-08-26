@@ -44,6 +44,7 @@ router.post('/scan/url', async (req, res) => {
     let matchedOn = 'url submitted for review';
     let mediaType = 'link';
     let notes = 'Scanned from manual URL submission';
+    let detection = null;
 
     try {
       const controller = new AbortController();
@@ -65,13 +66,15 @@ router.post('/scan/url', async (req, res) => {
 
           const result = await mlClient.detectImage(filePath);
           if (!result.error) {
+            detection = result;
             confidence = result.confidence;
             matchedOn = result.verdict;
-            if (result.heuristic) matchedOn += ' — heuristic:' + result.heuristic.heuristic_score;
-            if (result.ml_avg_score !== null && result.ml_avg_score !== undefined) matchedOn += ' — ml:' + result.ml_avg_score;
-            if (result.face_count) matchedOn += ` — ${result.face_count} face(s)`;
+            if (result.provider) matchedOn += ` — engine:${result.provider}`;
+            if (result.latency_ms) matchedOn += ` ${result.latency_ms}ms`;
+            if (result.cached) matchedOn += ' (cached)';
             mediaType = 'image';
             notes = `ML detected: ${result.verdict} (confidence ${result.confidence}%)`;
+            if (result.explanation) notes += ` — ${String(result.explanation).slice(0, 200)}`;
           }
 
           try { fs.unlinkSync(filePath); } catch (_) {}
@@ -96,7 +99,7 @@ router.post('/scan/url', async (req, res) => {
       timestamp: now, created_at: now
     });
     const alert = await alerts.find({ id });
-    return success(res, toJson(alert), 'URL scanned');
+    return success(res, { ...toJson(alert), detection }, 'URL scanned');
   } catch (e) {
     return error(res, e.message);
   }
@@ -116,16 +119,14 @@ router.post('/scan/image', upload.single('image'), async (req, res) => {
     if (!result.error) {
       confidence = result.confidence;
       matchedOn = result.verdict;
-      if (result.heuristic) {
-        matchedOn += ` — HF:${result.heuristic.hf_noise || result.heuristic.hfNoise} Var:${result.heuristic.local_variance || result.heuristic.localVariance}`;
-      }
-      if (result.ml_avg_score !== null && result.ml_avg_score !== undefined) {
-        matchedOn += ` — ml_score:${result.ml_avg_score}`;
-      }
+      if (result.provider) matchedOn += ` — engine:${result.provider}`;
+      if (result.latency_ms) matchedOn += ` ${result.latency_ms}ms`;
+      if (result.cached) matchedOn += ' (cached)';
       if (result.face_count) {
         matchedOn += ` — ${result.face_count} face(s) detected`;
       }
       notes = `File: ${req.file.originalname}, Size: ${req.file.size} bytes, Verdict: ${result.verdict}, Confidence: ${result.confidence}%`;
+      if (result.explanation) notes += ` — ${String(result.explanation).slice(0, 200)}`;
     } else {
       notes = 'Analysis failed: ' + result.error;
     }
@@ -144,7 +145,7 @@ router.post('/scan/image', upload.single('image'), async (req, res) => {
       timestamp: now, created_at: now
     });
     const alert = await alerts.find({ id });
-    return success(res, toJson(alert), 'Image analyzed');
+    return success(res, { ...toJson(alert), detection: result.error ? null : result }, 'Image analyzed');
   } catch (e) {
     return error(res, e.message);
   }

@@ -194,6 +194,32 @@ describe('Protected Routes', () => {
     expect(res.status).toBe(401);
   });
 
+  it('GET /api/detect/status requires authentication', async () => {
+    const res = await request(app).get('/api/detect/status');
+    expect(res.status).toBe(401);
+  });
+
+  it('GET /api/detect/status returns provider health', async () => {
+    const res = await request(app)
+      .get('/api/detect/status')
+      .set('Authorization', `Bearer ${token}`);
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.gemini).toBeDefined();
+    expect(typeof res.body.data.gemini.configured).toBe('boolean');
+    expect(res.body.data.gemini.primary.model).toBeDefined();
+    expect(res.body.data.gemini.cache.entries).toBeGreaterThanOrEqual(0);
+    expect(res.body.data.pythonService).toBeDefined();
+  });
+
+  it('POST /api/detect/text rejects missing text', async () => {
+    const res = await request(app)
+      .post('/api/detect/text')
+      .set('Authorization', `Bearer ${token}`)
+      .send({});
+    expect([400, 503]).toContain(res.status);
+  });
+
   it('POST /api/alerts/scan/url rejects missing URL', async () => {
     const res = await request(app)
       .post('/api/alerts/scan/url')

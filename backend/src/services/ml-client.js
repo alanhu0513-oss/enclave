@@ -1,15 +1,31 @@
 /* ─── Enclave ML Client ───
- * Calls the Python ML microservice for deepfake detection.
- * Falls back to local heuristic analysis if ML service is unreachable.
+ * Detection fallback chain:
+ *   1. Gemini 2.5 Flash / Flash-Lite (primary, multimodal)
+ *   2. Python ML microservice (XceptionNet, optional self-hosted)
+ *   3. Local Laplacian heuristic (always available)
  */
 
 const fs = require('fs');
 const path = require('path');
+const gemini = require('./gemini-client');
 
 const ML_SERVICE_URL = process.env.ML_SERVICE_URL || 'http://localhost:8001';
 const ML_TIMEOUT = 30000;
 
 let _mlAvailable = null;
+
+/* Sniff image/audio mimetype from magic bytes */
+function _sniffMime(buffer, fallback) {
+  if (buffer[0] === 0x89 && buffer[1] === 0x50) return 'image/png';
+  if (buffer[0] === 0xff && buffer[1] === 0xd8) return 'image/jpeg';
+  if (buffer[0] === 0x52 && buffer[1] === 0x49 && buffer[8] === 0x57) return 'image/webp';
+  if (buffer[0] === 0x42 && buffer[1] === 0x4d) return 'image/bmp';
+  if (buffer[0] === 0x49 && buffer[1] === 0x44 && buffer[2] === 0x33) return 'audio/mpeg';
+  if (buffer[0] === 0xff && (buffer[1] & 0xe0) === 0xe0) return 'audio/mpeg';
+  if (buffer[0] === 0x52 && buffer[1] === 0x49 && buffer[8] === 0x41) return 'audio/wav';
+  if (buffer[4] === 0x66 && buffer[5] === 0x74 && buffer[6] === 0x79) return 'audio/mp4';
+  return fallback || 'application/octet-stream';
+}
 
 async function isMlAvailable() {
   if (_mlAvailable !== null) return _mlAvailable;
@@ -55,45 +71,90 @@ async function mlPostMultipart(endpoint, fieldName, fileBuffer, filename, extraF
 
 /* ─── Public API ─── */
 
+/**
+ * Image deepfake detection via fallback chain.
+ * Returns unified shape: { confidence, verdict, provider, latency_ms, cached, ... }
+ */
 async function detectImage(filePath) {
   const fileBuffer = fs.readFileSync(filePath);
-  const filename = path.basename(filePath);
-
-  if (await isMlAvailable()) {
-    try {
-      return await mlPostMultipart('/detect/image', 'file', fileBuffer, filename);
-    } catch (e) {
-      console.warn('[ML Client] ML service image detect failed, falling back to local:', e.message);
-    }
-  }
-
-  return _localHeuristic(fileBuffer);
+  return detectImageBuffer(fileBuffer, path.basename(filePath));
 }
 
 async function detectImageBuffer(buffer, filename) {
+  const started = Date.now();
+  const mimetype = _sniffMime(buffer, 'image/jpeg');
+
+  // 1) Gemini (primary)
+  try {
+    const g = await gemini.detectImage(buffer, mimetype, filename);
+    if (g) {
+      let heuristicMeta = null;
+      try {
+        const h = _localHeuristic(buffer);
+        if (h && h.heuristic) heuristicMeta = h.heuristic;
+      } catch (_) {}
+      return {
+        confidence: g.confidence,
+        verdict: g.verdict,
+        ml_avg_score: g.ml_avg_score,
+        face_count: g.face_count || 0,
+        faces: [],
+        explanation: g.explanation || null,
+        artifacts: g.artifacts || [],
+        provider: g.provider,
+        latency_ms: Date.now() - started,
+        cached: !!g.cached,
+        heuristic: heuristicMeta,
+        fallback: false,
+      };
+    }
+  } catch (e) {
+    console.warn('[ML Client] Gemini image detect failed:', e.message);
+  }
+
+  // 2) Python ML service (optional)
   if (await isMlAvailable()) {
     try {
-      return await mlPostMultipart('/detect/image', 'file', buffer, filename || 'image.jpg');
+      const result = await mlPostMultipart('/detect/image', 'file', buffer, filename || 'image.jpg');
+      return { ...result, provider: 'xceptionnet', latency_ms: Date.now() - started };
     } catch (e) {
       console.warn('[ML Client] ML service image detect failed, falling back to local:', e.message);
     }
   }
-  return _localHeuristic(buffer);
+
+  // 3) Local heuristic
+  const local = _localHeuristic(buffer);
+  return { ...local, provider: 'local-heuristic', latency_ms: Date.now() - started };
 }
 
+/** Audio deepfake detection via fallback chain. */
 async function detectAudio(filePath) {
   const fileBuffer = fs.readFileSync(filePath);
   const filename = path.basename(filePath);
+  const started = Date.now();
+  const mimetype = _sniffMime(fileBuffer, 'audio/wav');
 
+  // 1) Gemini (primary)
+  try {
+    const g = await gemini.detectAudio(fileBuffer, mimetype, filename);
+    if (g) {
+      return { ...g, latency_ms: Date.now() - started, fallback: false };
+    }
+  } catch (e) {
+    console.warn('[ML Client] Gemini audio detect failed:', e.message);
+  }
+
+  // 2) Python ML service
   if (await isMlAvailable()) {
     try {
-      return await mlPostMultipart('/detect/audio', 'file', fileBuffer, filename);
+      const result = await mlPostMultipart('/detect/audio', 'file', fileBuffer, filename);
+      return { ...result, provider: 'librosa', latency_ms: Date.now() - started };
     } catch (e) {
       console.warn('[ML Client] ML service audio detect failed:', e.message);
       return { confidence: 0, verdict: 'ML_UNAVAILABLE', error: e.message };
     }
   }
-  return { confidence: 0, verdict: 'ML_UNAVAILABLE', error: 'ML service not available' };
+  return { confidence: 0, verdict: 'ML_UNAVAILABLE', error: 'No audio detection provider available' };
 }
 
 async function matchFaces(filePathA, filePathB, threshold = 0.6) {
@@ -222,13 +283,31 @@ function _localHeuristic(imageBuffer) {
   }
 }
 
+/** Merged provider status across Gemini + Python ML service. */
+async function getStatus() {
+  const [geminiStatus, pythonHealth] = await Promise.all([
+    Promise.resolve(gemini.getStatus()),
+    getHealth().catch(() => ({ status: 'unavailable' })),
+  ]);
+  return {
+    gemini: geminiStatus,
+    pythonService: {
+      url: ML_SERVICE_URL,
+      status: pythonHealth.status || 'unavailable',
+      models: pythonHealth.models || null,
+    },
+  };
+}
+
 module.exports = {
   detectImage,
   detectImageBuffer,
   detectAudio,
+  detectText: gemini.detectText,
   matchFaces,
   getEmbedding,
   getHealth,
   downloadModels,
   isMlAvailable,
+  getStatus,
 };

@@ -561,6 +561,10 @@
             <span id="shield-crawler-status" class="shield-module-badge inactive">OFF</span>
           </div>
           <div class="shield-module">
+            <span class="shield-module-name">ML Detection Engine</span>
+            <span id="shield-ml-engine-status" class="shield-module-badge inactive">OFF</span>
+          </div>
+          <div class="shield-module">
             <span class="shield-module-name">On-Device ML</span>
             <span id="shield-ml-status" class="shield-module-badge inactive">OFF</span>
           </div>
@@ -661,6 +665,7 @@
         <button id="btn-scanner" class="btn btn-warning">Scan</button>
       </div>
       <p id="scanner-status" class="status-msg"></p>
+      <p id="scanner-meta" class="card-desc" style="margin-bottom:0;"></p>
     </section>
 
     <!-- ─── Billing & Usage Card (ANCHORING + LOSS FRAMING) ─── -->
@@ -822,6 +827,14 @@
           <div class="stat-item">
             <span id="stat-account-age" class="stat-value">—</span>
             <span class="stat-label">Days Protected</span>
+          </div>
+          <div class="stat-item">
+            <span id="stat-scan-latency" class="stat-value">—</span>
+            <span class="stat-label">Avg Scan Latency</span>
+          </div>
+          <div class="stat-item">
+            <span id="stat-cache-hits" class="stat-value">0</span>
+            <span class="stat-label">Cache Hits</span>
           </div>
         </div>
       </div>

@@ -96,6 +96,7 @@
   var scannerFile      = document.getElementById('scanner-file');
   var btnScanner       = document.getElementById('btn-scanner');
   var scannerStatus    = document.getElementById('scanner-status');
+  var scannerMeta      = document.getElementById('scanner-meta');
 
   var sigModal         = document.getElementById('signature-modal');
   var sigCanvas        = document.getElementById('sig-canvas');
@@ -685,7 +686,9 @@
       var src = document.createElement('span');
       src.className = 'alert-source';
       var label = a.type ? a.type.toUpperCase() + ' — ' : '';
-      src.textContent = label + a.source;
+      var providerChip = a.detectionMeta && a.detectionMeta.provider
+        ? ' [' + a.detectionMeta.provider.replace(/-/g, ' ') + ']' : '';
+      src.textContent = label + a.source + providerChip;
 
       var st = document.createElement('span');
       st.className = 'alert-status' + (a.status === 'PENDING_REVIEW' ? ' pending' : '');
@@ -727,8 +730,15 @@
     var metaHtml = 'Match: ' + alert.confidence + '% &middot; Type: ' + (alert.type || 'unknown')
       + ' &middot; Detected: ' + matchedOn
       + ' &middot; Timestamp: ' + (alert.timestamp || 'N/A');
+    if (alert.detectionMeta) {
+      var det = alert.detectionMeta;
+      metaHtml += '<br>Engine: ' + (det.provider || 'unknown');
+      if (det.latency_ms) metaHtml += ' &middot; Latency: ' + det.latency_ms + 'ms';
+      if (det.cached) metaHtml += ' &middot; cached';
+      if (det.explanation) metaHtml += '<br><span style="color:var(--text-muted);font-size:0.72rem;">' + String(det.explanation).slice(0, 220) + '</span>';
+    }
     openResolution(alert);
-    reviewStatus.textContent = 'Select action for Alert — ' + metaHtml;
+    reviewStatus.innerHTML = 'Select action for Alert — ' + metaHtml;
   }
 
   function closeReview() {
@@ -1891,41 +1901,101 @@
     return { conf: Math.round(conf), mlReason: mlResult.mlReason };
   }
 
+  /* ─── Detection meta helpers (Phase 1: Gemini engine) ─── */
+  function recordScanLatency(ms) {
+    if (!ms) return;
+    try {
+      var arr = JSON.parse(localStorage.getItem('enclave_scan_latencies') || '[]');
+      arr.push(ms);
+      if (arr.length > 20) arr.shift();
+      localStorage.setItem('enclave_scan_latencies', JSON.stringify(arr));
+      updateLatencyStat();
+    } catch (e) {}
+  }
+
+  function updateLatencyStat() {
+    try {
+      var arr = JSON.parse(localStorage.getItem('enclave_scan_latencies') || '[]');
+      var el = document.getElementById('stat-scan-latency');
+      if (el && arr.length) {
+        var avg = Math.round(arr.reduce(function (a, b) { return a + b; }, 0) / arr.length);
+        el.textContent = avg < 1000 ? avg + 'ms' : (avg / 1000).toFixed(1) + 's';
+      }
+    } catch (e) {}
+  }
+
+  function detectionMetaText(d) {
+    if (!d) return '';
+    var parts = [];
+    parts.push('Engine: ' + (d.provider || 'unknown'));
+    if (d.latency_ms) {
+      parts.push(d.latency_ms < 1000 ? d.latency_ms + 'ms' : (d.latency_ms / 1000).toFixed(1) + 's');
+    }
+    if (d.cached) parts.push('cached result');
+    if (d.face_count > 0) parts.push(d.face_count + ' face(s)');
+    return parts.join(' · ');
+  }
+
   btnScanner.addEventListener('click', async function () {
     var url = scannerUrl.value.trim();
     var file = scannerFile.files[0];
     if (!url && !file) { scannerStatus.textContent = 'Enter a URL or select an image file.'; return; }
 
     if (file) {
-      scannerStatus.textContent = 'Analyzing image...';
-      loadTFJS();
-      var result = await analyzeImageAnomalies(file);
-      var conf = result.conf;
-      var matchedOn = conf > 70 ? 'synthetic pixel anomaly detected' : 'borderline pattern match';
-      if (result.mlReason) matchedOn += ' | ML: ' + result.mlReason;
-      var alert = {
-        id: Date.now() + Math.floor(Math.random() * 1000),
-        source: file.name,
-        confidence: conf,
-        status: 'PENDING_REVIEW',
-        type: 'image',
-        timestamp: new Date().toISOString(),
-        matchedOn: matchedOn
-      };
-      alerts.unshift(alert);
-      saveAlerts();
-      renderDashboard();
-      scannerStatus.textContent = 'Scan complete — confidence ' + conf + '%';
-      scannerFile.value = '';
+      // Route through backend ML pipeline when signed in (Gemini engine)
+      if (window.EnclaveAPI && window.EnclaveAPI.isLoggedIn()) {
+        scannerStatus.textContent = 'Analyzing image via Enclave ML...';
+        window.EnclaveAPI.scanImage(file).then(function (result) {
+          var conf = result ? result.confidence || 0 : 0;
+          var det = result.detection || null;
+          alerts.unshift({
+            id: result.id || Date.now(),
+            source: file.name,
+            confidence: conf,
+            status: result.status || 'PENDING_REVIEW',
+            type: 'image',
+            timestamp: result.timestamp || new Date().toISOString(),
+            matchedOn: result.matchedOn || (det ? det.verdict : 'analysis'),
+            sourceUrl: result.sourceUrl,
+            detectionMeta: det
+          });
+          saveAlerts();
+          renderDashboard();
+          recordScanLatency(det ? det.latency_ms : null);
+          scannerStatus.textContent = 'Scan complete — confidence ' + conf + '%'
+            + (det && det.verdict ? ' (' + det.verdict.replace(/_/g, ' ').toLowerCase() + ')' : '');
+          if (scannerMeta) scannerMeta.textContent = detectionMetaText(det);
+          if (det && det.explanation && typeof showToastAlert === 'function' && conf >= 60) {
+            showToastAlert('Deepfake signals: ' + (det.artifacts && det.artifacts.length ? det.artifacts.join(', ') : det.verdict.toLowerCase()));
+          }
+        }).catch(function (e) {
+          scannerStatus.textContent = 'ML scan failed — using on-device analysis. (' + (e.message || 'error') + ')';
+          return localImageScan(file);
+        });
+      } else {
+        localImageScan(file);
+      }
     } else if (url) {
       scannerStatus.textContent = 'Scanning URL...';
       if (window.EnclaveAPI && window.EnclaveAPI.isLoggedIn()) {
         window.EnclaveAPI.scanUrl(url).then(function (result) {
           var conf = result ? result.confidence || 0 : 0;
-          alerts.unshift(result);
+          var det = result.detection || null;
+          alerts.unshift({
+            id: result.id || Date.now(),
+            source: url,
+            confidence: conf,
+            status: result.status || 'PENDING_REVIEW',
+            type: result.mediaType || 'link',
+            timestamp: result.timestamp || new Date().toISOString(),
+            matchedOn: result.matchedOn || 'url scan',
+            detectionMeta: det
+          });
           saveAlerts();
           renderDashboard();
+          recordScanLatency(det ? det.latency_ms : null);
           scannerStatus.textContent = 'URL scan complete — confidence ' + conf + '%';
+          if (scannerMeta) scannerMeta.textContent = detectionMetaText(det);
         }).catch(function (e) {
           scannerStatus.textContent = 'URL scan failed: ' + (e.message || 'Unknown error');
         });
@@ -1935,6 +2005,31 @@
       scannerUrl.value = '';
     }
   });
+
+  /* ── Local (offline) image analysis fallback ── */
+  async function localImageScan(file) {
+    loadTFJS();
+    var result = await analyzeImageAnomalies(file);
+    var conf = result.conf;
+    var matchedOn = conf > 70 ? 'synthetic pixel anomaly detected' : 'borderline pattern match';
+    if (result.mlReason) matchedOn += ' | ML: ' + result.mlReason;
+    var alert = {
+      id: Date.now() + Math.floor(Math.random() * 1000),
+      source: file.name,
+      confidence: conf,
+      status: 'PENDING_REVIEW',
+      type: 'image',
+      timestamp: new Date().toISOString(),
+      matchedOn: matchedOn,
+      detectionMeta: { provider: 'on-device' }
+    };
+    alerts.unshift(alert);
+    saveAlerts();
+    renderDashboard();
+    scannerStatus.textContent = 'Scan complete — confidence ' + conf + '%';
+    if (scannerMeta) scannerMeta.textContent = 'Engine: on-device heuristic';
+    scannerFile.value = '';
+  }
 
   /* ─── PORTRAIT FILE UPLOAD HANDLER ─── */
   regUploadLink.addEventListener('click', function (e) { e.preventDefault(); regPortraitFile.click(); });
@@ -2286,8 +2381,48 @@
   var shieldVoiceStatus = document.getElementById('shield-voice-status');
   var shieldCrawlerStatus = document.getElementById('shield-crawler-status');
   var shieldMlStatus = document.getElementById('shield-ml-status');
+  var shieldMlEngineStatus = document.getElementById('shield-ml-engine-status');
   var shieldTotalScans = document.getElementById('shield-total-scans');
   var shieldTakedowns = document.getElementById('shield-takedowns');
+
+  var _mlEngineLastFetch = 0;
+  function updateMlEngineStatus(force) {
+    if (!shieldMlEngineStatus) return;
+    if (!window.EnclaveAPI || !window.EnclaveAPI.isLoggedIn()) {
+      shieldMlEngineStatus.textContent = 'OFF';
+      shieldMlEngineStatus.className = 'shield-module-badge inactive';
+      return;
+    }
+    var now = Date.now();
+    if (!force && now - _mlEngineLastFetch < 30000) return;
+    _mlEngineLastFetch = now;
+
+    window.EnclaveAPI.getDetectStatus().then(function (status) {
+      if (!status || !status.gemini) return;
+      var g = status.gemini;
+      // Cache hits stat
+      var cacheEl = document.getElementById('stat-cache-hits');
+      if (cacheEl && status.gemini.cache) cacheEl.textContent = g.cache.hits || 0;
+
+      if (!g.configured) {
+        shieldMlEngineStatus.textContent = 'HEURISTIC';
+        shieldMlEngineStatus.className = 'shield-module-badge partial';
+        return;
+      }
+      var primaryUp = g.primary && g.primary.available;
+      var fallbackUp = g.fallback && g.fallback.available;
+      if (primaryUp || fallbackUp) {
+        shieldMlEngineStatus.textContent = primaryUp ? 'GEMINI' : 'GEMINI·LITE';
+        shieldMlEngineStatus.className = 'shield-module-badge active';
+      } else {
+        shieldMlEngineStatus.textContent = 'COOLDOWN';
+        shieldMlEngineStatus.className = 'shield-module-badge partial';
+      }
+    }).catch(function () {
+      shieldMlEngineStatus.textContent = 'OFFLINE';
+      shieldMlEngineStatus.className = 'shield-module-badge inactive';
+    });
+  }
 
   function updateShieldStatus() {
     if (!window.EnclaveAPI || !window.EnclaveAPI.isLoggedIn()) return;
@@ -2321,6 +2456,7 @@
       shieldMlStatus.textContent = mlActive ? 'LOADED' : 'OFF';
       shieldMlStatus.className = 'shield-module-badge ' + (mlActive ? 'partial' : 'inactive');
     }
+    updateMlEngineStatus();
   }
 
   /* ─── Billing & Usage ─── */
@@ -2553,6 +2689,8 @@
 
   function loadStats() {
     if (!window.EnclaveAPI || !window.EnclaveAPI.isLoggedIn()) return;
+
+    updateLatencyStat();
 
     window.EnclaveAPI.getShieldSummary().then(function (data) {
       if (!data) return;

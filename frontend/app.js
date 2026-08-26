@@ -2399,39 +2399,40 @@
 
     window.EnclaveAPI.getDetectStatus().then(function (status) {
       if (!status) return;
-      // Cache hits stat — prefer Groq cache stats, fall back to Gemini
+      // Cache hits stat — sum across providers
       var cacheEl = document.getElementById('stat-cache-hits');
       if (cacheEl) {
         var hits = 0;
-        if (status.groq && status.groq.cache) hits += status.groq.cache.hits || 0;
+        if (status.primaryAi && status.primaryAi.cache) hits += status.primaryAi.cache.hits || 0;
         if (status.gemini && status.gemini.cache) hits += status.gemini.cache.hits || 0;
         cacheEl.textContent = hits;
       }
 
-      function providerState(p) {
-        if (!p || !p.configured) return 'unconfigured';
-        if (p.vision ? (p.vision.available || p.text.available) : (p.primary.available || p.fallback.available)) return 'up';
-        return 'cooldown';
-      }
-      var groqState = providerState(status.groq);
-      var geminiState = providerState(status.gemini);
+      var ai = status.primaryAi;
+      var badgeText = 'HEURISTIC';
+      var badgeClass = 'shield-module-badge partial';
 
-      if (groqState === 'up') {
-        shieldMlEngineStatus.textContent = 'GROQ';
-        shieldMlEngineStatus.className = 'shield-module-badge active';
-      } else if (groqState === 'cooldown') {
-        shieldMlEngineStatus.textContent = 'GROQ·WAIT';
-        shieldMlEngineStatus.className = 'shield-module-badge partial';
-      } else if (geminiState === 'up') {
-        shieldMlEngineStatus.textContent = 'GEMINI';
-        shieldMlEngineStatus.className = 'shield-module-badge active';
-      } else if (geminiState === 'cooldown') {
-        shieldMlEngineStatus.textContent = 'GEMINI·WAIT';
-        shieldMlEngineStatus.className = 'shield-module-badge partial';
+      if (ai && ai.configured && ai.provider) {
+        var up = (ai.vision && ai.vision.available) || (ai.text && ai.text.available);
+        var label = String(ai.provider).toUpperCase().slice(0, 9);
+        if (up) {
+          badgeText = label;
+          badgeClass = 'shield-module-badge active';
+        } else {
+          badgeText = label + '·WAIT';
+          badgeClass = 'shield-module-badge partial';
+        }
       } else {
-        shieldMlEngineStatus.textContent = 'HEURISTIC';
-        shieldMlEngineStatus.className = 'shield-module-badge partial';
+        // Fall back to Gemini display if configured
+        var g = status.gemini;
+        if (g && g.configured) {
+          var gUp = (g.primary && g.primary.available) || (g.fallback && g.fallback.available);
+          badgeText = gUp ? 'GEMINI' : 'GEMINI·WAIT';
+          badgeClass = 'shield-module-badge ' + (gUp ? 'active' : 'partial');
+        }
       }
+      shieldMlEngineStatus.textContent = badgeText;
+      shieldMlEngineStatus.className = badgeClass;
     }).catch(function () {
       shieldMlEngineStatus.textContent = 'OFFLINE';
       shieldMlEngineStatus.className = 'shield-module-badge inactive';

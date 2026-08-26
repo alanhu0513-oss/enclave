@@ -1,6 +1,7 @@
 /* ─── Enclave ML Client ───
  * Detection fallback chain:
- *   1. Groq (Llama 4 Scout vision / Llama 3.1 text) — primary free engine
+ *   1. OpenAI-compatible provider (auto-detected: Groq / Cerebras /
+ *      OpenRouter / Mistral / SiliconFlow / GitHub Models / custom)
  *   2. Gemini 2.5 Flash (optional backup; also handles audio)
  *   3. Python ML microservice (XceptionNet, optional self-hosted)
  *   4. Local Laplacian heuristic (always available)
@@ -9,7 +10,7 @@
 const fs = require('fs');
 const path = require('path');
 const gemini = require('./gemini-client');
-const groq = require('./groq-client');
+const primaryAi = require('./openai-compat-client');
 
 const ML_SERVICE_URL = process.env.ML_SERVICE_URL || 'http://localhost:8001';
 const ML_TIMEOUT = 30000;
@@ -86,12 +87,12 @@ async function detectImageBuffer(buffer, filename) {
   const started = Date.now();
   const mimetype = _sniffMime(buffer, 'image/jpeg');
 
-  // 1) Groq Llama 4 Scout (primary — highest free quota)
+  // 1) Primary AI provider (auto-detected via env key)
   try {
-    const g = await groq.detectImage(buffer, mimetype, filename);
+    const g = await primaryAi.detectImage(buffer, mimetype, filename);
     if (g) return _finalizeAiResult(g, started, buffer);
   } catch (e) {
-    console.warn('[ML Client] Groq image detect failed:', e.message);
+    console.warn('[ML Client] primary AI image detect failed:', e.message);
   }
 
   // 2) Gemini Flash (backup)
@@ -296,15 +297,15 @@ function _localHeuristic(imageBuffer) {
   }
 }
 
-/** AI-text detection: Groq Llama 3.1 (14k RPD) → Gemini Flash-Lite fallback. */
+/** AI-text detection: primary provider → Gemini Flash-Lite fallback. */
 async function detectText(text) {
   const started = Date.now();
   try {
-    const g = await groq.detectText(text);
+    const g = await primaryAi.detectText(text);
     if (g && !g.error) return { ...g, latency_ms: Date.now() - started };
     if (g && g.error) return g; // validation error — no point trying next provider
   } catch (e) {
-    console.warn('[ML Client] Groq text detect failed:', e.message);
+    console.warn('[ML Client] primary AI text detect failed:', e.message);
   }
   try {
     const result = await gemini.detectText(text);
@@ -315,14 +316,14 @@ async function detectText(text) {
   return null;
 }
 
-/** Merged provider status across Groq + Gemini + Python ML service. */
+/** Merged provider status across primary AI + Gemini + Python ML service. */
 async function getStatus() {
   const [geminiStatus, pythonHealth] = await Promise.all([
     Promise.resolve(gemini.getStatus()),
     getHealth().catch(() => ({ status: 'unavailable' })),
   ]);
   return {
-    groq: groq.getStatus(),
+    primaryAi: primaryAi.getStatus(),
     gemini: geminiStatus,
     pythonService: {
       url: ML_SERVICE_URL,

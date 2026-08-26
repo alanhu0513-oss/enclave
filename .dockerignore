@@ -1,0 +1,15 @@
+node_modules
+__tests__
+.env
+.env.*
+uploads
+data/*.json
+*.log
+.DS_Store
+frontend
+android
+ios
+render.yaml
+vercel.json
+docker-compose*.yml
+koyeb.yaml

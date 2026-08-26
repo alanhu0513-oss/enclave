@@ -7,15 +7,62 @@ services:
     startCommand: node backend/src/index.js
     healthCheckPath: /api/health
     envVars:
+      # ─── Core ───
       - key: NODE_ENV
         value: production
       - key: PORT
         value: 10000
-      - key: DATABASE_URL
-        sync: false
+      - key: DATABASE_PATH
+        value: /opt/render/project/src/backend/data/enclave.json
       - key: JWT_SECRET
         generateValue: true
-      - key: DATABASE_PATH
-        value: ./data/enclave.json
       - key: CORS_ORIGIN
         value: "*"
+      - key: APP_URL
+        sync: false                     # e.g. https://enclave-api.onrender.com
+
+      # ─── AI Detection Providers (paste in dashboard; any one activates) ───
+      - key: MISTRAL_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: SILICONFLOW_API_KEY
+        sync: false
+      - key: CEREBRAS_API_KEY
+        sync: false
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GEMINI_FLASH_MODEL
+        value: gemini-3.6-flash
+      - key: GEMINI_LITE_MODEL
+        value: gemini-3.6-flash-lite
+
+      # ─── Email alerts (Gmail SMTP app password) ───
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+
+      # ─── Stripe (live checkout) ───
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_PRICE_DETECTION_ONLY
+        sync: false
+      - key: STRIPE_PRICE_PRO
+        sync: false
+      - key: STRIPE_PRICE_SHIELD
+        sync: false
+      - key: STRIPE_PRICE_BUSINESS
+        sync: false
+
+      # ─── Optional integrations ───
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: FCM_SERVER_KEY
+        sync: false

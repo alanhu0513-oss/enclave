@@ -2759,20 +2759,148 @@
       recent.forEach(function (td) {
         var item = document.createElement('div');
         item.className = 'takedown-item';
+        item.style.cursor = 'pointer';
+        item.title = 'View evidence package';
         var platform = document.createElement('span');
         platform.className = 'takedown-item-platform';
         platform.textContent = td.platform || td.type || 'Unknown';
         var status = document.createElement('span');
         var st = td.status || 'pending';
-        status.className = 'takedown-item-status ' + (st === 'removed' ? 'removed' : st === 'escalated' ? 'escalated' : 'sent');
-        status.textContent = st;
+        status.className = 'takedown-item-status '
+          + (st === 'removed' ? 'removed'
+            : (st === 'escalated' || st === 'escalated_no_removal') ? 'escalated'
+            : st === 'counter_notice' ? 'counter'
+            : st === 'counter_notice_expired' ? 'closed'
+            : st === 'follow_up_sent' ? 'sent'
+            : 'sent');
+        status.textContent = (st === 'escalated_no_removal') ? 'closed'
+          : (st === 'counter_notice_expired') ? 'cn-expired'
+          : (st === 'counter_notice') ? 'counter-notice'
+          : st;
         item.appendChild(platform);
         item.appendChild(status);
+        item.addEventListener('click', function () { openEvidenceModal(td.id); });
         takedownList.appendChild(item);
       });
     }).catch(function () {
       if (takedownList) takedownList.innerHTML = '<p style="color:var(--text-muted);font-size:0.8rem;">No active takedowns</p>';
     });
+  }
+
+  /* ─── Evidence Package Modal (Phase 3) ─── */
+  var evidenceModal = document.getElementById('evidence-modal');
+  var evidenceIntegrity = document.getElementById('evidence-integrity');
+  var evidenceBody = document.getElementById('evidence-body');
+  var btnEvidenceClose = document.getElementById('btn-evidence-close');
+
+  function closeEvidenceModal() { if (evidenceModal) evidenceModal.classList.add('hidden'); }
+  if (btnEvidenceClose) btnEvidenceClose.addEventListener('click', closeEvidenceModal);
+  if (evidenceModal) evidenceModal.addEventListener('click', function (e) {
+    if (e.target === evidenceModal) closeEvidenceModal();
+  });
+
+  function openEvidenceModal(takedownId) {
+    if (!evidenceModal || !window.EnclaveAPI) return;
+    evidenceModal.classList.remove('hidden');
+    evidenceBody.innerHTML = '<p style="color:var(--text-muted);font-size:0.8rem;">Loading evidence…</p>';
+    if (evidenceIntegrity) evidenceIntegrity.style.display = 'none';
+
+    window.EnclaveAPI.getTakedownEvidence(takedownId).then(function (ev) {
+      // Integrity banner
+      if (evidenceIntegrity) {
+        evidenceIntegrity.style.display = 'flex';
+        var ok = ev.integrity && ev.integrity.valid;
+        evidenceIntegrity.className = 'settings-section evidence-integrity ' + (ok ? 'valid' : 'invalid');
+        evidenceIntegrity.innerHTML = ok
+          ? '<svg viewBox="0 0 28 28" width="14" height="14"><use href="#icon-check"/></svg> Hash chain verified — '
+            + ev.integrity.artifacts + ' artifact(s), tamper-evident'
+          : '⚠ Chain verification failed' + (ev.integrity && ev.integrity.reason ? ' — ' + ev.integrity.reason : '');
+      }
+
+      var html = '';
+      html += '<div class="settings-section"><p class="settings-section-title">Source</p>'
+        + '<p class="settings-value" style="word-break:break-all;font-size:0.75rem;">' + (ev.sourceUrl || '—') + '</p></div>';
+      html += '<div class="settings-section"><p class="settings-section-title">Captured</p>'
+        + '<p class="settings-value">' + (ev.capturedAt ? new Date(ev.capturedAt).toLocaleString() : '—') + '</p></div>';
+      if (ev.metadata && ev.metadata.pageTitle) {
+        html += '<div class="settings-section"><p class="settings-section-title">Page Title</p>'
+          + '<p class="settings-value" style="font-size:0.78rem;">' + String(ev.metadata.pageTitle).slice(0, 140) + '</p></div>';
+      }
+      if (ev.phash) {
+        html += '<div class="settings-section"><p class="settings-section-title">Perceptual Hash (dHash)</p>'
+          + '<p class="settings-value" style="font-family:var(--font-mono);font-size:0.72rem;">' + ev.phash + '</p>'
+          + '<p class="card-desc">Tracks this content across URL changes</p></div>';
+      }
+      html += '<div class="settings-section"><p class="settings-section-title">SHA-256 Chain</p><div style="display:flex;flex-direction:column;gap:0.3rem;margin-top:0.35rem;">';
+      (ev.artifacts || []).forEach(function (a) {
+        html += '<div class="chain-row"><span class="chain-idx">#' + a.index + '</span>'
+          + '<span class="chain-file">' + a.file + ' (' + a.size + 'b)</span>'
+          + '<span class="chain-hash">' + a.hash + '</span></div>';
+      });
+      if (ev.chainHead) {
+        html += '<div class="chain-row"><span class="chain-idx">HEAD</span>'
+          + '<span class="chain-file">Chain head fingerprint</span>'
+          + '<span class="chain-hash">' + ev.chainHead + '</span></div>';
+      }
+      html += '</div></div>';
+
+      evidenceBody.innerHTML = html;
+    }).catch(function (e) {
+      evidenceBody.innerHTML = '<p style="color:var(--red);font-size:0.8rem;">Failed to load evidence: ' + (e.message || 'unknown') + '</p>';
+    });
+  }
+
+  /* ─── Manual Filing Helper Modal (Phase 3) ─── */
+  var filingModal = document.getElementById('filing-modal');
+  var filingSelect = document.getElementById('filing-platform-select');
+  var filingGuideBody = document.getElementById('filing-guide-body');
+  var btnFilingClose = document.getElementById('btn-filing-close');
+
+  function closeFilingModal() { if (filingModal) filingModal.classList.add('hidden'); }
+  if (btnFilingClose) btnFilingClose.addEventListener('click', closeFilingModal);
+  if (filingModal) filingModal.addEventListener('click', function (e) {
+    if (e.target === filingModal) closeFilingModal();
+  });
+
+  function openFilingModal() {
+    if (!filingModal || !window.EnclaveAPI) return;
+    filingModal.classList.remove('hidden');
+    filingGuideBody.innerHTML = '<p style="color:var(--text-muted);font-size:0.8rem;">Loading guides…</p>';
+    window.EnclaveAPI.getFilingGuides().then(function (guides) {
+      if (!filingSelect) return;
+      filingSelect.innerHTML = '';
+      (guides || []).forEach(function (g) {
+        var opt = document.createElement('option');
+        opt.value = g.id;
+        opt.textContent = g.platform + ' (' + g.stepCount + ' steps)';
+        filingSelect.appendChild(opt);
+      });
+      if ((guides || []).length) loadFilingGuide(guides[0].id);
+      else filingGuideBody.innerHTML = '<p style="color:var(--text-muted);font-size:0.8rem;">No guides available.</p>';
+    }).catch(function () {});
+  }
+
+  function loadFilingGuide(platformId) {
+    window.EnclaveAPI.getFilingGuide(platformId).then(function (g) {
+      var html = '';
+      (g.steps || []).forEach(function (step, i) {
+        html += '<div class="filing-step"><span class="filing-step-num">' + (i + 1) + '.</span><span>' + step + '</span></div>';
+      });
+      if (g.formUrl) {
+        html += '<a href="' + g.formUrl + '" target="_blank" rel="noopener" class="btn btn-safe" style="margin-top:0.5rem;width:100%;">Open ' + g.platform + ' Form ↗</a>';
+      }
+      filingGuideBody.innerHTML = html;
+    }).catch(function () {
+      filingGuideBody.innerHTML = '<p style="color:var(--text-muted);font-size:0.8rem;">Guide unavailable.</p>';
+    });
+  }
+
+  if (filingSelect) {
+    filingSelect.addEventListener('change', function () { loadFilingGuide(filingSelect.value); });
+  }
+  var btnTakedownsOpenEl = document.getElementById('btn-takedowns-open');
+  if (btnTakedownsOpenEl) {
+    btnTakedownsOpenEl.addEventListener('click', openFilingModal);
   }
 
   /* ─── Notifications ─── */

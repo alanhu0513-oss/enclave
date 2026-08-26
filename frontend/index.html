@@ -904,6 +904,39 @@
   </div>
 </div>
 
+<!-- ════════════════════════════════════════════
+     [4] EVIDENCE PACKAGE MODAL (Phase 3)
+     ════════════════════════════════════════════ -->
+<div id="evidence-modal" class="hidden">
+  <div id="evidence-panel">
+    <div class="settings-header">
+      <h3>Evidence Package</h3>
+      <button id="btn-evidence-close" class="btn btn-icon">
+        <svg viewBox="0 0 24 24" width="16" height="16"><use href="#icon-close"/></svg>
+      </button>
+    </div>
+    <div id="evidence-integrity" class="settings-section"></div>
+    <div id="evidence-body" class="settings-body"></div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     [5] MANUAL FILING HELPER MODAL (Phase 3)
+     ════════════════════════════════════════════ -->
+<div id="filing-modal" class="hidden">
+  <div id="filing-panel">
+    <div class="settings-header">
+      <h3>Manual Filing Helper</h3>
+      <button id="btn-filing-close" class="btn btn-icon">
+        <svg viewBox="0 0 24 24" width="16" height="16"><use href="#icon-close"/></svg>
+      </button>
+    </div>
+    <p class="form-hint">Platforms without automated APIs require manual submission. Follow the guide for each platform.</p>
+    <select id="filing-platform-select" class="settings-select" style="margin-bottom:0.75rem;"></select>
+    <div id="filing-guide-body"></div>
+  </div>
+</div>
+
 <script src="https://accounts.google.com/gsi/client" async defer onerror="console.warn('Google Identity Services failed to load')"></script>
 <script src="https://cdn.jsdelivr.net/npm/tsparticles-engine@2/tsparticles.engine.min.js" defer onerror="console.warn('tsparticles-engine failed to load')"></script>
 <script src="https://cdn.jsdelivr.net/npm/tsparticles-slim@2/tsparticles.slim.bundle.min.js" defer onerror="console.warn('tsparticles-slim failed to load')"></script>

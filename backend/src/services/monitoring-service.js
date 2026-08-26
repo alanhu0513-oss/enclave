@@ -12,6 +12,7 @@ const { v4: uuidv4 } = require('uuid');
 const { table } = require('../db/query');
 const crawler = require('./crawler');
 const notifications = require('./notifications');
+const takedownService = require('./takedown');
 
 /* ─── Tier configuration ─── */
 const TIER_RANK = { free: 0, detection_only: 0, pro: 1, shield: 2, business: 3 };
@@ -292,7 +293,17 @@ async function monitorCycle(userId, tier) {
   /* Deep-analyze top findings (image extraction + face match), then create alerts */
   const toAnalyze = findings.sort((a, b) => b.confidence - a.confidence).slice(0, 4);
   const analyzed = [];
-  for (const r of toAnalyze) analyzed.push(await crawler.deepAnalyzeResult(r, userId));
+  for (const r of toAnalyze) {
+    // Perceptual resurface detection: does this finding's image match a live takedown's phash?
+    try {
+      const resurface = await takedownService.matchResurfacedContent(userId, r.sourceUrl);
+      if (resurface) {
+        r.confidence = Math.min(99, r.confidence + 20);
+        r.matchedOn += ` | RESURFACED content matching case ${String(resurface.takedownId).slice(0, 8)} (${resurface.similarityBits}/64 bits)`;
+      }
+    } catch (_) {}
+    analyzed.push(await crawler.deepAnalyzeResult(r, userId));
+  }
 
   const alertsTbl = await table('alerts');
   let newAlertCount = 0;

@@ -241,6 +241,16 @@
       });
     },
     getTakedownStats: function () { return apiFetch('/takedowns/stats/summary'); },
+    getTakedownEvidence: function (id) { return apiFetch('/takedowns/' + id + '/evidence'); },
+    getVerification: function (id) { return apiFetch('/takedowns/' + id + '/verification'); },
+    recordCounterNotice: function (id, details) {
+      return apiFetch('/takedowns/' + id + '/counter-notice', {
+        method: 'POST',
+        body: JSON.stringify({ details: details || '' })
+      });
+    },
+    getFilingGuides: function () { return apiFetch('/takedowns/filing-guides'); },
+    getFilingGuide: function (platform) { return apiFetch('/takedowns/filing-guides/' + platform); },
 
     // Billing & Subscription
     getSubscription: function () { return apiFetch('/billing/subscription'); },

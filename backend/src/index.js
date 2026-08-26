@@ -120,6 +120,18 @@ async function start() {
   } catch (e) {
     console.warn('[BILLING] Init warning:', e.message);
   }
+  // Takedown escalation matrix: verify removals / send reminders / escalate (every 15 min)
+  try {
+    const takedown = require('./services/takedown');
+    const lifecycleTimer = setInterval(() => {
+      takedown.processLifecycle().catch((e) =>
+        console.warn('[TAKEDOWN] lifecycle tick failed:', e.message)
+      );
+    }, 15 * 60 * 1000);
+    if (lifecycleTimer.unref) lifecycleTimer.unref();
+  } catch (e) {
+    console.warn('[TAKEDOWN] lifecycle init warning:', e.message);
+  }
   app.listen(PORT, () => {
     console.log(`Enclave API running on http://localhost:${PORT}`);
   });

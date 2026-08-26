@@ -1753,6 +1753,91 @@ button, a, [role="button"] { font-family: var(--font-sans); }
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   EVIDENCE + FILING MODALS (Phase 3)
+   ═══════════════════════════════════════════════════════════════ */
+
+#evidence-modal, #filing-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 970;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(5, 5, 7, 0.9);
+  backdrop-filter: blur(8px);
+  padding: 1rem;
+}
+
+#evidence-panel, #filing-panel {
+  width: 100%;
+  max-width: 540px;
+  max-height: 88vh;
+  overflow-y: auto;
+  background: var(--bg-elevated);
+  backdrop-filter: blur(32px);
+  border: 1px solid var(--border-sm);
+  border-radius: var(--radius-2xl);
+  padding: 1.5rem;
+  box-shadow: var(--shadow-xl);
+  animation: scaleIn 0.25s var(--ease-out);
+}
+
+.evidence-integrity {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: var(--radius-md);
+  margin-bottom: 0.75rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+.evidence-integrity.valid {
+  background: var(--green-dim);
+  border: 1px solid rgba(0, 255, 136, 0.15);
+  color: var(--green);
+}
+.evidence-integrity.invalid {
+  background: var(--red-dim);
+  border: 1px solid rgba(244, 63, 94, 0.15);
+  color: var(--red);
+}
+
+.chain-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.45rem 0.65rem;
+  background: rgba(255,255,255,0.015);
+  border: 1px solid var(--border-xs);
+  border-radius: var(--radius-sm);
+  font-size: 0.72rem;
+}
+.chain-row .chain-idx { color: var(--text-muted); font-family: var(--font-mono); font-size: 0.62rem; min-width: 2rem; }
+.chain-row .chain-file { flex: 1; color: var(--text-secondary); font-weight: 500; word-break: break-all; }
+.chain-row .chain-hash { color: var(--text-muted); font-family: var(--font-mono); font-size: 0.6rem; }
+
+.filing-step {
+  display: flex;
+  gap: 0.6rem;
+  padding: 0.5rem 0.65rem;
+  border-left: 2px solid rgba(0, 255, 136, 0.25);
+  margin-bottom: 0.35rem;
+  font-size: 0.75rem;
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+.filing-step-num {
+  font-weight: 700;
+  color: var(--green);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+}
+
+.takedown-item-status.counter { background: var(--amber-dim); color: var(--amber); }
+.takedown-item-status.closed { background: rgba(255,255,255,0.05); color: var(--text-muted); }
+
+/* ═══════════════════════════════════════════════════════════════
    RESPONSIVE
    ═══════════════════════════════════════════════════════════════ */
 

@@ -11,8 +11,8 @@ const { normalizeVerdict, clampConfidence } = require('./verdict-utils');
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 const API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
-const FLASH_MODEL = process.env.GEMINI_FLASH_MODEL || 'gemini-2.5-flash';
-const LITE_MODEL = process.env.GEMINI_LITE_MODEL || 'gemini-2.5-flash-lite';
+const FLASH_MODEL = process.env.GEMINI_FLASH_MODEL || 'gemini-3.6-flash';
+const LITE_MODEL = process.env.GEMINI_LITE_MODEL || 'gemini-3.6-flash-lite';
 const REQUEST_TIMEOUT = 45000;
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const CACHE_MAX_ENTRIES = 1000;

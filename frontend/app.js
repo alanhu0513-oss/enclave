@@ -1073,7 +1073,7 @@
     authOverlay.classList.add('hidden');
     registerPortal.classList.add('hidden');
     appRoot.classList.add('hidden');
-    showLoginOverlay();
+    window.EnclaveAuthUI.show();
   });
 
   /* ═══════════════════════════════════════════════════════
@@ -1190,9 +1190,9 @@
     registerPortal.classList.add('hidden');
     // Sign out from Clerk
     if (window.Clerk && window.Clerk.signOut) {
-      window.Clerk.signOut().then(function () { showLoginOverlay(); });
+      window.EnclaveAuthUI.show();
     } else {
-      showLoginOverlay();
+      window.EnclaveAuthUI.show();
     }
     }
   });
@@ -1307,7 +1307,7 @@
       authStatus.textContent = '';
       stageLiveness.classList.add('active');
       stageVoice.classList.remove('active');
-      showLoginOverlay();
+      window.EnclaveAuthUI.show();
     });
   }
 
@@ -2195,23 +2195,59 @@
   window.addEventListener('enclave-voice-status', updateServiceBadges);
 
   /* ═══════════════════════════════════════════════════════
-     INIT — Clerk-based auth
+     INIT — with API login/register + Google Sign-In
      ═══════════════════════════════════════════════════════ */
   loadState();
+
+  /* ─── Native Google Sign-In (Google Identity Services) ─── */
+  function getGoogleClientId() {
+    var meta = document.querySelector('meta[name="google-client-id"]');
+    return meta ? meta.getAttribute('content') : '';
+  }
+
+  function handleGoogleCredential(response) {
+    var backendUrl = (window.EnclaveAPI && window.EnclaveAPI.getBaseUrl ? window.EnclaveAPI.getBaseUrl() : 'http://localhost:4000');
+    fetch(backendUrl + '/api/auth/google', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ credential: response.credential })
+    }).then(function (res) { return res.json(); }).then(function (result) {
+      if (result.success && result.data && result.data.token) {
+        window.EnclaveAPI.setToken(result.data.token);
+        afterLogin(result.data.user);
+      } else {
+        var st = document.getElementById('login-status');
+        if (st) { st.textContent = 'Google sign-in failed: ' + (result.message || 'error'); st.classList.add('error'); }
+      }
+    }).catch(function (e) {
+      console.error('[Google Auth]', e);
+    });
+  }
+
+  function initGoogleSignIn() {
+    var clientId = getGoogleClientId();
+    if (!clientId || !window.google || !window.google.accounts) return;
+    try {
+      window.google.accounts.id.initialize({
+        client_id: clientId,
+        callback: handleGoogleCredential,
+        auto_select: false
+      });
+    } catch (e) {
+      console.warn('[Google] Init failed:', e);
+    }
+  }
 
   function afterLogin(user) {
     registeredName = user.fullName;
     registeredUserId = user.id;
     saveName();
     if (headerProfile) headerProfile.textContent = registeredName;
+    window.EnclaveAuthUI.hide();
     authOverlay.classList.add('hidden');
     appRoot.classList.remove('hidden');
     loginInitDone = true;
 
-    // Mount Clerk UserButton in header
-    mountClerkUserButton();
-
-    // Check if biometric enrollment exists, route to registration if not
     window.EnclaveAPI.getBiometricStatus().then(function (status) {
       var hasFace = status.faceprint !== null;
       var hasVoice = status.voiceprint !== null;
@@ -2225,206 +2261,47 @@
     });
   }
 
-  function mountClerkUserButton() {
-    var container = document.getElementById('clerk-user-button');
-    if (!container || !window.Clerk || !window.Clerk.mountUserButton) return;
-    try {
-      window.Clerk.mountUserButton(container, {
-        afterSignOutUrl: '/',
-        appearance: { elements: { avatarBox: 'width:32px;height:32px' } }
-      });
-    } catch (_) {}
-  }
-
-  async function initClerkAuth() {
-    // Wait for Clerk SDK to load
-    var attempts = 0;
-    while (!window.Clerk && attempts < 50) {
-      await new Promise(function (r) { setTimeout(r, 200); });
-      attempts++;
-    }
-    if (!window.Clerk) {
-      console.warn('[Enclave] Clerk SDK not loaded — falling back to API login');
-      showLoginOverlay();
-      return;
-    }
-
-    try {
-      await window.Clerk.load();
-    } catch (e) {
-      console.warn('[Enclave] Clerk.load() failed:', e);
-      showLoginOverlay();
-      return;
-    }
-
-    if (window.Clerk.user) {
-      // User is signed in via Clerk — sync with our backend
+  // Check JWT first
+  (async function () {
+    var hasToken = window.EnclaveAPI ? await window.EnclaveAPI.isLoggedIn() : false;
+    if (hasToken) {
       try {
-        var clerkToken = await window.Clerk.session.getToken();
-        if (clerkToken) {
-          var response = await fetch((window.EnclaveAPI && window.EnclaveAPI.getBaseUrl ? window.EnclaveAPI.getBaseUrl() : 'http://localhost:4000') + '/api/auth/clerk', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ clerkToken: clerkToken })
-          });
-          var result = await response.json();
-          if (result.success && result.data && result.data.token) {
-            window.EnclaveAPI.setToken(result.data.token);
-            afterLogin(result.data.user);
-            return;
-          }
-        }
-      } catch (_) {}
-      // Backend sync failed — use Clerk user data directly
-      var clerkUser = window.Clerk.user;
-      afterLogin({
-        id: clerkUser.id,
-        email: clerkUser.primaryEmailAddress ? clerkUser.primaryEmailAddress.emailAddress : '',
-        fullName: [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(' ') || clerkUser.username || 'User'
-      });
-    } else {
-      // Not signed in — show Clerk sign-in
-      showLoginOverlay();
-    }
-  }
-
-  function showLoginOverlay() {
-    authOverlay.classList.add('hidden');
-    registerPortal.classList.add('hidden');
-    loginOverlay.classList.remove('hidden');
-
-    // Mount Clerk SignIn component
-    var signInEl = document.getElementById('clerk-sign-in');
-    if (signInEl && window.Clerk && window.Clerk.mountSignIn) {
-      signInEl.innerHTML = '';
-      try {
-        window.Clerk.mountSignIn(signInEl, {
-          routing: 'hash',
-          appearance: {
-            elements: {
-              rootBox: 'width:100%',
-              card: 'background:rgba(15,15,20,0.95);border:1px solid rgba(255,255,255,0.08);box-shadow:none;'
-            }
-          }
-        });
-      } catch (_) {}
-    }
-
-    // Listen for Clerk sign-in completion
-    if (window.Clerk && window.Clerk.addListener) {
-      window.Clerk.addListener(function (event) {
-        if (event.type === 'session' && event.session) {
-          syncClerkSession(event.session);
-        }
-      });
-    }
-
-    // Init native Google Sign-In
-    initGoogleSignIn();
-  }
-
-  /* ─── Native Google Sign-In (Google Identity Services) ─── */
-  function getGoogleClientId() {
-    var meta = document.querySelector('meta[name="google-client-id"]');
-    return meta ? meta.getAttribute('content') : '';
-  }
-
-  async function handleGoogleCredential(response) {
-    try {
-      var backendUrl = (window.EnclaveAPI && window.EnclaveAPI.getBaseUrl ? window.EnclaveAPI.getBaseUrl() : 'http://localhost:4000');
-      var res = await fetch(backendUrl + '/api/auth/google', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ credential: response.credential })
-      });
-      var result = await res.json();
-      if (result.success && result.data && result.data.token) {
-        window.EnclaveAPI.setToken(result.data.token);
-        afterLogin(result.data.user);
-      } else {
-        console.error('[Google Auth] Backend rejected:', result.message);
-      }
-    } catch (e) {
-      console.error('[Google Auth] Error:', e);
-    }
-  }
-
-  function initGoogleSignIn() {
-    var clientId = getGoogleClientId();
-    if (!clientId || !window.google || !window.google.accounts) return;
-
-    try {
-      window.google.accounts.id.initialize({
-        client_id: clientId,
-        callback: handleGoogleCredential,
-        auto_select: false
-      });
-
-      // Render the Google One Tap button
-      var googleBtnContainer = document.getElementById('google-signin-btn');
-      if (googleBtnContainer) {
-        googleBtnContainer.innerHTML = '';
-        window.google.accounts.id.renderButton(googleBtnContainer, {
-          theme: 'filled_black',
-          size: 'large',
-          width: '100%',
-          text: 'continue_with',
-          shape: 'rectangular'
-        });
-      }
-    } catch (e) {
-      console.warn('[Google] Init failed:', e);
-    }
-  }
-
-  async function syncClerkSession(session) {
-    try {
-      var clerkToken = await session.getToken();
-      if (clerkToken) {
-        // Exchange Clerk token for our backend JWT
-        var response = await fetch((window.EnclaveAPI && window.EnclaveAPI.getBaseUrl ? window.EnclaveAPI.getBaseUrl() : 'http://localhost:4000') + '/api/auth/clerk', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ clerkToken: clerkToken })
-        });
-        var result = await response.json();
-        if (result.success && result.data && result.data.token) {
-          window.EnclaveAPI.setToken(result.data.token);
-          afterLogin(result.data.user);
+        var data = await window.EnclaveAPI.getUserData();
+        if (data && data.user) {
+          afterLogin(data.user);
           return;
         }
-      }
-    } catch (_) {}
-    // Fallback: use Clerk user data directly
-    var clerkUser = session.user;
-    afterLogin({
-      id: clerkUser.id,
-      email: clerkUser.primaryEmailAddress ? clerkUser.primaryEmailAddress.emailAddress : '',
-      fullName: [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(' ') || clerkUser.username || 'User'
-    });
-  }
+      } catch (_) {}
+      window.EnclaveAPI.logout();
+    }
+    authOverlay.classList.add('hidden');
+    registerPortal.classList.add('hidden');
+    window.EnclaveAuthUI.show();
+    window.EnclaveAuthUI.onAuthenticated(afterLogin);
+    initGoogleSignIn();
+  })();
 
-  var loginOverlay = document.getElementById('login-overlay');
-
-  // Initialize Clerk auth
-  initClerkAuth();
-
-  // Google Sign-In button click handler
+  // Google Sign-In button click handlers
   var btnGoogleLogin = document.getElementById('btn-google-login');
   if (btnGoogleLogin) {
     btnGoogleLogin.addEventListener('click', function () {
-      var clientId = getGoogleClientId();
-      if (!clientId || !window.google || !window.google.accounts) {
-        alert('Google Sign-In is loading, please try again in a moment.');
+      if (!window.google || !window.google.accounts) {
+        alert('Google Sign-In is loading, please try again.');
         return;
       }
-      // Trigger Google One Tap prompt
-      window.google.accounts.id.prompt(function (notification) {
-        if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-          // One Tap not shown — fall back to redirect
-          window.google.accounts.id.prompt();
-        }
-      });
+      initGoogleSignIn();
+      window.google.accounts.id.prompt();
+    });
+  }
+  var btnGoogleReg = document.getElementById('btn-google-register');
+  if (btnGoogleReg) {
+    btnGoogleReg.addEventListener('click', function () {
+      if (!window.google || !window.google.accounts) {
+        alert('Google Sign-In is loading, please try again.');
+        return;
+      }
+      initGoogleSignIn();
+      window.google.accounts.id.prompt();
     });
   }
 

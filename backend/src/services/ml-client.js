@@ -1,13 +1,15 @@
 /* ─── Enclave ML Client ───
  * Detection fallback chain:
- *   1. Gemini 2.5 Flash / Flash-Lite (primary, multimodal)
- *   2. Python ML microservice (XceptionNet, optional self-hosted)
- *   3. Local Laplacian heuristic (always available)
+ *   1. Groq (Llama 4 Scout vision / Llama 3.1 text) — primary free engine
+ *   2. Gemini 2.5 Flash (optional backup; also handles audio)
+ *   3. Python ML microservice (XceptionNet, optional self-hosted)
+ *   4. Local Laplacian heuristic (always available)
  */
 
 const fs = require('fs');
 const path = require('path');
 const gemini = require('./gemini-client');
+const groq = require('./groq-client');
 
 const ML_SERVICE_URL = process.env.ML_SERVICE_URL || 'http://localhost:8001';
 const ML_TIMEOUT = 30000;
@@ -84,35 +86,23 @@ async function detectImageBuffer(buffer, filename) {
   const started = Date.now();
   const mimetype = _sniffMime(buffer, 'image/jpeg');
 
-  // 1) Gemini (primary)
+  // 1) Groq Llama 4 Scout (primary — highest free quota)
+  try {
+    const g = await groq.detectImage(buffer, mimetype, filename);
+    if (g) return _finalizeAiResult(g, started, buffer);
+  } catch (e) {
+    console.warn('[ML Client] Groq image detect failed:', e.message);
+  }
+
+  // 2) Gemini Flash (backup)
   try {
     const g = await gemini.detectImage(buffer, mimetype, filename);
-    if (g) {
-      let heuristicMeta = null;
-      try {
-        const h = _localHeuristic(buffer);
-        if (h && h.heuristic) heuristicMeta = h.heuristic;
-      } catch (_) {}
-      return {
-        confidence: g.confidence,
-        verdict: g.verdict,
-        ml_avg_score: g.ml_avg_score,
-        face_count: g.face_count || 0,
-        faces: [],
-        explanation: g.explanation || null,
-        artifacts: g.artifacts || [],
-        provider: g.provider,
-        latency_ms: Date.now() - started,
-        cached: !!g.cached,
-        heuristic: heuristicMeta,
-        fallback: false,
-      };
-    }
+    if (g) return _finalizeAiResult(g, started, buffer);
   } catch (e) {
     console.warn('[ML Client] Gemini image detect failed:', e.message);
   }
 
-  // 2) Python ML service (optional)
+  // 3) Python ML service (optional)
   if (await isMlAvailable()) {
     try {
       const result = await mlPostMultipart('/detect/image', 'file', buffer, filename || 'image.jpg');
@@ -122,9 +112,32 @@ async function detectImageBuffer(buffer, filename) {
     }
   }
 
-  // 3) Local heuristic
+  // 4) Local heuristic
   const local = _localHeuristic(buffer);
   return { ...local, provider: 'local-heuristic', latency_ms: Date.now() - started };
+}
+
+/* Attach heuristic metadata + latency to an AI-provider result. */
+function _finalizeAiResult(g, started, buffer) {
+  let heuristicMeta = null;
+  try {
+    const h = _localHeuristic(buffer);
+    if (h && h.heuristic) heuristicMeta = h.heuristic;
+  } catch (_) {}
+  return {
+    confidence: g.confidence,
+    verdict: g.verdict,
+    ml_avg_score: g.ml_avg_score,
+    face_count: g.face_count || 0,
+    faces: [],
+    explanation: g.explanation || null,
+    artifacts: g.artifacts || [],
+    provider: g.provider,
+    latency_ms: Date.now() - started,
+    cached: !!g.cached,
+    heuristic: heuristicMeta,
+    fallback: false,
+  };
 }
 
 /** Audio deepfake detection via fallback chain. */
@@ -134,11 +147,11 @@ async function detectAudio(filePath) {
   const started = Date.now();
   const mimetype = _sniffMime(fileBuffer, 'audio/wav');
 
-  // 1) Gemini (primary)
+  // 1) Gemini (only cloud provider with native audio analysis)
   try {
     const g = await gemini.detectAudio(fileBuffer, mimetype, filename);
     if (g) {
-      return { ...g, latency_ms: Date.now() - started, fallback: false };
+      return { ...g, provider: g.provider || 'gemini-flash', latency_ms: Date.now() - started, fallback: false };
     }
   } catch (e) {
     console.warn('[ML Client] Gemini audio detect failed:', e.message);
@@ -283,13 +296,33 @@ function _localHeuristic(imageBuffer) {
   }
 }
 
-/** Merged provider status across Gemini + Python ML service. */
+/** AI-text detection: Groq Llama 3.1 (14k RPD) → Gemini Flash-Lite fallback. */
+async function detectText(text) {
+  const started = Date.now();
+  try {
+    const g = await groq.detectText(text);
+    if (g && !g.error) return { ...g, latency_ms: Date.now() - started };
+    if (g && g.error) return g; // validation error — no point trying next provider
+  } catch (e) {
+    console.warn('[ML Client] Groq text detect failed:', e.message);
+  }
+  try {
+    const result = await gemini.detectText(text);
+    if (result) return { ...result, latency_ms: Date.now() - started };
+  } catch (e) {
+    console.warn('[ML Client] Gemini text detect failed:', e.message);
+  }
+  return null;
+}
+
+/** Merged provider status across Groq + Gemini + Python ML service. */
 async function getStatus() {
   const [geminiStatus, pythonHealth] = await Promise.all([
     Promise.resolve(gemini.getStatus()),
     getHealth().catch(() => ({ status: 'unavailable' })),
   ]);
   return {
+    groq: groq.getStatus(),
     gemini: geminiStatus,
     pythonService: {
       url: ML_SERVICE_URL,
@@ -303,7 +336,7 @@ module.exports = {
   detectImage,
   detectImageBuffer,
   detectAudio,
-  detectText: gemini.detectText,
+  detectText,
   matchFaces,
   getEmbedding,
   getHealth,

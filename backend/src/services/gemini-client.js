@@ -7,6 +7,7 @@
  */
 
 const crypto = require('crypto');
+const { normalizeVerdict, clampConfidence } = require('./verdict-utils');
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 const API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
@@ -151,20 +152,7 @@ async function _detectWithFallback(parts, schema, parseResult) {
   return null;
 }
 
-/* ─── Verdict normalization ─── */
-function normalizeVerdict(score) {
-  if (score >= 60) return 'LIKELY_SYNTHETIC';
-  if (score >= 35) return 'SUSPICIOUS';
-  return 'LIKELY_NATURAL';
-}
-
-function clampConfidence(value) {
-  const n = Number(value);
-  if (!Number.isFinite(n)) return 0;
-  return Math.min(100, Math.max(0, Math.round(n * 10) / 10));
-}
-
-/* ═══════════════ PUBLIC API ═══════════════ */
+/* ─── Verdict normalization (shared: see verdict-utils.js) ─── */
 
 const IMAGE_SCHEMA = {
   type: 'OBJECT',
@@ -343,5 +331,4 @@ module.exports = {
   detectText,
   getStatus,
   isConfigured,
-  normalizeVerdict,
 };

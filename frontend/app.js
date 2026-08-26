@@ -2398,24 +2398,38 @@
     _mlEngineLastFetch = now;
 
     window.EnclaveAPI.getDetectStatus().then(function (status) {
-      if (!status || !status.gemini) return;
-      var g = status.gemini;
-      // Cache hits stat
+      if (!status) return;
+      // Cache hits stat — prefer Groq cache stats, fall back to Gemini
       var cacheEl = document.getElementById('stat-cache-hits');
-      if (cacheEl && status.gemini.cache) cacheEl.textContent = g.cache.hits || 0;
-
-      if (!g.configured) {
-        shieldMlEngineStatus.textContent = 'HEURISTIC';
-        shieldMlEngineStatus.className = 'shield-module-badge partial';
-        return;
+      if (cacheEl) {
+        var hits = 0;
+        if (status.groq && status.groq.cache) hits += status.groq.cache.hits || 0;
+        if (status.gemini && status.gemini.cache) hits += status.gemini.cache.hits || 0;
+        cacheEl.textContent = hits;
       }
-      var primaryUp = g.primary && g.primary.available;
-      var fallbackUp = g.fallback && g.fallback.available;
-      if (primaryUp || fallbackUp) {
-        shieldMlEngineStatus.textContent = primaryUp ? 'GEMINI' : 'GEMINI·LITE';
+
+      function providerState(p) {
+        if (!p || !p.configured) return 'unconfigured';
+        if (p.vision ? (p.vision.available || p.text.available) : (p.primary.available || p.fallback.available)) return 'up';
+        return 'cooldown';
+      }
+      var groqState = providerState(status.groq);
+      var geminiState = providerState(status.gemini);
+
+      if (groqState === 'up') {
+        shieldMlEngineStatus.textContent = 'GROQ';
         shieldMlEngineStatus.className = 'shield-module-badge active';
+      } else if (groqState === 'cooldown') {
+        shieldMlEngineStatus.textContent = 'GROQ·WAIT';
+        shieldMlEngineStatus.className = 'shield-module-badge partial';
+      } else if (geminiState === 'up') {
+        shieldMlEngineStatus.textContent = 'GEMINI';
+        shieldMlEngineStatus.className = 'shield-module-badge active';
+      } else if (geminiState === 'cooldown') {
+        shieldMlEngineStatus.textContent = 'GEMINI·WAIT';
+        shieldMlEngineStatus.className = 'shield-module-badge partial';
       } else {
-        shieldMlEngineStatus.textContent = 'COOLDOWN';
+        shieldMlEngineStatus.textContent = 'HEURISTIC';
         shieldMlEngineStatus.className = 'shield-module-badge partial';
       }
     }).catch(function () {

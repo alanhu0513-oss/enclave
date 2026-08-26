@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta name="theme-color" content="#09090b">
+  <meta name="theme-color" content="#050507">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -11,6 +11,28 @@
   <meta http-equiv="Expires" content="0">
   <title>Enclave — Digital Identity Protection Vault</title>
   <meta name="google-client-id" content="109956919732-4i8rg4r9p66mhajad8hvjsh7tjs7kmlj.apps.googleusercontent.com">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            base: '#050507',
+            surface: '#0a0a0f',
+            elevated: '#111118',
+            green: { DEFAULT: '#00ff88', dim: 'rgba(0,255,136,0.12)' },
+            blue: { DEFAULT: '#38bdf8', dim: 'rgba(56,189,248,0.12)' },
+            red: { DEFAULT: '#f43f5e', dim: 'rgba(244,63,94,0.12)' },
+            amber: { DEFAULT: '#fbbf24', dim: 'rgba(251,191,36,0.12)' },
+            purple: { DEFAULT: '#a78bfa', dim: 'rgba(167,139,250,0.12)' },
+          },
+          fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] },
+          borderRadius: { '2xl': '20px', '3xl': '24px' },
+        }
+      }
+    }
+  </script>
+  <script src="https://unpkg.com/lucide@latest"></script>
   <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="styles.css">
 </head>
@@ -155,28 +177,24 @@
       <p class="threat-preview-cta">Sign in to see YOUR threats</p>
     </div>
   </div>
-  <div id="login-panel">
-    <div class="auth-header">
-      <svg class="auth-logo-shield" viewBox="0 0 52 52" width="40" height="40">
+  <div id="login-panel" class="glass-card" style="width:360px;max-width:90vw;padding:2.5rem 2rem;animation:scaleIn 0.5s cubic-bezier(0.16,1,0.3,1);">
+    <div class="auth-header" style="text-align:center;margin-bottom:1.5rem;">
+      <svg class="auth-logo-shield" viewBox="0 0 52 52" width="40" height="40" style="margin:0 auto 0.75rem;">
         <use href="#icon-shield-ring"/>
         <use href="#icon-shield" class="shield-core"/>
       </svg>
-      <h1>ENCLAVE</h1>
-      <p class="auth-subtitle">Digital Identity Protection Vault</p>
+      <h1 style="font-size:1.1rem;letter-spacing:0.15em;margin-bottom:0.3rem;">ENCLAVE</h1>
+      <p class="auth-subtitle" style="font-size:0.7rem;">Digital Identity Protection Vault</p>
     </div>
 
     <div id="login-form" class="login-form active">
-      <p class="form-title">Sign In</p>
+      <p class="form-title" style="font-size:1rem;margin-bottom:1rem;">Sign In</p>
       <input type="email" id="login-email" class="reg-input" placeholder="Email address" autocomplete="email">
+      <div style="height:0.75rem;"></div>
       <input type="password" id="login-password" class="reg-input" placeholder="Password" autocomplete="current-password">
-      <button id="btn-login" class="btn btn-auth">Sign In</button>
-      <button id="btn-google-login" class="btn btn-google">
-        <svg viewBox="0 0 24 24" width="16" height="16" style="vertical-align:middle;margin-right:6px;">
-          <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/>
-          <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-          <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-          <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-        </svg>
+      <button id="btn-login" class="btn btn-primary w-full" style="margin-top:1rem;">Sign In</button>
+      <button id="btn-google-login" class="btn btn-google w-full" style="margin-top:0.5rem;">
+        <svg viewBox="0 0 24 24" width="16" height="16"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
         Continue with Google
       </button>
       <p class="auth-switch"><a href="#" id="link-forgot-password">Forgot password?</a></p>
@@ -191,8 +209,8 @@
         <p class="onboarding-progress-text">Step 1 of 3 — 33% complete</p>
       </div>
       <input type="text" id="reg-email-name" class="reg-input" placeholder="Full legal name" autocomplete="name">
-      <input type="email" id="reg-email-addr" class="reg-input" placeholder="Email address" autocomplete="email">
-      <input type="password" id="reg-email-password" class="reg-input" placeholder="Password (min 8 chars)" autocomplete="new-password">
+      <input type="email" id="reg-email-addr" class="reg-input mt-2.5" placeholder="Email address" autocomplete="email">
+      <input type="password" id="reg-email-password" class="reg-input mt-2.5" placeholder="Password (min 8 chars)" autocomplete="new-password">
       <div class="shield-prefs-section">
         <p class="shield-prefs-title">Customize Your Shield</p>
         <div class="shield-prefs-grid">
@@ -219,14 +237,9 @@
         </div>
         <p class="shield-prefs-hint">You can change these anytime in Settings</p>
       </div>
-      <button id="btn-register" class="btn btn-auth">Create Account</button>
-      <button id="btn-google-register" class="btn btn-google">
-        <svg viewBox="0 0 24 24" width="16" height="16" style="vertical-align:middle;margin-right:6px;">
-          <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/>
-          <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-          <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-          <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-        </svg>
+      <button id="btn-register" class="btn btn-primary">Create Account</button>
+      <button id="btn-google-register" class="btn btn-google w-full" style="margin-top:0.5rem;">
+        <svg viewBox="0 0 24 24" width="16" height="16"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
         Continue with Google
       </button>
       <p class="auth-switch">Already have an account? <a href="#" id="link-show-login">Sign in</a></p>
@@ -236,11 +249,11 @@
       <p class="form-title">Reset Password</p>
       <p class="form-hint">Enter your email to receive a reset code</p>
       <input type="email" id="forgot-email" class="reg-input" placeholder="Email address" autocomplete="email">
-      <button id="btn-forgot-send" class="btn btn-auth">Send Reset Code</button>
+      <button id="btn-forgot-send" class="btn btn-primary">Send Reset Code</button>
       <div id="forgot-code-area" class="hidden" style="margin-top:0.5rem;">
         <input type="text" id="forgot-code" class="reg-input" placeholder="Enter 6-digit code" style="margin-bottom:0.4rem;">
         <input type="password" id="forgot-new-password" class="reg-input" placeholder="New password (min 8 chars)" style="margin-bottom:0.4rem;">
-        <button id="btn-forgot-reset" class="btn btn-auth">Reset Password</button>
+        <button id="btn-forgot-reset" class="btn btn-primary">Reset Password</button>
       </div>
       <p class="auth-switch"><a href="#" id="link-back-to-login">Back to Sign In</a></p>
     </div>
@@ -307,7 +320,7 @@
     </div>
 
     <div id="auth-status" class="auth-status"></div>
-    <button id="btn-auth-start" class="btn btn-auth">Authenticate</button>
+    <button id="btn-auth-start" class="btn btn-primary">Authenticate</button>
   </div>
 </div>
 
@@ -331,7 +344,7 @@
     <div id="reg-step-name" class="reg-step active">
       <p class="reg-step-label">Step 1 of 3 — Official Name</p>
       <input type="text" id="reg-input-name" class="reg-input" placeholder="Enter your full legal name" autocomplete="name">
-      <button id="btn-reg-name" class="btn btn-auth">Save &amp; Continue</button>
+      <button id="btn-reg-name" class="btn btn-primary">Save &amp; Continue</button>
     </div>
 
     <div id="reg-step-face" class="reg-step">
@@ -346,8 +359,8 @@
       <input type="file" id="reg-portrait-file" accept="image/*">
       <div id="reg-face-preview" class="reg-face-preview hidden"></div>
       <div class="reg-step-actions">
-        <button id="btn-reg-capture" class="btn btn-auth">Capture</button>
-        <button id="btn-reg-face-done" class="btn btn-auth" disabled>Continue</button>
+        <button id="btn-reg-capture" class="btn btn-primary">Capture</button>
+        <button id="btn-reg-face-done" class="btn btn-primary" disabled>Continue</button>
       </div>
     </div>
 
@@ -361,8 +374,8 @@
       </div>
       <p id="reg-audio-status" class="reg-audio-status">Click Record and speak naturally for 10 seconds</p>
       <div class="reg-step-actions">
-        <button id="btn-reg-record" class="btn btn-auth">Record</button>
-        <button id="btn-reg-audio-done" class="btn btn-auth" disabled>Continue</button>
+        <button id="btn-reg-record" class="btn btn-primary">Record</button>
+        <button id="btn-reg-audio-done" class="btn btn-primary" disabled>Continue</button>
       </div>
     </div>
 
@@ -372,7 +385,7 @@
         Identity baseline established
       </p>
       <p class="reg-complete-sub">Your name, faceprint, and voiceprint are stored. Proceed to verification.</p>
-      <button id="btn-reg-complete" class="btn btn-auth">Begin Authentication</button>
+      <button id="btn-reg-complete" class="btn btn-primary">Begin Authentication</button>
     </div>
 
     <p id="reg-status" class="reg-status-msg"></p>
@@ -391,7 +404,7 @@
     </div>
     <div class="sig-actions">
       <button id="btn-sig-clear" class="btn btn-ghost">Clear</button>
-      <button id="btn-sig-confirm" class="btn btn-auth">Confirm Signature</button>
+      <button id="btn-sig-confirm" class="btn btn-primary">Confirm Signature</button>
     </div>
     <p id="sig-status" class="status-msg"></p>
   </div>
@@ -412,23 +425,23 @@
       <div class="settings-section">
         <p class="settings-section-title">Registered Name</p>
         <p id="settings-name" class="settings-value">—</p>
-        <button id="btn-settings-rename" class="btn btn-triad btn-triad-safe">Change Name</button>
+        <button id="btn-settings-rename" class="btn btn-safe">Change Name</button>
       </div>
       <div class="settings-section">
         <p class="settings-section-title">Faceprint</p>
         <p id="settings-face-status" class="settings-value">Not captured</p>
         <div id="settings-face-preview" class="settings-face-preview"></div>
-        <button id="btn-settings-reface" class="btn btn-triad btn-triad-warn">Re-Capture</button>
+        <button id="btn-settings-reface" class="btn btn-warning">Re-Capture</button>
       </div>
       <div class="settings-section">
         <p class="settings-section-title">Voiceprint</p>
         <p id="settings-voice-status" class="settings-value">Not captured</p>
-        <button id="btn-settings-revoice" class="btn btn-triad btn-triad-warn">Re-Record</button>
+        <button id="btn-settings-revoice" class="btn btn-warning">Re-Record</button>
       </div>
       <div class="settings-section">
         <p class="settings-section-title">Signature</p>
         <p id="settings-sig-status" class="settings-value">—</p>
-        <button id="btn-settings-resig" class="btn btn-triad btn-triad-warn">Re-Sign</button>
+        <button id="btn-settings-resig" class="btn btn-warning">Re-Sign</button>
       </div>
       <div class="settings-section">
         <p class="settings-section-title">System Services</p>
@@ -450,7 +463,7 @@
           <option value="1600">1600 Hz (High)</option>
           <option value="3200">3200 Hz (Extreme)</option>
         </select>
-        <button id="btn-settings-apply-freq" class="btn btn-triad btn-triad-warn" style="margin-top:0.3rem;">Apply Frequency</button>
+        <button id="btn-settings-apply-freq" class="btn btn-warning" style="margin-top:0.3rem;">Apply Frequency</button>
       </div>
       <div class="settings-section">
         <p class="settings-section-title">System Widget</p>
@@ -465,12 +478,12 @@
       </div>
       <div class="settings-section">
         <p class="settings-section-title">Data</p>
-        <button id="btn-settings-clear" class="btn btn-triad btn-triad-danger">Clear All Vault Data</button>
-        <button id="btn-settings-export" class="btn btn-triad btn-triad-safe">Export Identity Manifest</button>
+        <button id="btn-settings-clear" class="btn btn-danger">Clear All Vault Data</button>
+        <button id="btn-settings-export" class="btn btn-safe">Export Identity Manifest</button>
       </div>
       <div class="settings-section">
         <p class="settings-section-title">Session</p>
-        <button id="btn-settings-logout" class="btn btn-triad btn-triad-danger">Log Out</button>
+        <button id="btn-settings-logout" class="btn btn-danger">Log Out</button>
       </div>
     </div>
     <p id="settings-status" class="status-msg"></p>
@@ -485,17 +498,17 @@
   <div id="toast-container" class="toast-container"></div>
 
   <!-- Header -->
-  <header id="app-header">
-    <div class="header-left">
+  <header id="app-header" class="flex items-center justify-between px-4 py-3" style="position:sticky;top:0;z-index:50;background:rgba(5,5,7,0.85);backdrop-filter:blur(20px);border-bottom:1px solid rgba(255,255,255,0.04);">
+    <div class="header-left flex items-center gap-2">
       <svg class="header-shield" viewBox="0 0 52 52" width="28" height="28">
         <use href="#icon-shield" class="shield-core"/>
       </svg>
-      <h1>ENCLAVE</h1>
+      <h1 style="font-size:0.8rem;letter-spacing:0.1em;">ENCLAVE</h1>
     </div>
-    <div class="header-right">
-      <span id="header-profile" class="header-profile"></span>
-      <span id="crawler-status" class="crawler-badge">
-        <svg viewBox="0 0 12 12" width="12" height="12"><use href="#icon-radar-dot"/></svg>
+    <div class="header-right flex items-center gap-3">
+      <span id="header-profile" class="header-profile" style="font-size:0.7rem;color:var(--text-secondary);"></span>
+      <span id="crawler-status" class="crawler-badge flex items-center gap-1" style="font-size:0.6rem;background:var(--green-dim);color:var(--green);padding:0.2rem 0.5rem;border-radius:999px;">
+        <svg viewBox="0 0 12 12" width="10" height="10"><use href="#icon-radar-dot"/></svg>
         SCANNING
       </span>
       <button id="btn-settings-open" class="btn btn-icon">
@@ -645,7 +658,7 @@
       <input type="text" id="scanner-url" class="reg-input" placeholder="Paste suspicious URL...">
       <div class="scanner-row">
         <input type="file" id="scanner-file" accept="image/*">
-        <button id="btn-scanner" class="btn btn-triad btn-triad-warn">Scan</button>
+        <button id="btn-scanner" class="btn btn-warning">Scan</button>
       </div>
       <p id="scanner-status" class="status-msg"></p>
     </section>
@@ -699,7 +712,7 @@
           </ul>
         </div>
         <div style="display:flex;gap:0.5rem;margin-top:0.75rem;">
-          <button id="btn-upgrade-pro" class="btn btn-triad btn-triad-safe" style="flex:1;">Don't Lose Protection — Pro $9.99/mo</button>
+          <button id="btn-upgrade-pro" class="btn btn-safe" style="flex:1;">Don't Lose Protection — Pro $9.99/mo</button>
         </div>
         <p style="font-size:0.65rem;color:var(--text-muted);text-align:center;margin-top:0.4rem;">Cancel anytime. 14-day money-back guarantee.</p>
       </div>
@@ -817,7 +830,7 @@
   </div>
 
   <footer id="app-footer">
-    <p>Enclave v4.0 — Offline · Local · Private · Zero-Knowledge</p>
+    <p>Enclave v5.0 — Offline · Local · Private · Zero-Knowledge</p>
   </footer>
 </div>
 

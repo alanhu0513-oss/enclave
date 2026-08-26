@@ -40,11 +40,14 @@ const globalLimiter = rateLimit({
 const app = express();
 const PORT = process.env.PORT || 4000;
 
-app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+  contentSecurityPolicy: false
+}));
 app.use(cors({
   origin: process.env.CORS_ORIGIN
     ? process.env.CORS_ORIGIN.split(',')
-    : ['http://localhost:3000', 'http://localhost:4000'],
+    : true,
   credentials: true
 }));
 app.use(morgan('dev'));

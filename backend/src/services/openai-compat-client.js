@@ -56,8 +56,8 @@ const PRESETS = {
     label: 'siliconflow',
     baseUrl: 'https://api.siliconflow.com/v1',
     keyEnv: 'SILICONFLOW_API_KEY',
-    visionModel: 'Qwen/Qwen2.5-VL-7B-Instruct',
-    textModel: 'Qwen/Qwen2.5-7B-Instruct',
+    visionModel: process.env.SILICONFLOW_VISION_MODEL || 'Qwen/Qwen3-VL-8B-Instruct',
+    textModel: process.env.SILICONFLOW_TEXT_MODEL || 'Qwen/Qwen3-8B',
     extraHeaders: {},
   },
   'github-models': {
@@ -192,6 +192,14 @@ async function _chat(model, messages, cooldownKey) {
     if (res.status === 429 || res.status === 503) {
       _state[cooldownKey] = Date.now() + RATE_LIMIT_COOLDOWN_MS;
       throw Object.assign(new Error(`Provider rate limited (${res.status})`), { code: 'RATE_LIMITED' });
+    }
+    if (res.status === 402 || res.status === 401 || res.status === 403) {
+      // Insufficient balance / auth problem — stop hitting this provider for an hour
+      _state[cooldownKey] = Date.now() + 60 * 60 * 1000;
+      throw Object.assign(
+        new Error(`Provider unavailable (${res.status}): ${JSON.parse(await res.text().catch(() => '{}')).message || 'balance/auth'}`),
+        { code: 'PROVIDER_DISABLED' }
+      );
     }
     if (!res.ok) {
       const text = await res.text().catch(() => '');

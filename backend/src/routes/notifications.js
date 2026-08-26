@@ -57,6 +57,16 @@ router.post('/fcm-token', async (req, res) => {
   }
 });
 
+router.get('/preferences', async (req, res) => {
+  try {
+    const users = await table('users');
+    const user = await users.find({ id: req.user.userId });
+    return success(res, { emailNotifications: user ? !!user.email_notifications : true });
+  } catch (e) {
+    return error(res, e.message);
+  }
+});
+
 router.patch('/preferences', async (req, res) => {
   try {
     const { emailNotifications } = req.body;

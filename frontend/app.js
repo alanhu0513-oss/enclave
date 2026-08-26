@@ -2195,48 +2195,9 @@
   window.addEventListener('enclave-voice-status', updateServiceBadges);
 
   /* ═══════════════════════════════════════════════════════
-     INIT — with API login/register + Google Sign-In
+     INIT — API login/register + auth-ui.js
      ═══════════════════════════════════════════════════════ */
   loadState();
-
-  /* ─── Native Google Sign-In (Google Identity Services) ─── */
-  function getGoogleClientId() {
-    var meta = document.querySelector('meta[name="google-client-id"]');
-    return meta ? meta.getAttribute('content') : '';
-  }
-
-  function handleGoogleCredential(response) {
-    var backendUrl = (window.EnclaveAPI && window.EnclaveAPI.getBaseUrl ? window.EnclaveAPI.getBaseUrl() : 'http://localhost:4000');
-    fetch(backendUrl + '/api/auth/google', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ credential: response.credential })
-    }).then(function (res) { return res.json(); }).then(function (result) {
-      if (result.success && result.data && result.data.token) {
-        window.EnclaveAPI.setToken(result.data.token);
-        afterLogin(result.data.user);
-      } else {
-        var st = document.getElementById('login-status');
-        if (st) { st.textContent = 'Google sign-in failed: ' + (result.message || 'error'); st.classList.add('error'); }
-      }
-    }).catch(function (e) {
-      console.error('[Google Auth]', e);
-    });
-  }
-
-  function initGoogleSignIn() {
-    var clientId = getGoogleClientId();
-    if (!clientId || !window.google || !window.google.accounts) return;
-    try {
-      window.google.accounts.id.initialize({
-        client_id: clientId,
-        callback: handleGoogleCredential,
-        auto_select: false
-      });
-    } catch (e) {
-      console.warn('[Google] Init failed:', e);
-    }
-  }
 
   function afterLogin(user) {
     registeredName = user.fullName;
@@ -2261,7 +2222,7 @@
     });
   }
 
-  // Check JWT first
+  // Check JWT first, then show login
   (async function () {
     var hasToken = window.EnclaveAPI ? await window.EnclaveAPI.isLoggedIn() : false;
     if (hasToken) {
@@ -2278,32 +2239,7 @@
     registerPortal.classList.add('hidden');
     window.EnclaveAuthUI.show();
     window.EnclaveAuthUI.onAuthenticated(afterLogin);
-    initGoogleSignIn();
   })();
-
-  // Google Sign-In button click handlers
-  var btnGoogleLogin = document.getElementById('btn-google-login');
-  if (btnGoogleLogin) {
-    btnGoogleLogin.addEventListener('click', function () {
-      if (!window.google || !window.google.accounts) {
-        alert('Google Sign-In is loading, please try again.');
-        return;
-      }
-      initGoogleSignIn();
-      window.google.accounts.id.prompt();
-    });
-  }
-  var btnGoogleReg = document.getElementById('btn-google-register');
-  if (btnGoogleReg) {
-    btnGoogleReg.addEventListener('click', function () {
-      if (!window.google || !window.google.accounts) {
-        alert('Google Sign-In is loading, please try again.');
-        return;
-      }
-      initGoogleSignIn();
-      window.google.accounts.id.prompt();
-    });
-  }
 
   // spawn crawler when app is unlocked
   var unlockObserver = new MutationObserver(function () {

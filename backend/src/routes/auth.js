@@ -1,5 +1,4 @@
 const express = require('express');
-const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
@@ -17,91 +16,6 @@ try {
 
 const router = express.Router();
 const passwordResetCodes = new Map();
-
-// Clerk JWKS cache
-let clerkJwks = null;
-let clerkJwksExpiry = 0;
-
-async function getClerkJwks() {
-  const issuer = 'https://striking-musks-1237.clerk.accounts.dev';
-  if (clerkJwks && Date.now() < clerkJwksExpiry) return clerkJwks;
-  try {
-    const res = await fetch(`${issuer}/.well-known/jwks.json`);
-    const data = await res.json();
-    clerkJwks = data;
-    clerkJwksExpiry = Date.now() + 3600000;
-    return data;
-  } catch (e) {
-    console.error('[AUTH] Failed to fetch Clerk JWKS:', e.message);
-    return null;
-  }
-}
-
-function getClairkid(kid, jwks) {
-  if (!jwks || !jwks.keys) return null;
-  return jwks.keys.find(k => k.kid === kid);
-}
-
-function importSpki(jwk) {
-  return crypto.createPublicKey({
-    key: { ...jwk, alg: undefined, key_ops: undefined },
-    format: 'jwk'
-  });
-}
-
-async function verifyClerkToken(token) {
-  const issuer = 'https://striking-musks-1237.clerk.accounts.dev';
-  const decoded = jwt.decode(token, { complete: true });
-  if (!decoded || !decoded.header || !decoded.header.kid) throw new Error('Invalid Clerk token');
-
-  const jwks = await getClerkJwks();
-  const jwk = getClairkid(decoded.header.kid, jwks);
-  if (!jwk) throw new Error('Clerk signing key not found');
-
-  const publicKey = importSpki(jwk);
-  return jwt.verify(token, publicKey, {
-    algorithms: ['RS256'],
-    issuer: issuer
-  });
-}
-
-router.post('/clerk', async (req, res) => {
-  try {
-    const { clerkToken } = req.body;
-    if (!clerkToken) return error(res, 'Clerk token required', 400);
-
-    const payload = await verifyClerkToken(clerkToken);
-    const clerkId = payload.sub;
-    const email = payload.email || (payload.email_addresses && payload.email_addresses[0] && payload.email_addresses[0].email_address) || '';
-    const fullName = payload.name || [payload.given_name, payload.family_name].filter(Boolean).join(' ') || email.split('@')[0] || 'User';
-
-    const users = await table('users');
-    let user = await users.find({ email: email.toLowerCase() });
-
-    if (!user) {
-      const id = uuidv4();
-      const now = new Date().toISOString();
-      await users.insert({
-        id, email: email.toLowerCase(), password_hash: null,
-        full_name: fullName,
-        provider: 'clerk', provider_id: clerkId,
-        created_at: now, updated_at: now
-      });
-      user = { id, email: email.toLowerCase(), full_name: fullName };
-    } else if (!user.provider_id) {
-      await users.update({ id: user.id }, {
-        provider: 'clerk', provider_id: clerkId,
-        updated_at: new Date().toISOString()
-      });
-    }
-
-    const token = generateToken(user.id, user.email);
-    return success(res, { token, user: { id: user.id, email: user.email, fullName: user.full_name } }, 'Clerk sign-in successful');
-  } catch (e) {
-    console.error('[AUTH] Clerk sign-in error:', e.message);
-    return error(res, 'Invalid Clerk token', 401);
-  }
-});
 
 router.post('/register', async (req, res) => {
   try {
@@ -123,7 +37,8 @@ router.post('/register', async (req, res) => {
     const token = generateToken(id, email);
     return success(res, { token, user: { id, email, fullName } }, 'Account created', 201);
   } catch (e) {
-    return error(res, e.message);
+    console.error('[AUTH] Register error:', e);
+    return error(res, e.message || 'Registration failed');
   }
 });
 
@@ -147,7 +62,8 @@ router.post('/login', async (req, res) => {
     const token = generateToken(user.id, user.email);
     return success(res, { token, user: { id: user.id, email: user.email, fullName: user.full_name } }, 'Login successful');
   } catch (e) {
-    return error(res, e.message);
+    console.error('[AUTH] Login error:', e);
+    return error(res, e.message || 'Login failed');
   }
 });
 
@@ -171,7 +87,8 @@ router.post('/forgot-password', async (req, res) => {
 
     return success(res, null, 'If that email is registered, a reset code has been sent.');
   } catch (e) {
-    return error(res, e.message);
+    console.error('[AUTH] Forgot password error:', e);
+    return error(res, e.message || 'Forgot password failed');
   }
 });
 

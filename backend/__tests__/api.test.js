@@ -133,18 +133,18 @@ describe('Auth - Reset Password', () => {
   });
 });
 
-describe('Auth - Clerk', () => {
-  it('POST /api/auth/clerk returns 400 without clerkToken', async () => {
+describe('Auth - Google', () => {
+  it('POST /api/auth/google returns 400 without credential', async () => {
     const res = await request(app)
-      .post('/api/auth/clerk')
+      .post('/api/auth/google')
       .send({});
     expect(res.status).toBe(400);
   });
 
-  it('POST /api/auth/clerk returns 401 with invalid token', async () => {
+  it('POST /api/auth/google returns 401 with invalid token', async () => {
     const res = await request(app)
-      .post('/api/auth/clerk')
-      .send({ clerkToken: 'invalid-token' });
+      .post('/api/auth/google')
+      .send({ credential: 'invalid-google-token' });
     expect(res.status).toBe(401);
   });
 });

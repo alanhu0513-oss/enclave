@@ -28,7 +28,9 @@ router.get('/data', async (req, res) => {
     if (alerts) alerts.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
     if (documents) documents.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
-    return success(res, { user, faceprint, voiceprint, signature, alerts, documents });
+    const safeUser = user ? { id: user.id, email: user.email, fullName: user.full_name, provider: user.provider, avatar_url: user.avatar_url, created_at: user.created_at, updated_at: user.updated_at } : null;
+
+    return success(res, { user: safeUser, faceprint, voiceprint, signature, alerts, documents });
   } catch (e) {
     return error(res, e.message);
   }

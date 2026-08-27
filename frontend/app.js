@@ -1680,7 +1680,7 @@
      INITIAL REGISTRATION ENROLLMENT
      ═══════════════════════════════════════════════════════ */
 
-  function showRegError(msg) { regError.textContent = msg; regError.classList.remove('hidden'); }
+  function showRegError(msg) { if (!msg) { regError.textContent = ''; regError.classList.add('hidden'); } else { regError.textContent = msg; regError.classList.remove('hidden'); } }
   function hideRegError() { regError.textContent = ''; regError.classList.add('hidden'); }
 
   function advRegStep(show, hide) {
@@ -1736,7 +1736,11 @@
   }
 
   btnRegCapture.addEventListener('click', function () {
-    if (!regStream || !regFaceCanvas) return;
+    if (!regFaceCanvas) { showRegError('System error: canvas not found.'); return; }
+    if (!regStream) {
+      showRegError('Camera not active. Please allow camera access or use the upload link below.');
+      return;
+    }
     var w = 64, h = 48;
     regFaceCanvas.width = w;
     regFaceCanvas.height = h;
@@ -2135,12 +2139,13 @@
   regPortraitFile.addEventListener('change', function () {
     var file = regPortraitFile.files[0];
     if (!file) return;
+    showRegError('');
     var reader = new FileReader();
     reader.onload = function (e) {
       var img = new Image();
       img.onload = function () {
         var w = 120, h = Math.round(120 * img.height / img.width);
-        if (!regFaceCanvas) return;
+        if (!regFaceCanvas) { showRegError('System error: canvas not found.'); return; }
         regFaceCanvas.width = w; regFaceCanvas.height = h;
         var ctx = regFaceCanvas.getContext('2d');
         ctx.drawImage(img, 0, 0, w, h);
@@ -2166,20 +2171,24 @@
         hashImageData(regFaceCanvas).then(function (hash) {
           if (hash) lsSet('enclave_faceprint_hash', hash);
         });
-        regFacePreview.innerHTML = '';
+        regFacePreview.innerHTML = '<p style="font-size:0.7rem;color:#00FF88;margin:0 0 4px;">Portrait captured</p>';
         var thumb = document.createElement('canvas');
         thumb.width = w; thumb.height = h;
+        thumb.style.cssText = 'border:1px solid rgba(0,255,136,0.3);border-radius:4px;';
         thumb.getContext('2d').putImageData(id, 0, 0);
         regFacePreview.appendChild(thumb);
         regFacePreview.classList.remove('hidden');
+        regFacePreview.style.cssText = 'text-align:center;';
         closeRegCamera();
         btnRegCapture.disabled = true;
         btnRegCapture.textContent = 'Captured';
         btnRegFaceDone.disabled = false;
         btnRegFaceDone.style.opacity = '1';
       };
+      img.onerror = function () { showRegError('Failed to load image. Try a different file.'); };
       img.src = e.target.result;
     };
+    reader.onerror = function () { showRegError('Failed to read file.'); };
     reader.readAsDataURL(file);
   });
 

@@ -13,6 +13,8 @@ import { cn } from "@/lib/utils";
 import { useApp, type TabId } from "@/lib/app-context";
 import { useAuth } from "@/lib/auth";
 import { ShieldMark } from "@/components/ui/logo";
+import { PlanModal } from "./plan-modal";
+import { useState } from "react";
 
 const NAV: { id: TabId; label: string; icon: typeof Home }[] = [
   { id: "home", label: "Home", icon: Home },
@@ -32,6 +34,7 @@ interface SidebarProps {
 export function Sidebar({ mobile = false, open, onClose }: SidebarProps) {
   const { tab, setTab, unread } = useApp();
   const { user, lock } = useAuth();
+  const [planModalOpen, setPlanModalOpen] = useState(false);
 
   const initials = (user?.fullName || user?.email || "U")
     .slice(0, 2)
@@ -55,7 +58,7 @@ export function Sidebar({ mobile = false, open, onClose }: SidebarProps) {
         }}
         transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex w-[260px] flex-col border-r border-white/[0.07] bg-surface-1/95 backdrop-blur-xl md:sticky md:top-0 md:h-screen",
+          "fixed inset-y-0 left-0 z-40 flex w-[260px] flex-col border-r border-white/[0.07] bg-surface-1/95 backdrop-blur-xl md:sticky md:top-0 md:h-screen",
           mobile ? "md:hidden" : "hidden md:flex"
         )}
       >
@@ -124,9 +127,12 @@ export function Sidebar({ mobile = false, open, onClose }: SidebarProps) {
         {/* Bottom: user + lock */}
         <div className="border-t border-white/[0.07] p-3">
           <div className="flex items-center gap-3 rounded-xl px-2 py-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-green to-cyan text-xs font-bold text-black">
+            <button
+              onClick={() => setPlanModalOpen(true)}
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-green to-cyan text-xs font-bold text-black transition-all hover:scale-105"
+            >
               {initials}
-            </div>
+            </button>
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium text-ink">
                 {user?.fullName || "User"}
@@ -145,6 +151,8 @@ export function Sidebar({ mobile = false, open, onClose }: SidebarProps) {
           </div>
         </div>
       </motion.aside>
+
+      <PlanModal open={planModalOpen} onClose={() => setPlanModalOpen(false)} />
     </>
   );
 }

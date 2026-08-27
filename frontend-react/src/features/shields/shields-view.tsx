@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Shield, ShieldCheck, ShieldAlert } from "lucide-react";
 import { useApp } from "@/lib/app-context";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -15,15 +15,40 @@ const SHIELDS = [
   { key: "rights", name: "Rights Shield", desc: "Watermarks & legal documentation to assert ownership fast.", color: "text-cyan accent-cyan" },
 ] as const;
 
-export function ShieldsView() {
-  const { toast } = useApp();
-  const [toggles, setToggles] = useState<Record<string, boolean>>({
+const SHIELDS_STORAGE_KEY = "enclave_shields_state";
+
+export function getShieldStates(): Record<string, boolean> {
+  if (typeof window === "undefined") return {
     crawler: true,
     monitor: true,
     biometric: false,
     takedown: false,
     rights: true,
-  });
+  };
+  const stored = localStorage.getItem(SHIELDS_STORAGE_KEY);
+  if (stored) {
+    try {
+      return JSON.parse(stored);
+    } catch {
+      // ignore
+    }
+  }
+  return {
+    crawler: true,
+    monitor: true,
+    biometric: false,
+    takedown: false,
+    rights: true,
+  };
+}
+
+export function ShieldsView() {
+  const { toast } = useApp();
+  const [toggles, setToggles] = useState<Record<string, boolean>>(getShieldStates());
+
+  useEffect(() => {
+    localStorage.setItem(SHIELDS_STORAGE_KEY, JSON.stringify(toggles));
+  }, [toggles]);
 
   const activeCount = Object.values(toggles).filter(Boolean).length;
 

@@ -30,8 +30,9 @@ import {
 import { SocialProofFeed } from "@/components/psychology/social-proof";
 import { BadgesGrid } from "@/components/psychology/badges";
 import { InsightsList, ProtectionTimeline } from "@/components/psychology/insights";
+import { getShieldStates } from "@/features/shields/shields-view";
 
-const SHIELDS_ACTIVE = 5;
+const TOTAL_SHIELDS = 5;
 
 export function HomeView() {
   const { setTab, toast } = useApp();
@@ -39,6 +40,7 @@ export function HomeView() {
   const psych = usePsychology();
   const [data, setData] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [shieldsActive, setShieldsActive] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -52,6 +54,12 @@ export function HomeView() {
     };
   }, [user]);
 
+  useEffect(() => {
+    const shieldStates = getShieldStates();
+    const activeCount = Object.values(shieldStates).filter(Boolean).length;
+    setShieldsActive(activeCount);
+  }, []);
+
   const alerts = data?.alerts ?? [];
   const critical = alerts.filter((a) => (a.confidence ?? 0) >= 80).length;
   const elevated = alerts.filter(
@@ -59,13 +67,12 @@ export function HomeView() {
   ).length;
   const safe = alerts.filter((a) => (a.confidence ?? 0) < 50).length;
 
-  const protectionScore = Math.max(
-    8,
-    Math.round(100 - Math.min(92, critical * 18 + elevated * 9) + Math.min(20, safe))
-  );
+  // Calculate protection score based on active shields and alerts
+  const baseScore = Math.round((shieldsActive / TOTAL_SHIELDS) * 100);
+  const alertPenalty = Math.min(30, critical * 10 + elevated * 5);
+  const protectionScore = Math.max(8, baseScore - alertPenalty);
 
   const firstName = user?.fullName || "Guardian";
-  const shieldsActive = Math.min(SHIELDS_ACTIVE, 2 + Math.min(critical, 3));
 
   useEffect(() => {
     const newly = psych.checkBadges(shieldsActive);

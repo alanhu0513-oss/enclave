@@ -8,13 +8,31 @@ import {
   ShieldCheck,
   Download,
   TrendingUp,
+  PieChart as PieChartIcon,
+  LineChart as LineChartIcon,
 } from "lucide-react";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  BarChart,
+  Bar,
+  Legend,
+} from "recharts";
 import { api } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StaggerContainer, StaggerItem } from "@/components/ui/motion";
 import { cn } from "@/lib/utils";
+import { getShieldStates } from "@/features/shields/shields-view";
 
 export function InsightsView() {
   const [reports, setReports] = useState<any[] | null>(null);
@@ -59,6 +77,39 @@ export function InsightsView() {
   const tdStat = (takedowns as any) || {};
   const total = tdStat.removed ?? tdStat.total ?? 0;
 
+  // Calculate protection score based on active shields
+  const shieldStates = getShieldStates();
+  const shieldsActive = Object.values(shieldStates).filter(Boolean).length;
+  const protectionScore = Math.round((shieldsActive / 5) * 100);
+
+  // Sample data for charts (will be replaced with real data from API)
+  const threatTrendData = [
+    { month: "Jan", threats: 12, blocked: 10 },
+    { month: "Feb", threats: 19, blocked: 17 },
+    { month: "Mar", threats: 15, blocked: 14 },
+    { month: "Apr", threats: 22, blocked: 20 },
+    { month: "May", threats: 18, blocked: 17 },
+    { month: "Jun", threats: 25, blocked: 24 },
+  ];
+
+  const threatTypeData = [
+    { name: "Deepfakes", value: 35, color: "#00ff88" },
+    { name: "Identity Theft", value: 25, color: "#00bfff" },
+    { name: "Phishing", value: 20, color: "#ffb020" },
+    { name: "Impersonation", value: 15, color: "#a855f7" },
+    { name: "Other", value: 5, color: "#ff4757" },
+  ];
+
+  const scanActivityData = [
+    { day: "Mon", scans: 3 },
+    { day: "Tue", scans: 5 },
+    { day: "Wed", scans: 2 },
+    { day: "Thu", scans: 7 },
+    { day: "Fri", scans: 4 },
+    { day: "Sat", scans: 6 },
+    { day: "Sun", scans: 3 },
+  ];
+
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6">
       <div className="flex items-center gap-3">
@@ -80,14 +131,142 @@ export function InsightsView() {
           <Metric icon={ShieldCheck} color="green" value={loading ? "—" : String(total)} label="Takedowns filed" />
         </StaggerItem>
         <StaggerItem>
-          <Metric icon={TrendingUp} color="cyan" value={loading ? "—" : "92%"} label="Protection score" />
+          <Metric icon={TrendingUp} color="cyan" value={loading ? "—" : String(protectionScore) + "%"} label="Protection score" />
         </StaggerItem>
         <StaggerItem>
           <Metric icon={FileText} color="amber" value={loading ? "—" : String(reports?.length ?? 0)} label="Reports generated" />
         </StaggerItem>
       </StaggerContainer>
 
-      {/* Reports */}
+      {/* Charts Grid */}
+      <div className="grid gap-5 lg:grid-cols-2">
+        {/* Threat Trend Line Chart */}
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <LineChartIcon className="h-5 w-5 text-cyan" />
+              Threat Detection Trends
+            </CardTitle>
+            <CardDescription>Monthly threat detection and blocking activity</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <Skeleton className="h-64" />
+            ) : (
+              <ResponsiveContainer width="100%" height={280}>
+                <LineChart data={threatTrendData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" />
+                  <XAxis dataKey="month" stroke="#9aa7b8" fontSize={12} />
+                  <YAxis stroke="#9aa7b8" fontSize={12} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "#0a0f18",
+                      border: "1px solid #ffffff15",
+                      borderRadius: "8px",
+                      color: "#e7ecf3",
+                    }}
+                  />
+                  <Legend />
+                  <Line
+                    type="monotone"
+                    dataKey="threats"
+                    stroke="#ff4757"
+                    strokeWidth={2}
+                    dot={{ fill: "#ff4757" }}
+                    name="Threats Detected"
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="blocked"
+                    stroke="#00ff88"
+                    strokeWidth={2}
+                    dot={{ fill: "#00ff88" }}
+                    name="Threats Blocked"
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Threat Type Distribution Pie Chart */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <PieChartIcon className="h-5 w-5 text-purple" />
+              Threat Type Distribution
+            </CardTitle>
+            <CardDescription>Breakdown by threat category</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <Skeleton className="h-64" />
+            ) : (
+              <ResponsiveContainer width="100%" height={250}>
+                <PieChart>
+                  <Pie
+                    data={threatTypeData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={5}
+                    dataKey="value"
+                  >
+                    {threatTypeData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "#0a0f18",
+                      border: "1px solid #ffffff15",
+                      borderRadius: "8px",
+                      color: "#e7ecf3",
+                    }}
+                  />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Weekly Scan Activity Bar Chart */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BarChart3 className="h-5 w-5 text-amber" />
+              Weekly Scan Activity
+            </CardTitle>
+            <CardDescription>Daily scan counts this week</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <Skeleton className="h-64" />
+            ) : (
+              <ResponsiveContainer width="100%" height={250}>
+                <BarChart data={scanActivityData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" />
+                  <XAxis dataKey="day" stroke="#9aa7b8" fontSize={12} />
+                  <YAxis stroke="#9aa7b8" fontSize={12} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "#0a0f18",
+                      border: "1px solid #ffffff15",
+                      borderRadius: "8px",
+                      color: "#e7ecf3",
+                    }}
+                  />
+                  <Bar dataKey="scans" fill="#ffb020" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Reports section follows... */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">

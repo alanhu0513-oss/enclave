@@ -3217,23 +3217,189 @@
      UI LIBRARIES: Particles.js, Vanilla Tilt, Scroll Reveal
      ═══════════════════════════════════════════════════════ */
 
+  /* ─── Cyber Canvas — Matrix rain + circuit grid + HUD rings ─── */
+  function initCyberCanvas() {
+    var canvas = document.getElementById('cyber-canvas');
+    if (!canvas) return;
+    var ctx = canvas.getContext('2d');
+    var W, H;
+
+    function resize() {
+      W = canvas.width = window.innerWidth;
+      H = canvas.height = window.innerHeight;
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    /* Matrix rain columns */
+    var chars = 'アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン0123456789ABCDEF<>{}[]|/\\';
+    var fontSize = 14;
+    var columns = Math.ceil(W / fontSize);
+    var drops = [];
+    var dropSpeeds = [];
+    var dropColors = [];
+    for (var i = 0; i < columns; i++) {
+      drops[i] = Math.random() * -100;
+      dropSpeeds[i] = 0.3 + Math.random() * 0.7;
+      dropColors[i] = Math.random() > 0.7 ? '#00FF88' : (Math.random() > 0.5 ? '#00BFFF' : '#FF3366');
+    }
+
+    /* Circuit nodes */
+    var nodes = [];
+    var nodeCount = 12;
+    for (var i = 0; i < nodeCount; i++) {
+      nodes.push({
+        x: Math.random() * W,
+        y: Math.random() * H,
+        vx: (Math.random() - 0.5) * 0.4,
+        vy: (Math.random() - 0.5) * 0.4,
+        r: 2 + Math.random() * 2,
+        pulse: Math.random() * Math.PI * 2
+      });
+    }
+
+    /* HUD rings */
+    var hudRings = [
+      { x: W * 0.15, y: H * 0.3, r: 60, angle: 0, speed: 0.003, color: '#00FF88' },
+      { x: W * 0.85, y: H * 0.6, r: 45, angle: 0, speed: -0.005, color: '#00BFFF' },
+      { x: W * 0.5, y: H * 0.15, r: 35, angle: 0, speed: 0.004, color: '#FF3366' }
+    ];
+
+    var frame = 0;
+
+    function draw() {
+      ctx.clearRect(0, 0, W, H);
+      frame++;
+
+      /* Matrix rain */
+      ctx.font = fontSize + 'px monospace';
+      for (var i = 0; i < columns; i++) {
+        var char = chars[Math.floor(Math.random() * chars.length)];
+        var x = i * fontSize;
+        var y = drops[i] * fontSize;
+        if (y > 0 && y < H) {
+          ctx.globalAlpha = 0.12 + Math.random() * 0.08;
+          ctx.fillStyle = dropColors[i];
+          ctx.fillText(char, x, y);
+        }
+        if (y > H && Math.random() > 0.98) {
+          drops[i] = 0;
+          dropColors[i] = Math.random() > 0.7 ? '#00FF88' : (Math.random() > 0.5 ? '#00BFFF' : '#FF3366');
+        }
+        drops[i] += dropSpeeds[i];
+      }
+
+      /* Circuit grid lines */
+      ctx.globalAlpha = 0.04;
+      ctx.strokeStyle = '#00FF88';
+      ctx.lineWidth = 0.5;
+      var gridSize = 80;
+      var offsetX = (frame * 0.2) % gridSize;
+      for (var gx = -gridSize + offsetX; gx < W + gridSize; gx += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(gx, 0);
+        ctx.lineTo(gx, H);
+        ctx.stroke();
+      }
+      var offsetY = (frame * 0.15) % gridSize;
+      for (var gy = -gridSize + offsetY; gy < H + gridSize; gy += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(0, gy);
+        ctx.lineTo(W, gy);
+        ctx.stroke();
+      }
+
+      /* Circuit nodes + connections */
+      ctx.globalAlpha = 1;
+      for (var i = 0; i < nodes.length; i++) {
+        var n = nodes[i];
+        n.x += n.vx;
+        n.y += n.vy;
+        n.pulse += 0.02;
+        if (n.x < 0 || n.x > W) n.vx *= -1;
+        if (n.y < 0 || n.y > H) n.vy *= -1;
+        var glow = 0.3 + 0.3 * Math.sin(n.pulse);
+        ctx.globalAlpha = glow;
+        ctx.fillStyle = '#00FF88';
+        ctx.beginPath();
+        ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2);
+        ctx.fill();
+        /* connect nearby nodes */
+        for (var j = i + 1; j < nodes.length; j++) {
+          var m = nodes[j];
+          var dx = n.x - m.x;
+          var dy = n.y - m.y;
+          var dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < 200) {
+            ctx.globalAlpha = (1 - dist / 200) * 0.15;
+            ctx.strokeStyle = '#00FF88';
+            ctx.lineWidth = 0.5;
+            ctx.beginPath();
+            ctx.moveTo(n.x, n.y);
+            ctx.lineTo(m.x, m.y);
+            ctx.stroke();
+          }
+        }
+      }
+
+      /* HUD rings */
+      for (var r = 0; r < hudRings.length; r++) {
+        var ring = hudRings[r];
+        ring.angle += ring.speed;
+        ctx.globalAlpha = 0.12;
+        ctx.strokeStyle = ring.color;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(ring.x, ring.y, ring.r, 0, Math.PI * 2);
+        ctx.stroke();
+        /* rotating arc segment */
+        ctx.globalAlpha = 0.25;
+        ctx.beginPath();
+        ctx.arc(ring.x, ring.y, ring.r, ring.angle, ring.angle + Math.PI * 0.6);
+        ctx.stroke();
+        /* center dot */
+        ctx.globalAlpha = 0.4;
+        ctx.fillStyle = ring.color;
+        ctx.beginPath();
+        ctx.arc(ring.x, ring.y, 2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      /* Horizontal scan line */
+      ctx.globalAlpha = 0.06;
+      ctx.fillStyle = '#00FF88';
+      var scanY = (frame * 1.5) % H;
+      ctx.fillRect(0, scanY, W, 2);
+
+      ctx.globalAlpha = 1;
+      requestAnimationFrame(draw);
+    }
+    draw();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initCyberCanvas);
+  } else {
+    setTimeout(initCyberCanvas, 100);
+  }
+
   /* ─── Particles.js — Login overlay background ─── */
   function initParticles() {
     var canvas = document.getElementById('particles-canvas');
     if (!canvas || !window.tsParticles) return;
     window.tsParticles.load('particles-canvas', {
       particles: {
-        number: { value: 40, density: { enable: true, width: 600, height: 400 } },
+        number: { value: 60, density: { enable: true, width: 800, height: 600 } },
         color: { value: ['#00FF88', '#00BFFF', '#FF3366', '#FFD700'] },
-        shape: { type: 'circle' },
-        opacity: { value: { min: 0.1, max: 0.35 }, animation: { enable: true, speed: 0.4, minimumValue: 0.05 } },
-        size: { value: { min: 1, max: 3 }, animation: { enable: true, speed: 1, minimumValue: 0.5 } },
-        move: { enable: true, speed: 0.6, direction: 'none', random: true, straight: false, outModes: { default: 'out' } },
-        links: { enable: true, distance: 120, color: '#00FF88', opacity: 0.15, width: 0.5 }
+        shape: { type: ['circle', 'polygon'], polygon: [{ sides: 6, rotation: false }] },
+        opacity: { value: { min: 0.15, max: 0.5 }, animation: { enable: true, speed: 0.6, minimumValue: 0.08 } },
+        size: { value: { min: 1.5, max: 4 }, animation: { enable: true, speed: 1.5, minimumValue: 0.8 } },
+        move: { enable: true, speed: 0.8, direction: 'none', random: true, straight: false, outModes: { default: 'out' } },
+        links: { enable: true, distance: 160, color: '#00FF88', opacity: 0.2, width: 0.8 }
       },
       interactivity: {
         events: { onHover: { enable: true, mode: 'grab' }, resize: true },
-        modes: { grab: { distance: 140, links: { opacity: 0.3 } } }
+        modes: { grab: { distance: 180, links: { opacity: 0.5 } } }
       },
       detectRetina: true,
       background: { color: 'transparent' }

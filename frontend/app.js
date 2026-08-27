@@ -2,8 +2,13 @@
   'use strict';
 
   /* ─── Service Worker ─── */
+  // Clear ALL caches first, then register fresh SW
+  if (window.caches && caches.keys) {
+    caches.keys().then(function (keys) {
+      return Promise.all(keys.map(function (k) { return caches.delete(k); }));
+    });
+  }
   if ('serviceWorker' in navigator) {
-    // Force-unregister any stale SW first, then register fresh
     navigator.serviceWorker.getRegistrations().then(function (regs) {
       return Promise.all(regs.map(function (r) { return r.unregister(); }));
     }).then(function () {

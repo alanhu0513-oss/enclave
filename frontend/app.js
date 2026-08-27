@@ -39,10 +39,6 @@
   var worker          = null;
   var cryptoKeyPair   = null;
   var cloakInterval   = null;
-  var tunnelActive    = false;
-  var tunnelStream    = null;
-  var tunnelAudioCtx  = null;
-  var tunnelAnimId    = null;
   var loginInitDone   = false;
 
   /* ─── DOM Refs ─── */
@@ -119,7 +115,6 @@
   var faceGuide         = document.getElementById('auth-face-guide');
   var voiceProfileMatch = document.getElementById('voice-profile-match');
   var voiceProfileScore = document.getElementById('voice-profile-score');
-  var btnDeepScan       = document.getElementById('btn-deep-scan');
   var settingsModal     = document.getElementById('settings-modal');
   var settingsPanel     = document.getElementById('settings-panel');
   var btnSettingsOpen   = document.getElementById('nav-settings');
@@ -141,11 +136,6 @@
   var btnApplyFreq       = document.getElementById('btn-settings-apply-freq');
   var toggleWidget       = document.getElementById('toggle-widget');
   var widgetStatusLabel  = document.getElementById('widget-status-label');
-  var tunnelSection      = null;
-  var tunnelSpectrum     = null;
-  var tunnelStatus       = null;
-  var btnTunnel          = null;
-  var tunnelInfo         = null;
 
   /* ─── Toast Alert Banner ─── */
   function showToastAlert(message) {
@@ -174,7 +164,7 @@
 
   /* ─── Universal Media Stream Cleanup ─── */
   function terminateActiveMediaStreams(extraStream) {
-    [authStream, regStream, tunnelStream].forEach(function (s) {
+    [authStream, regStream].forEach(function (s) {
       if (s && s.getTracks) {
         s.getTracks().forEach(function (t) { t.stop(); });
       }
@@ -184,10 +174,8 @@
     }
     authStream = null;
     regStream = null;
-    tunnelStream = null;
     if (authVideo) authVideo.srcObject = null;
     if (regVideo) regVideo.srcObject = null;
-    if (tunnelAudioCtx) { try { tunnelAudioCtx.close(); } catch (e) {} tunnelAudioCtx = null; }
   }
 
   /* ─── localStorage helpers ─── */
@@ -737,10 +725,10 @@
       }
     });
 
-    if (pending === 0 && alertList) {
+    if (alerts.length === 0 && alertList) {
       alertList.innerHTML = '<div class="empty-state"><svg viewBox="0 0 64 64" width="48" height="48" class="empty-state-icon"><circle cx="32" cy="32" r="28" fill="none" stroke="rgba(0,255,136,0.15)" stroke-width="2"/><path d="M32 18v16M32 40v2" stroke="rgba(0,255,136,0.3)" stroke-width="2" stroke-linecap="round"/></svg><p class="empty-state-text">No threats detected</p><p class="empty-state-sub">System is scanning in the background</p></div>';
     }
-    if (pending === 0 && homeAlertList) {
+    if (alerts.length === 0 && homeAlertList) {
       homeAlertList.innerHTML = '<p style="color:var(--text-muted);font-size:0.7rem;padding:0.5rem;">No alerts yet. Run a scan to get started.</p>';
     }
 
@@ -1103,7 +1091,6 @@
     if (window.EnclaveAPI && window.EnclaveAPI.isLoggedIn()) {
       window.EnclaveAPI.stopCrawler().catch(function () {});
     }
-    stopVoiceTunnel();
     stopCameraCloak();
     // Reset auth state for login
     authStep = 'idle';
@@ -1360,8 +1347,8 @@
       }
     });
     // Load current pref when settings open
-    var btnSettingsOpenEl = document.getElementById('btn-settings-open');
-    if (btnSettingsOpenEl) btnSettingsOpenEl.addEventListener('click', initNotificationPrefs);
+    var navSettingsEl = document.getElementById('nav-settings');
+    if (navSettingsEl) navSettingsEl.addEventListener('click', initNotificationPrefs);
   }
 
   /* ─── Legal Documents Modal (Phase 5) ─── */
@@ -1434,7 +1421,6 @@
     btnSettingsLogout.addEventListener('click', function () {
       if (!confirm('Log out of Enclave? All local data will be preserved.')) return;
       if (worker) { worker.active = false; worker = null; }
-      stopVoiceTunnel();
       stopCameraCloak();
       if (window.EnclaveNative && window.EnclaveNative.shieldOverlay && window.EnclaveNative.shieldOverlay.isActive()) {
         window.EnclaveNative.shieldOverlay.stop();
@@ -1453,76 +1439,6 @@
       stageLiveness.classList.add('active');
       stageVoice.classList.remove('active');
       window.EnclaveAuthUI.show();
-    });
-  }
-
-  /* ─── Encrypted Voice Tunnel ─── */
-  function startVoiceTunnel() {
-    if (tunnelActive || !tunnelStatus || !btnTunnel || !tunnelInfo || !tunnelSpectrum) return;
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      tunnelInfo.textContent = 'Microphone unavailable.';
-      return;
-    }
-    navigator.mediaDevices.getUserMedia({ audio: true }).then(function (s) {
-      tunnelStream = s;
-      tunnelAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      var source = tunnelAudioCtx.createMediaStreamSource(s);
-      // apply scrambling filters for external comms protection
-      var chainEnd = applyVoiceScrambling(tunnelAudioCtx, source);
-      // analyser on the scrambled output for live visualization
-      var tunnelAnalyser = tunnelAudioCtx.createAnalyser();
-      tunnelAnalyser.fftSize = 128;
-      if (chainEnd) {
-        chainEnd.connect(tunnelAnalyser);
-      } else {
-        source.connect(tunnelAnalyser);
-      }
-
-      tunnelActive = true;
-      tunnelStatus.textContent = 'ACTIVE';
-      tunnelStatus.className = 'tunnel-status-indicator active';
-      btnTunnel.textContent = 'Deactivate Tunnel';
-      tunnelInfo.textContent = 'Encrypted tunnel active — microphone feed scrambled.';
-
-      var vCtx = tunnelSpectrum.getContext('2d');
-      function drawTunnel() {
-        if (!tunnelActive) return;
-        var freqData = new Uint8Array(tunnelAnalyser.frequencyBinCount);
-        tunnelAnalyser.getByteFrequencyData(freqData);
-        vCtx.fillStyle = '#060a10';
-        vCtx.fillRect(0, 0, tunnelSpectrum.width, tunnelSpectrum.height);
-        var barW = tunnelSpectrum.width / freqData.length;
-        for (var i = 0; i < freqData.length; i++) {
-          var h = (freqData[i] / 255) * tunnelSpectrum.height;
-          vCtx.fillStyle = 'hsl(320, 80%, ' + (30 + h / tunnelSpectrum.height * 40) + '%)';
-          vCtx.fillRect(i * barW, tunnelSpectrum.height - h, barW - 1, h);
-        }
-        tunnelAnimId = requestAnimationFrame(drawTunnel);
-      }
-      drawTunnel();
-    }).catch(function () {
-      tunnelInfo.textContent = 'Mic access denied for tunnel.';
-    });
-  }
-
-  function stopVoiceTunnel() {
-    if (!tunnelStatus || !btnTunnel || !tunnelInfo || !tunnelSpectrum) return;
-    tunnelActive = false;
-    if (tunnelAnimId) { cancelAnimationFrame(tunnelAnimId); tunnelAnimId = null; }
-    terminateActiveMediaStreams();
-    var vCtx = tunnelSpectrum.getContext('2d');
-    vCtx.fillStyle = '#060a10';
-    vCtx.fillRect(0, 0, tunnelSpectrum.width, tunnelSpectrum.height);
-    tunnelStatus.textContent = 'INACTIVE';
-    tunnelStatus.className = 'tunnel-status-indicator inactive';
-    btnTunnel.textContent = 'Activate Tunnel';
-    tunnelInfo.textContent = '';
-  }
-
-  if (btnTunnel) {
-    btnTunnel.addEventListener('click', function () {
-      if (tunnelActive) { stopVoiceTunnel(); }
-      else { startVoiceTunnel(); }
     });
   }
 
@@ -2284,7 +2200,7 @@
     // check if blank (all white)
     var pixelData = sigCtx.getImageData(0, 0, sigCanvas.width, sigCanvas.height).data;
     var blank = true;
-    for (var i = 3; i < pixelData.length; i += 4) { if (pixelData[i] !== 0) { blank = false; break; } }
+    for (var i = 0; i < pixelData.length; i += 4) { if (pixelData[i] !== 255 || pixelData[i+1] !== 255 || pixelData[i+2] !== 255) { blank = false; break; } }
     if (blank) { sigStatus.textContent = 'Please sign before confirming.'; return; }
     lsSet(LS_SIGNATURE, dataUrl);
     sigStatus.textContent = 'Signature saved.';
@@ -2517,11 +2433,6 @@
     Notification.requestPermission();
   }
 
-  // Deep Scan button
-  if (btnDeepScan) {
-    btnDeepScan.addEventListener('click', triggerDeepScan);
-  }
-
   // Pre-load TF.js for ML deepfake detection (in background)
   loadTFJS();
 
@@ -2611,7 +2522,7 @@
       && window.EnclaveNative.cameraImmunizer.isActive();
     var voiceActive = window.EnclaveNative && window.EnclaveNative.voiceShield
       && window.EnclaveNative.voiceShield.isActive();
-    var crawlerActive = worker && worker.active;
+    var crawlerActive = monitoringActive;
     var mlActive = tfjsLoaded && tfjsModel;
 
     if (shieldCameraStatus) {
@@ -3765,11 +3676,6 @@
   var LS_THREATS_BLOCKED = 'enclave_threats_blocked';
   var LS_TAKEDOWNS_DONE = 'enclave_takedowns_done';
 
-  function lsGet(k, def) {
-    try { var v = localStorage.getItem(k); return v !== null ? JSON.parse(v) : def; } catch (e) { return def; }
-  }
-  function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
-
   /* ─── Daily Streak (COMMITMENT & CONSISTENCY + LOSS AVERSION) ─── */
   var streakNumber = document.getElementById('streak-number');
   var streakSub = document.getElementById('streak-sub');
@@ -4104,7 +4010,7 @@
     });
     // Close mobile sidebar after switch
     if (mobileSidebar) mobileSidebar.classList.remove('open');
-    if (sidebarOverlay) sidebarOverlay.classList.remove('open');
+    if (sidebarOverlay) sidebarOverlay.classList.remove('active');
   }
 
   navItems.forEach(function (item) {
@@ -4118,13 +4024,13 @@
   if (btnToggle) {
     btnToggle.addEventListener('click', function () {
       mobileSidebar.classList.toggle('open');
-      sidebarOverlay.classList.toggle('open');
+      sidebarOverlay.classList.toggle('active');
     });
   }
   if (sidebarOverlay) {
     sidebarOverlay.addEventListener('click', function () {
       mobileSidebar.classList.remove('open');
-      sidebarOverlay.classList.remove('open');
+      sidebarOverlay.classList.remove('active');
     });
   }
 

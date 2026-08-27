@@ -1,0 +1,150 @@
+import { motion } from "motion/react";
+import {
+  Home,
+  Shield,
+  ScanSearch,
+  Bell,
+  BarChart3,
+  Settings,
+  Lock,
+  ChevronLeft,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { useApp, type TabId } from "@/lib/app-context";
+import { useAuth } from "@/lib/auth";
+import { ShieldMark } from "@/components/ui/logo";
+
+const NAV: { id: TabId; label: string; icon: typeof Home }[] = [
+  { id: "home", label: "Home", icon: Home },
+  { id: "shield", label: "Shields", icon: Shield },
+  { id: "scan", label: "Scan", icon: ScanSearch },
+  { id: "alerts", label: "Alerts", icon: Bell },
+  { id: "insights", label: "Insights", icon: BarChart3 },
+  { id: "settings", label: "Settings", icon: Settings },
+];
+
+interface SidebarProps {
+  mobile?: boolean;
+  open?: boolean;
+  onClose?: () => void;
+}
+
+export function Sidebar({ mobile = false, open, onClose }: SidebarProps) {
+  const { tab, setTab, unread } = useApp();
+  const { user, lock } = useAuth();
+
+  const initials = (user?.fullName || user?.email || "U")
+    .slice(0, 2)
+    .toUpperCase();
+
+  return (
+    <>
+      {mobile && (
+        <motion.div
+          initial={false}
+          animate={{ opacity: open ? 1 : 0 }}
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm md:hidden"
+          onClick={onClose}
+        />
+      )}
+      <motion.aside
+        initial={false}
+        animate={{
+          x: !open && mobile ? "-100%" : 0,
+          opacity: 1,
+        }}
+        transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+        className={cn(
+          "fixed inset-y-0 left-0 z-50 flex w-[260px] flex-col border-r border-white/[0.07] bg-surface-1/95 backdrop-blur-xl md:sticky md:top-0 md:h-screen",
+          mobile ? "md:hidden" : "hidden md:flex"
+        )}
+      >
+        {/* Brand */}
+        <div className="flex h-16 items-center justify-between px-5">
+          <div className="flex items-center gap-2.5">
+            <ShieldMark size={28} />
+            <span className="font-display text-[15px] font-bold tracking-[0.26em] text-ink">
+              ENCLAVE
+            </span>
+          </div>
+          <ChevronLeft
+            className={cn(
+              "h-4 w-4 text-ink-faint transition-opacity",
+              mobile ? "opacity-0" : "md:hidden"
+            )}
+          />
+        </div>
+
+        {/* Nav */}
+        <nav className="mt-2 flex flex-1 flex-col gap-1 px-3">
+          {NAV.map((item) => {
+            const Icon = item.icon;
+            const active = tab === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => {
+                  setTab(item.id);
+                  onClose?.();
+                }}
+                className={cn(
+                  "group relative flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium transition-all duration-200",
+                  active
+                    ? "text-ink"
+                    : "text-ink-muted hover:text-ink"
+                )}
+              >
+                {active && (
+                  <motion.span
+                    layoutId={mobile ? "mobile-nav-pill" : "nav-pill"}
+                    className="absolute inset-0 rounded-xl bg-white/[0.06]"
+                    transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+                  />
+                )}
+                {active && (
+                  <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-full bg-gradient-to-b from-green to-cyan" />
+                )}
+                <Icon
+                  className={cn(
+                    "relative z-10 h-[18px] w-[18px] transition-colors",
+                    active ? "text-green" : "text-ink-faint group-hover:text-ink-muted"
+                  )}
+                />
+                <span className="relative z-10">{item.label}</span>
+                {item.id === "alerts" && unread > 0 && (
+                  <span className="relative z-10 ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-red px-1.5 text-[11px] font-bold text-white">
+                    {unread > 99 ? "99+" : unread}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </nav>
+
+        {/* Bottom: user + lock */}
+        <div className="border-t border-white/[0.07] p-3">
+          <div className="flex items-center gap-3 rounded-xl px-2 py-2">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-green to-cyan text-xs font-bold text-black">
+              {initials}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium text-ink">
+                {user?.fullName || "User"}
+              </p>
+              <p className="text-xs text-ink-faint">
+                {(user?.plan || "free").toUpperCase()} PLAN
+              </p>
+            </div>
+            <button
+              onClick={lock}
+              title="Lock Vault"
+              className="rounded-lg p-2 text-ink-faint transition-colors hover:bg-white/[0.07] hover:text-ink"
+            >
+              <Lock className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      </motion.aside>
+    </>
+  );
+}

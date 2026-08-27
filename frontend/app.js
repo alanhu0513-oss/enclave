@@ -1741,53 +1741,48 @@
       showRegError('Camera not active. Please allow camera access or use the upload link below.');
       return;
     }
-    var w = 64, h = 48;
-    regFaceCanvas.width = w;
-    regFaceCanvas.height = h;
-    var ctx = regFaceCanvas.getContext('2d');
-    ctx.drawImage(regVideo, 0, 0, w, h);
+    try {
+      var w = 64, h = 48;
+      regFaceCanvas.width = w;
+      regFaceCanvas.height = h;
+      var ctx = regFaceCanvas.getContext('2d');
+      ctx.drawImage(regVideo, 0, 0, w, h);
 
-    // grayscale for smaller storage
-    var imgData = ctx.getImageData(0, 0, w, h);
-    var d = imgData.data;
-    for (var i = 0; i < d.length; i += 4) {
-      var g = d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114;
-      d[i] = d[i + 1] = d[i + 2] = g;
-    }
-    ctx.putImageData(imgData, 0, 0);
-
-    var dataUrl = regFaceCanvas.toDataURL('image/png');
-
-    var faceMatrix = {
-      type: 'face_spatial_matrix',
-      width: w,
-      height: h,
-      grayscale: true,
-      thumbnail: dataUrl,
-      captured: new Date().toISOString()
-    };
-    lsSet(LS_FACEPRINT, faceMatrix);
-
-    // Proof of Reality: generate ECDSA keypair + SHA-256 hash
-    generateIdentityProof();
-    hashImageData(regFaceCanvas).then(function (hash) {
-      if (hash) {
-        lsSet('enclave_faceprint_hash', hash);
+      // grayscale for smaller storage
+      var imgData = ctx.getImageData(0, 0, w, h);
+      var d = imgData.data;
+      for (var i = 0; i < d.length; i += 4) {
+        var g = d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114;
+        d[i] = d[i + 1] = d[i + 2] = g;
       }
-    });
+      ctx.putImageData(imgData, 0, 0);
 
-    regFacePreview.innerHTML = '';
-    var thumb = document.createElement('canvas');
-    thumb.width = w; thumb.height = h;
-    thumb.getContext('2d').putImageData(imgData, 0, 0);
-    regFacePreview.appendChild(thumb);
-    regFacePreview.classList.remove('hidden');
+      var dataUrl = regFaceCanvas.toDataURL('image/png');
+      lsSet(LS_FACEPRINT, { type: 'face_spatial_matrix', width: w, height: h, grayscale: true, thumbnail: dataUrl, captured: new Date().toISOString() });
 
+      regFacePreview.innerHTML = '<p style="font-size:0.7rem;color:#00FF88;margin:0 0 4px;">Portrait captured</p>';
+      var thumb = document.createElement('canvas');
+      thumb.width = w; thumb.height = h;
+      thumb.style.cssText = 'border:1px solid rgba(0,255,136,0.3);border-radius:4px;';
+      thumb.getContext('2d').putImageData(imgData, 0, 0);
+      regFacePreview.appendChild(thumb);
+      regFacePreview.classList.remove('hidden');
+    } catch (e) { showRegError('Capture failed: ' + e.message); return; }
+
+    // Enable Continue button immediately — non-critical crypto runs async
     closeRegCamera();
     btnRegCapture.disabled = true;
     btnRegCapture.textContent = 'Captured';
     btnRegFaceDone.disabled = false;
     btnRegFaceDone.style.opacity = '1';
+
+    try { generateIdentityProof(); } catch (_) {}
+    var hashResult = hashImageData(regFaceCanvas);
+    if (hashResult && hashResult.then) {
+      hashResult.then(function (hash) {
+        if (hash) lsSet('enclave_faceprint_hash', hash);
+      }).catch(function () {});
+    }
   });
 
   btnRegFaceDone.addEventListener('click', function () {
@@ -2146,44 +2141,43 @@
       img.onload = function () {
         var w = 120, h = Math.round(120 * img.height / img.width);
         if (!regFaceCanvas) { showRegError('System error: canvas not found.'); return; }
-        regFaceCanvas.width = w; regFaceCanvas.height = h;
-        var ctx = regFaceCanvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, w, h);
-        var id = ctx.getImageData(0, 0, w, h);
-        var d = id.data;
-        for (var i = 0; i < d.length; i += 4) {
-          var g = d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114;
-          d[i] = d[i + 1] = d[i + 2] = g;
-        }
-        ctx.putImageData(id, 0, 0);
-        var dataUrl = regFaceCanvas.toDataURL('image/png');
-        var faceMatrix = {
-          type: 'face_spatial_matrix',
-          width: w,
-          height: h,
-          grayscale: true,
-          thumbnail: dataUrl,
-          captured: new Date().toISOString()
-        };
-        lsSet(LS_FACEPRINT, faceMatrix);
-        // Proof of Reality for uploaded portrait
-        generateIdentityProof();
-        hashImageData(regFaceCanvas).then(function (hash) {
-          if (hash) lsSet('enclave_faceprint_hash', hash);
-        });
-        regFacePreview.innerHTML = '<p style="font-size:0.7rem;color:#00FF88;margin:0 0 4px;">Portrait captured</p>';
-        var thumb = document.createElement('canvas');
-        thumb.width = w; thumb.height = h;
-        thumb.style.cssText = 'border:1px solid rgba(0,255,136,0.3);border-radius:4px;';
-        thumb.getContext('2d').putImageData(id, 0, 0);
-        regFacePreview.appendChild(thumb);
-        regFacePreview.classList.remove('hidden');
-        regFacePreview.style.cssText = 'text-align:center;';
+        try {
+          regFaceCanvas.width = w; regFaceCanvas.height = h;
+          var ctx = regFaceCanvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, w, h);
+          var id = ctx.getImageData(0, 0, w, h);
+          var d = id.data;
+          for (var i = 0; i < d.length; i += 4) {
+            var g = d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114;
+            d[i] = d[i + 1] = d[i + 2] = g;
+          }
+          ctx.putImageData(id, 0, 0);
+          lsSet(LS_FACEPRINT, { type: 'face_spatial_matrix', width: w, height: h, grayscale: true, thumbnail: regFaceCanvas.toDataURL('image/png'), captured: new Date().toISOString() });
+
+          regFacePreview.innerHTML = '<p style="font-size:0.7rem;color:#00FF88;margin:0 0 4px;">Portrait captured</p>';
+          var thumb = document.createElement('canvas');
+          thumb.width = w; thumb.height = h;
+          thumb.style.cssText = 'border:1px solid rgba(0,255,136,0.3);border-radius:4px;';
+          thumb.getContext('2d').putImageData(id, 0, 0);
+          regFacePreview.appendChild(thumb);
+          regFacePreview.classList.remove('hidden');
+          regFacePreview.style.cssText = 'text-align:center;';
+        } catch (err) { showRegError('Upload failed: ' + err.message); return; }
+
+        // Enable Continue button immediately — non-critical crypto runs async
         closeRegCamera();
         btnRegCapture.disabled = true;
         btnRegCapture.textContent = 'Captured';
         btnRegFaceDone.disabled = false;
         btnRegFaceDone.style.opacity = '1';
+
+        try { generateIdentityProof(); } catch (_) {}
+        var hashResult2 = hashImageData(regFaceCanvas);
+        if (hashResult2 && hashResult2.then) {
+          hashResult2.then(function (hash) {
+            if (hash) lsSet('enclave_faceprint_hash', hash);
+          }).catch(function () {});
+        }
       };
       img.onerror = function () { showRegError('Failed to load image. Try a different file.'); };
       img.src = e.target.result;

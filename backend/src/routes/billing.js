@@ -53,22 +53,11 @@ router.post('/portal', authenticate, async (req, res) => {
   }
 });
 
-router.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+// Webhook is mounted in index.js with express.raw() before express.json()
+// This is a fallback for mock mode
+router.post('/webhook-fallback', async (req, res) => {
   try {
-    const sig = req.headers['stripe-signature'];
-    let event;
-
-    if (!billing.useMock && sig) {
-      const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-      try {
-        event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
-      } catch (e) {
-        return error(res, `Webhook signature verification failed: ${e.message}`, 400);
-      }
-    } else {
-      event = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-    }
-
+    const event = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
     const result = await billing.handleWebhook(event);
     return success(res, result);
   } catch (e) {
@@ -166,6 +155,7 @@ router.post('/digest/send', authenticate, async (req, res) => {
 
 router.post('/digest/send-all', authenticate, async (req, res) => {
   try {
+    if (!req.user.isAdmin) return error(res, 'Admin access required', 403);
     const { period } = req.body;
     const result = await digest.sendDigestToAllUsers(period || 'weekly');
     return success(res, result);
@@ -174,4 +164,29 @@ router.post('/digest/send-all', authenticate, async (req, res) => {
   }
 });
 
+// Raw webhook handler for mounting in index.js (before express.json)
+const webhookRaw = async (req, res) => {
+  try {
+    const sig = req.headers['stripe-signature'];
+    let event;
+
+    if (!billing.useMock && sig) {
+      const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+      try {
+        event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
+      } catch (e) {
+        return error(res, `Webhook signature verification failed: ${e.message}`, 400);
+      }
+    } else {
+      event = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+    }
+
+    const result = await billing.handleWebhook(event);
+    return success(res, result);
+  } catch (e) {
+    return error(res, e.message);
+  }
+};
+
 module.exports = router;
+module.exports.webhookRaw = webhookRaw;

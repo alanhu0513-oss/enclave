@@ -106,6 +106,7 @@ router.post('/text', async (req, res) => {
   try {
     const { text } = req.body;
     if (!text || typeof text !== 'string') return error(res, 'Text is required', 400);
+    if (text.length > 10000) return error(res, 'Text too long (max 10,000 characters)', 400);
     const result = await mlClient.detectText(text);
     if (!result) return error(res, 'AI text detection unavailable — no provider configured', 503);
     if (result.error) return error(res, result.error, 400);

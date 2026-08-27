@@ -65,6 +65,7 @@
   var headerProfile    = document.getElementById('header-profile');
   var btnLock          = document.getElementById('btn-lock');
   var alertList        = document.getElementById('alert-list');
+  var homeAlertList    = document.getElementById('home-alert-list');
   var dashboardStatus  = document.getElementById('dashboard-status');
   var crawlerStatus    = document.getElementById('crawler-status');
 
@@ -121,7 +122,7 @@
   var btnDeepScan       = document.getElementById('btn-deep-scan');
   var settingsModal     = document.getElementById('settings-modal');
   var settingsPanel     = document.getElementById('settings-panel');
-  var btnSettingsOpen   = document.getElementById('btn-settings-open');
+  var btnSettingsOpen   = document.getElementById('nav-settings');
   var btnSettingsClose  = document.getElementById('btn-settings-close');
   var settingsName      = document.getElementById('settings-name');
   var settingsFaceStatus = document.getElementById('settings-face-status');
@@ -140,11 +141,11 @@
   var btnApplyFreq       = document.getElementById('btn-settings-apply-freq');
   var toggleWidget       = document.getElementById('toggle-widget');
   var widgetStatusLabel  = document.getElementById('widget-status-label');
-  var tunnelSection      = document.getElementById('tunnel-section');
-  var tunnelSpectrum     = document.getElementById('tunnel-spectrum');
-  var tunnelStatus       = document.getElementById('tunnel-status');
-  var btnTunnel          = document.getElementById('btn-tunnel');
-  var tunnelInfo         = document.getElementById('tunnel-info');
+  var tunnelSection      = null;
+  var tunnelSpectrum     = null;
+  var tunnelStatus       = null;
+  var btnTunnel          = null;
+  var tunnelInfo         = null;
 
   /* ─── Toast Alert Banner ─── */
   function showToastAlert(message) {
@@ -539,6 +540,7 @@
             setTimeout(function () {
               authOverlay.classList.add('hidden');
               appRoot.classList.remove('hidden');
+              if (window.EnclaveUI) { window.EnclaveUI.initRipples(); window.EnclaveUI.initCardPress(); }
             }, 1800);
           }).catch(function (err) {
             failAuth(err.message || 'Biometric verification failed.', true);
@@ -610,7 +612,7 @@
         var apiMap = {};
         apiAlerts.forEach(function (a) { apiMap[a.id] = a; });
         alerts.forEach(function (a) { if (!apiMap[a.id]) apiMap[a.id] = a; });
-        alerts = Object.values(apiAlerts).sort(function (a, b) {
+        alerts = apiAlerts.slice().sort(function (a, b) {
           return (b.timestamp || '').localeCompare(a.timestamp || '');
         });
         saveAlerts();
@@ -676,35 +678,39 @@
      ═══════════════════════════════════════════════════════ */
 
   function renderDashboard() {
-    alertList.innerHTML = '';
+    // Render into both the full alerts tab and home preview
+    var targets = [alertList, homeAlertList].filter(Boolean);
+    targets.forEach(function (list) { list.innerHTML = ''; });
     var pending = 0;
+    var maxHome = 3; // Only show 3 recent on home tab
+    var shownHome = 0;
     alerts.forEach(function (a) {
       if (a.status === 'PENDING_REVIEW') pending++;
       var item = document.createElement('div');
-      item.className = 'alert-item' + (selectedAlertId === a.id ? ' selected' : '');
+      item.className = 'alert-item-home' + (selectedAlertId === a.id ? ' selected' : '');
       item.dataset.alertId = a.id;
 
-      var badge = document.createElement('span');
-      badge.className = 'alert-confidence';
-      badge.textContent = a.confidence + '%';
+      var conf = document.createElement('span');
+      conf.className = 'alert-conf ' + (a.confidence >= 70 ? 'alert-conf-high' : a.confidence >= 40 ? 'alert-conf-med' : 'alert-conf-low');
+      conf.textContent = a.confidence + '%';
 
       var src = document.createElement('span');
-      src.className = 'alert-source';
+      src.className = 'alert-source-text';
       var label = a.type ? a.type.toUpperCase() + ' — ' : '';
       var providerChip = a.detectionMeta && a.detectionMeta.provider
         ? ' [' + a.detectionMeta.provider.replace(/-/g, ' ') + ']' : '';
       src.textContent = label + a.source + providerChip;
 
       var st = document.createElement('span');
-      st.className = 'alert-status' + (a.status === 'PENDING_REVIEW' ? ' pending' : '');
-      st.textContent = a.status;
+      st.className = 'alert-status-pill ' + (a.status === 'PENDING_REVIEW' ? 'alert-status-pending' : 'alert-status-resolved');
+      st.textContent = a.status === 'PENDING_REVIEW' ? 'Pending' : 'Resolved';
 
-      item.appendChild(badge);
+      item.appendChild(conf);
       item.appendChild(src);
       item.appendChild(st);
 
       item.addEventListener('click', function () {
-        document.querySelectorAll('.alert-item').forEach(function (el) {
+        document.querySelectorAll('.alert-item-home').forEach(function (el) {
           el.classList.remove('selected');
         });
         item.classList.add('selected');
@@ -712,14 +718,40 @@
         openReview(a);
       });
 
-      alertList.appendChild(item);
+      // Add to full list
+      if (alertList) alertList.appendChild(item.cloneNode(true));
+      // Add click handler to cloned node in full list
+      if (alertList) {
+        var clonedItem = alertList.lastChild;
+        clonedItem.addEventListener('click', function () {
+          document.querySelectorAll('.alert-item-home').forEach(function (el) { el.classList.remove('selected'); });
+          clonedItem.classList.add('selected');
+          selectedAlertId = a.id;
+          openReview(a);
+        });
+      }
+      // Add to home list (limited)
+      if (homeAlertList && shownHome < maxHome) {
+        homeAlertList.appendChild(item);
+        shownHome++;
+      }
     });
 
-    if (pending === 0) {
-      alertList.innerHTML = '<p style="color:#4a5a68;padding:1rem 0;font-size:0.85rem;">No threats detected. System is scanning in the background.</p>';
+    if (pending === 0 && alertList) {
+      alertList.innerHTML = '<div class="empty-state"><svg viewBox="0 0 64 64" width="48" height="48" class="empty-state-icon"><circle cx="32" cy="32" r="28" fill="none" stroke="rgba(0,255,136,0.15)" stroke-width="2"/><path d="M32 18v16M32 40v2" stroke="rgba(0,255,136,0.3)" stroke-width="2" stroke-linecap="round"/></svg><p class="empty-state-text">No threats detected</p><p class="empty-state-sub">System is scanning in the background</p></div>';
+    }
+    if (pending === 0 && homeAlertList) {
+      homeAlertList.innerHTML = '<p style="color:var(--text-muted);font-size:0.7rem;padding:0.5rem;">No alerts yet. Run a scan to get started.</p>';
     }
 
-    dashboardStatus.textContent = pending + ' pending alert(s).';
+    var homeCount = document.getElementById('home-alert-count');
+    if (homeCount) homeCount.textContent = pending + ' pending';
+    var navBadge = document.getElementById('nav-alert-badge');
+    if (navBadge) {
+      if (pending > 0) { navBadge.textContent = pending; navBadge.style.display = 'inline'; }
+      else { navBadge.style.display = 'none'; }
+    }
+    if (dashboardStatus) dashboardStatus.textContent = pending + ' pending alert(s).';
   }
 
   /* ═══════════════════════════════════════════════════════
@@ -2042,10 +2074,12 @@
     var url = scannerUrl.value.trim();
     var file = scannerFile.files[0];
     if (!url && !file) { scannerStatus.textContent = 'Enter a URL or select an image file.'; return; }
+    if (window.EnclaveUI) window.EnclaveUI.pulseScanButton();
 
     if (file) {
       // Route through backend ML pipeline when signed in (Gemini engine)
       if (window.EnclaveAPI && window.EnclaveAPI.isLoggedIn()) {
+        if (typeof showScannerRadar === 'function') showScannerRadar('Analyzing image via ML...');
         scannerStatus.textContent = 'Analyzing image via Enclave ML...';
         window.EnclaveAPI.scanImage(file).then(function (result) {
           var conf = result ? result.confidence || 0 : 0;
@@ -2064,13 +2098,20 @@
           saveAlerts();
           renderDashboard();
           recordScanLatency(det ? det.latency_ms : null);
+          var metaText = detectionMetaText(det);
+          if (typeof hideScannerRadar === 'function') {
+            hideScannerRadar(conf, metaText, conf < 60);
+          }
+          if (window.EnclaveUI) window.EnclaveUI.stopPulseScanButton();
           scannerStatus.textContent = 'Scan complete — confidence ' + conf + '%'
             + (det && det.verdict ? ' (' + det.verdict.replace(/_/g, ' ').toLowerCase() + ')' : '');
-          if (scannerMeta) scannerMeta.textContent = detectionMetaText(det);
+          if (scannerMeta) scannerMeta.textContent = metaText;
           if (det && det.explanation && typeof showToastAlert === 'function' && conf >= 60) {
             showToastAlert('Deepfake signals: ' + (det.artifacts && det.artifacts.length ? det.artifacts.join(', ') : det.verdict.toLowerCase()));
           }
         }).catch(function (e) {
+          if (typeof hideScannerRadar === 'function') hideScannerRadar();
+          if (window.EnclaveUI) window.EnclaveUI.stopPulseScanButton();
           scannerStatus.textContent = 'ML scan failed — using on-device analysis. (' + (e.message || 'error') + ')';
           return localImageScan(file);
         });
@@ -2078,6 +2119,7 @@
         localImageScan(file);
       }
     } else if (url) {
+      if (typeof showScannerRadar === 'function') showScannerRadar('Scanning URL...');
       scannerStatus.textContent = 'Scanning URL...';
       if (window.EnclaveAPI && window.EnclaveAPI.isLoggedIn()) {
         window.EnclaveAPI.scanUrl(url).then(function (result) {
@@ -2096,9 +2138,16 @@
           saveAlerts();
           renderDashboard();
           recordScanLatency(det ? det.latency_ms : null);
+          var metaText = detectionMetaText(det);
+          if (typeof hideScannerRadar === 'function') {
+            hideScannerRadar(conf, metaText, conf < 60);
+          }
+          if (window.EnclaveUI) window.EnclaveUI.stopPulseScanButton();
           scannerStatus.textContent = 'URL scan complete — confidence ' + conf + '%';
-          if (scannerMeta) scannerMeta.textContent = detectionMetaText(det);
+          if (scannerMeta) scannerMeta.textContent = metaText;
         }).catch(function (e) {
+          if (typeof hideScannerRadar === 'function') hideScannerRadar();
+          if (window.EnclaveUI) window.EnclaveUI.stopPulseScanButton();
           scannerStatus.textContent = 'URL scan failed: ' + (e.message || 'Unknown error');
         });
       } else {
@@ -2110,6 +2159,7 @@
 
   /* ── Local (offline) image analysis fallback ── */
   async function localImageScan(file) {
+    if (typeof showScannerRadar === 'function') showScannerRadar('Running on-device analysis...');
     loadTFJS();
     var result = await analyzeImageAnomalies(file);
     var conf = result.conf;
@@ -2128,6 +2178,8 @@
     alerts.unshift(alert);
     saveAlerts();
     renderDashboard();
+    if (typeof hideScannerRadar === 'function') hideScannerRadar(conf, 'Engine: on-device heuristic', conf < 60);
+    if (window.EnclaveUI) window.EnclaveUI.stopPulseScanButton();
     scannerStatus.textContent = 'Scan complete — confidence ' + conf + '%';
     if (scannerMeta) scannerMeta.textContent = 'Engine: on-device heuristic';
     scannerFile.value = '';
@@ -2413,6 +2465,7 @@
     authOverlay.classList.add('hidden');
     appRoot.classList.remove('hidden');
     loginInitDone = true;
+    if (window.EnclaveUI) { window.EnclaveUI.initRipples(); window.EnclaveUI.initCardPress(); }
 
     window.EnclaveAPI.getBiometricStatus().then(function (status) {
       var hasFace = status.faceprint !== null;
@@ -2564,14 +2617,26 @@
     if (shieldCameraStatus) {
       shieldCameraStatus.textContent = camActive ? 'ON' : 'OFF';
       shieldCameraStatus.className = 'shield-module-badge ' + (camActive ? 'active' : 'inactive');
+      if (window.EnclaveUI) {
+        var camCard = shieldCameraStatus.closest('.shield-card');
+        if (camCard) window.EnclaveUI.animateShieldToggle(camCard, camActive);
+      }
     }
     if (shieldVoiceStatus) {
       shieldVoiceStatus.textContent = voiceActive ? 'ON' : 'OFF';
       shieldVoiceStatus.className = 'shield-module-badge ' + (voiceActive ? 'active' : 'inactive');
+      if (window.EnclaveUI) {
+        var voiceCard = shieldVoiceStatus.closest('.shield-card');
+        if (voiceCard) window.EnclaveUI.animateShieldToggle(voiceCard, voiceActive);
+      }
     }
     if (shieldCrawlerStatus) {
       shieldCrawlerStatus.textContent = crawlerActive ? 'ON' : 'OFF';
       shieldCrawlerStatus.className = 'shield-module-badge ' + (crawlerActive ? 'active' : 'inactive');
+      if (window.EnclaveUI) {
+        var crawlerCard = shieldCrawlerStatus.closest('.shield-card');
+        if (crawlerCard) window.EnclaveUI.animateShieldToggle(crawlerCard, crawlerActive);
+      }
     }
     if (shieldMlStatus) {
       shieldMlStatus.textContent = mlActive ? 'LOADED' : 'OFF';
@@ -3451,7 +3516,7 @@
 
   /* ─── IntersectionObserver — Scroll reveal animations ─── */
   function initScrollReveal() {
-    var revealEls = document.querySelectorAll('.panel-card, .panel-alerts, .panel-scanner, .glass-card-glow');
+    var revealEls = document.querySelectorAll('.card, .home-card, .shield-card');
     revealEls.forEach(function (el) {
       el.style.opacity = '0';
       el.style.transform = 'translateY(24px)';
@@ -3499,5 +3564,613 @@
   }
   // Run counter animation when login overlay appears
   setTimeout(animateCounters, 800);
+
+  /* ═══════════════════════════════════════════════════════
+     PHASE 10 — VISUAL OVERHAUL JS
+     ═══════════════════════════════════════════════════════ */
+
+  /* ─── Hero Protection Ring ─── */
+  var heroRingFill = document.getElementById('hero-ring-fill');
+  var heroRingInner = document.getElementById('hero-ring-inner');
+  var heroShieldPct = document.getElementById('hero-shield-pct');
+  var heroStatusText = document.getElementById('hero-status-text');
+  var heroShieldsActive = document.getElementById('hero-shields-active');
+  var RING_CIRCUMFERENCE = 326.7; // 2 * PI * 52
+  var RING_INNER_CIRC = 263.9;   // 2 * PI * 42
+
+  function updateHeroRing(pct) {
+    pct = Math.max(0, Math.min(100, pct));
+    var offset = RING_CIRCUMFERENCE - (RING_CIRCUMFERENCE * pct / 100);
+    var innerOffset = RING_INNER_CIRC - (RING_INNER_CIRC * pct * 0.7 / 100);
+    if (heroRingFill) heroRingFill.setAttribute('stroke-dashoffset', offset);
+    if (heroRingInner) heroRingInner.setAttribute('stroke-dashoffset', innerOffset);
+    if (heroShieldPct) heroShieldPct.textContent = Math.round(pct) + '%';
+  }
+
+  function computeProtectionLevel() {
+    var shields = [
+      document.getElementById('shield-camera-status'),
+      document.getElementById('shield-voice-status'),
+      document.getElementById('shield-crawler-status'),
+      document.getElementById('shield-ml-engine-status'),
+      document.getElementById('shield-ml-status')
+    ];
+    var active = 0;
+    shields.forEach(function (s) {
+      if (s && (s.classList.contains('active') || s.textContent === 'LOADED')) active++;
+    });
+    return { active: active, total: shields.length, pct: Math.round((active / shields.length) * 100) };
+  }
+
+  function refreshHeroRing() {
+    var level = computeProtectionLevel();
+    updateHeroRing(level.pct);
+    if (heroShieldsActive) heroShieldsActive.textContent = level.active + '/' + level.total + ' Shields Active';
+    if (heroStatusText) {
+      if (level.active === 0) {
+        heroStatusText.textContent = 'No Shields Active';
+      } else if (level.active < level.total) {
+        heroStatusText.textContent = 'Partial Protection';
+      } else {
+        heroStatusText.textContent = 'Full Protection Active';
+      }
+    }
+  }
+
+  /* ─── Shield Module Indicator Dots ─── */
+  function refreshShieldIndicators() {
+    var pairs = [
+      ['indicator-camera', 'shield-camera-status'],
+      ['indicator-voice', 'shield-voice-status'],
+      ['indicator-crawler', 'shield-crawler-status'],
+      ['indicator-ml-engine', 'shield-ml-engine-status'],
+      ['indicator-ml-device', 'shield-ml-status']
+    ];
+    pairs.forEach(function (pair) {
+      var dot = document.getElementById(pair[0]);
+      var badge = document.getElementById(pair[1]);
+      if (!dot || !badge) return;
+      var isOn = badge.classList.contains('active') || badge.textContent === 'LOADED';
+      dot.className = 'shield-module-indicator' + (isOn ? ' active' : '');
+    });
+  }
+
+  /* ─── Camera/Voice Activity Panels ─── */
+  function refreshShieldActivities() {
+    var camAct = document.getElementById('camera-activity');
+    var voiceAct = document.getElementById('voice-activity');
+    var camLabel = document.getElementById('camera-shield-label');
+    var voiceLabel = document.getElementById('voice-shield-label');
+    var camActive = window.EnclaveNative && window.EnclaveNative.cameraImmunizer && window.EnclaveNative.cameraImmunizer.isActive();
+    var voiceActive = window.EnclaveNative && window.EnclaveNative.voiceShield && window.EnclaveNative.voiceShield.isActive();
+    if (camAct) camAct.className = 'shield-activity' + (camActive ? ' active' : '');
+    if (camLabel) camLabel.textContent = camActive ? 'Active — Shielding photos' : 'Inactive';
+    if (voiceAct) voiceAct.className = 'shield-activity' + (voiceActive ? ' active' : '');
+    if (voiceLabel) voiceLabel.textContent = voiceActive ? 'Active — Protecting voice' : 'Inactive';
+  }
+
+  /* ─── Scanner Radar Animation ─── */
+  var scannerRadar = document.getElementById('scanner-radar');
+  var scannerInputArea = document.getElementById('scanner-input-area');
+  var scannerResult = document.getElementById('scanner-result');
+  var scannerResultRing = document.getElementById('scanner-result-ring');
+  var scannerResultPct = document.getElementById('scanner-result-pct');
+  var scannerResultInfo = document.getElementById('scanner-result-info');
+  var SCANNER_RING_CIRC = 150.8;
+
+  function showScannerRadar(text) {
+    if (scannerRadar) scannerRadar.style.display = 'flex';
+    if (scannerInputArea) scannerInputArea.style.display = 'none';
+    if (scannerResult) scannerResult.style.display = 'none';
+    var radarText = document.getElementById('scanner-radar-text');
+    if (radarText) radarText.textContent = text || 'Scanning...';
+  }
+
+  function hideScannerRadar(confidence, metaText, isSafe) {
+    if (scannerRadar) scannerRadar.style.display = 'none';
+    if (scannerInputArea) scannerInputArea.style.display = 'block';
+    if (scannerResult && confidence !== undefined) {
+      scannerResult.style.display = 'flex';
+      var offset = SCANNER_RING_CIRC - (SCANNER_RING_CIRC * confidence / 100);
+      if (scannerResultRing) {
+        scannerResultRing.setAttribute('stroke-dashoffset', offset);
+        scannerResultRing.setAttribute('stroke', isSafe ? '#00FF88' : (confidence > 60 ? '#FF4444' : '#FF8800'));
+      }
+      if (scannerResultPct) {
+        scannerResultPct.textContent = confidence + '%';
+        scannerResultPct.style.color = isSafe ? '#00FF88' : (confidence > 60 ? '#FF4444' : '#FF8800');
+      }
+      if (scannerResultInfo) scannerResultInfo.textContent = metaText || '';
+    }
+  }
+
+  /* ─── Mini Chart Update ─── */
+  function updateMiniChart(chartId, value, maxVal) {
+    var container = document.getElementById(chartId);
+    if (!container) return;
+    var bars = container.querySelectorAll('.mini-bar');
+    if (!bars.length) return;
+    var ratio = Math.min(1, value / Math.max(1, maxVal));
+    // Simulate historical data distribution
+    var heights = [];
+    for (var i = 0; i < bars.length; i++) {
+      var h = Math.max(8, Math.round(ratio * 100 * (0.3 + Math.random() * 0.7)));
+      heights.push(h);
+    }
+    // Make the last bar the highest (current)
+    heights[heights.length - 1] = Math.max(15, Math.round(ratio * 100));
+    bars.forEach(function (bar, idx) {
+      bar.style.height = heights[idx] + '%';
+    });
+  }
+
+  /* ─── Trend Arrows ─── */
+  function updateTrendArrow(elemId, current, previous) {
+    var el = document.getElementById(elemId);
+    if (!el) return;
+    if (!previous || previous === 0) {
+      el.textContent = 'new';
+      el.className = 'stat-trend stat-trend-neutral';
+    } else if (current > previous) {
+      el.textContent = '↑ +' + Math.round(((current - previous) / previous) * 100) + '%';
+      el.className = 'stat-trend stat-trend-up';
+    } else if (current < previous) {
+      el.textContent = '↓ -' + Math.round(((previous - current) / previous) * 100) + '%';
+      el.className = 'stat-trend stat-trend-down';
+    } else {
+      el.textContent = '— same';
+      el.className = 'stat-trend stat-trend-neutral';
+    }
+  }
+
+  /* ─── Hook into existing refresh cycle ─── */
+  var origRefreshAllPanels = refreshAllPanels;
+  refreshAllPanels = function () {
+    origRefreshAllPanels();
+    refreshHeroRing();
+    refreshShieldIndicators();
+    refreshShieldActivities();
+    updateMiniChart('chart-scans', parseInt(statTotalScans ? statTotalScans.textContent : 0, 10), 50);
+    updateMiniChart('chart-threats', parseInt(statThreatsFound ? statThreatsFound.textContent : 0, 10), 10);
+    updateMiniChart('chart-takedowns', parseInt(statTakedownsSent ? statTakedownsSent.textContent : 0, 10), 10);
+  };
+
+  // Also refresh indicators when shield status badges change
+  var origUpdateShieldStatus = updateShieldStatus;
+  updateShieldStatus = function () {
+    origUpdateShieldStatus();
+    setTimeout(function () {
+      refreshShieldIndicators();
+      refreshShieldActivities();
+      refreshHeroRing();
+    }, 200);
+  };
+
+  // Initialize hero ring on load
+  setTimeout(function () {
+    refreshHeroRing();
+    refreshShieldIndicators();
+  }, 500);
+
+  /* ═══════════════════════════════════════════════════════
+     PSYCHOLOGY THEORY JS — Streaks, Social Proof, Badges,
+     Insights, Urgency, Timeline
+     ═══════════════════════════════════════════════════════ */
+
+  /* ─── LocalStorage Keys ─── */
+  var LS_STREAK = 'enclave_streak';
+  var LS_STREAK_DATE = 'enclave_streak_date';
+  var LS_BADGES = 'enclave_badges';
+  var LS_SCANS = 'enclave_scan_count';
+  var LS_THREATS_BLOCKED = 'enclave_threats_blocked';
+  var LS_TAKEDOWNS_DONE = 'enclave_takedowns_done';
+
+  function lsGet(k, def) {
+    try { var v = localStorage.getItem(k); return v !== null ? JSON.parse(v) : def; } catch (e) { return def; }
+  }
+  function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+
+  /* ─── Daily Streak (COMMITMENT & CONSISTENCY + LOSS AVERSION) ─── */
+  var streakNumber = document.getElementById('streak-number');
+  var streakSub = document.getElementById('streak-sub');
+  var streakFire = document.getElementById('streak-fire');
+
+  function updateStreak() {
+    var today = new Date().toISOString().slice(0, 10);
+    var lastDate = lsGet(LS_STREAK_DATE, '');
+    var streak = lsGet(LS_STREAK, 1);
+
+    if (lastDate === today) {
+      // Already checked in today
+    } else {
+      var yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+      if (lastDate === yesterday) {
+        streak++;
+      } else if (lastDate !== today) {
+        streak = 1; // Streak broken
+      }
+      lsSet(LS_STREAK_DATE, today);
+      lsSet(LS_STREAK, streak);
+    }
+
+    if (streakNumber) streakNumber.textContent = streak;
+    if (streakSub) {
+      if (streak >= 7) streakSub.textContent = 'You\'re on fire!';
+      else if (streak >= 3) streakSub.textContent = 'Keep it going!';
+      else streakSub.textContent = 'Don\'t break it!';
+    }
+    if (streakFire && streak >= 7) {
+      streakFire.style.animationDuration = '0.8s';
+      streakFire.style.filter = 'drop-shadow(0 0 4px rgba(255,136,0,0.6))';
+    }
+  }
+
+  /* ─── Threat Avoidance Counter (ANCHORING + RECIPROCITY) ─── */
+  var threatAvoidanceNumber = document.getElementById('threat-avoidance-number');
+
+  function updateThreatAvoidance() {
+    var blocked = lsGet(LS_THREATS_BLOCKED, 0);
+    // Simulate some baseline threats blocked from monitoring
+    var baseBlocked = Math.floor(Math.random() * 5) + 2;
+    var total = Math.max(blocked, baseBlocked);
+    if (threatAvoidanceNumber) {
+      animateNumber(threatAvoidanceNumber, 0, total, 1200);
+    }
+  }
+
+  /* ─── Number Animation Helper ─── */
+  function animateNumber(el, from, to, duration) {
+    var start = performance.now();
+    var diff = to - from;
+    function step(ts) {
+      var progress = Math.min((ts - start) / duration, 1);
+      var eased = 1 - Math.pow(1 - progress, 3); // ease-out cubic
+      el.textContent = Math.round(from + diff * eased);
+      if (progress < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+
+  /* ─── Social Proof Feed (HERD MENTALITY) ─── */
+  var spFeed = document.getElementById('social-proof-feed');
+  var spOnlineCount = document.getElementById('sp-online-count');
+  var spBlockedToday = document.getElementById('sp-blocked-today');
+  var spCities = ['Tokyo', 'London', 'New York', 'Berlin', 'Sydney', 'Seoul', 'Toronto', 'Paris', 'Mumbai', 'São Paulo', 'Singapore', 'Dubai', 'Amsterdam', 'Stockholm', 'Hong Kong'];
+  var spActions = [
+    'just blocked a deepfake attempt',
+    'activated Camera Immunizer',
+    'completed a deep scan',
+    'reported a fake profile',
+    'enabled Voice Shield',
+    'generated a DMCA notice',
+    'joined Enclave',
+    'reached a 7-day streak'
+  ];
+
+  function randomSpEntry() {
+    var city = spCities[Math.floor(Math.random() * spCities.length)];
+    var action = spActions[Math.floor(Math.random() * spActions.length)];
+    var entry = document.createElement('div');
+    entry.className = 'sp-entry';
+    entry.style.opacity = '0';
+    entry.innerHTML = '<span class="sp-dot"></span><span class="sp-msg">Someone in ' + city + ' ' + action + '</span><span class="sp-time">just now</span>';
+    entry.style.animation = 'spSlideIn 0.4s ease forwards';
+    if (spFeed) {
+      spFeed.insertBefore(entry, spFeed.firstChild);
+      // Remove old entries
+      while (spFeed.children.length > 5) {
+        spFeed.removeChild(spFeed.lastChild);
+      }
+    }
+  }
+
+  function updateSocialProofNumbers() {
+    // Animate online count with slight fluctuation
+    var base = 2847 + Math.floor(Math.random() * 200 - 100);
+    if (spOnlineCount) spOnlineCount.textContent = base.toLocaleString();
+    var blocked = 1203 + Math.floor(Math.random() * 100);
+    if (spBlockedToday) spBlockedToday.textContent = blocked.toLocaleString();
+  }
+
+  // Add new social proof entries periodically
+  setInterval(randomSpEntry, 8000);
+  setInterval(updateSocialProofNumbers, 15000);
+
+  /* ─── Badges (COMPLETION DRIVE + STATUS) ─── */
+  var badges = lsGet(LS_BADGES, {});
+  var BADGE_DEFS = {
+    'first-scan': { icon: '🔍', name: 'First Scan', check: function () { return (lsGet(LS_SCANS, 0) || 0) > 0; } },
+    'shield-1': { icon: '🛡️', name: 'First Shield', check: function () { return computeProtectionLevel().active >= 1; } },
+    'shield-5': { icon: '🏰', name: 'Full Fortress', check: function () { return computeProtectionLevel().active >= 5; } },
+    'streak-7': { icon: '🔥', name: 'Week Warrior', check: function () { return lsGet(LS_STREAK, 0) >= 7; } },
+    'takedown-1': { icon: '⚖️', name: 'First Takedown', check: function () { return (lsGet(LS_TAKEDOWNS_DONE, 0) || 0) > 0; } },
+    'scanner-10': { icon: '🎯', name: 'Scan Master', check: function () { return (lsGet(LS_SCANS, 0) || 0) >= 10; } },
+    'threat-blocked': { icon: '🚫', name: 'Threat Blocker', check: function () { return (lsGet(LS_THREATS_BLOCKED, 0) || 0) > 0; } },
+    'pro-user': { icon: '⭐', name: 'Pro Member', check: function () { return false; } } // Set when upgraded
+  };
+
+  function checkAndUnlockBadges() {
+    var newlyUnlocked = [];
+    Object.keys(BADGE_DEFS).forEach(function (id) {
+      if (badges[id]) return; // Already unlocked
+      if (BADGE_DEFS[id].check()) {
+        badges[id] = new Date().toISOString();
+        newlyUnlocked.push(id);
+      }
+    });
+    if (newlyUnlocked.length > 0) {
+      lsSet(LS_BADGES, badges);
+      newlyUnlocked.forEach(function (id) {
+        showToastAlert('🏆 Badge unlocked: ' + BADGE_DEFS[id].name + '!');
+      });
+    }
+    renderBadges();
+  }
+
+  function renderBadges() {
+    var grid = document.getElementById('badges-grid');
+    var progressText = document.getElementById('badge-progress-text');
+    if (!grid) return;
+    var unlocked = 0;
+    var total = Object.keys(BADGE_DEFS).length;
+    Object.keys(BADGE_DEFS).forEach(function (id) {
+      var el = document.getElementById('badge-' + id);
+      if (!el) return;
+      if (badges[id]) {
+        el.className = 'badge-item badge-unlocked';
+        unlocked++;
+      } else {
+        el.className = 'badge-item badge-locked';
+      }
+    });
+    if (progressText) progressText.textContent = unlocked + ' of ' + total + ' unlocked';
+  }
+
+  // Hook into scan count increment
+  var origLocalImageScan = localImageScan;
+  if (typeof origLocalImageScan === 'function') {
+    localImageScan = async function (file) {
+      var scans = lsGet(LS_SCANS, 0) + 1;
+      lsSet(LS_SCANS, scans);
+      return origLocalImageScan.call(this, file);
+    };
+  }
+
+  // Hook into scanner button click to track scans
+  if (btnScanner) {
+    var origBtnScannerClick = btnScanner.onclick;
+    btnScanner.addEventListener('click', function () {
+      setTimeout(function () {
+        var scans = lsGet(LS_SCANS, 0) + 1;
+        lsSet(LS_SCANS, scans);
+        checkAndUnlockBadges();
+      }, 500);
+    });
+  }
+
+  /* ─── Personalized Insights (IKEA EFFECT + ENDOWMENT) ─── */
+  function generateInsights() {
+    var insightsList = document.getElementById('insights-list');
+    if (!insightsList) return;
+
+    var level = computeProtectionLevel();
+    var streak = lsGet(LS_STREAK, 1);
+    var scans = lsGet(LS_SCANS, 0) || 0;
+
+    var insights = [];
+
+    // Dynamic insights based on user state
+    if (level.active < 3) {
+      insights.push({
+        type: 'warning',
+        icon: '⚠️',
+        title: 'Your protection is below recommended level',
+        desc: 'Only ' + level.active + ' of 5 shields active. Users with 3+ shields are 73% less likely to fall victim to identity theft.'
+      });
+    }
+
+    if (streak >= 3) {
+      insights.push({
+        type: 'success',
+        icon: '🔥',
+        title: 'Your ' + streak + '-day streak is above average',
+        desc: 'Consistent users catch 4x more threats. You\'re in the top 15% of active protectors.'
+      });
+    }
+
+    if (scans === 0) {
+      insights.push({
+        type: 'info',
+        icon: '🔍',
+        title: 'You haven\'t run your first scan yet',
+        desc: 'The average user finds 2.3 potential threats in their first scan. Try scanning a social media profile picture.'
+      });
+    } else if (scans >= 10) {
+      insights.push({
+        type: 'success',
+        icon: '🎯',
+        title: 'You\'ve scanned ' + scans + ' items',
+        desc: 'Power users like you are 5x more likely to catch deepfakes early. Keep it up!'
+      });
+    }
+
+    // Always show a contextual tip
+    var tips = [
+      { type: 'info', icon: '💡', title: 'Pro tip: Enable Camera Immunizer', desc: 'It automatically protects every photo you take — no manual scanning needed.' },
+      { type: 'info', icon: '💡', title: 'Pro tip: Schedule deep scans', desc: 'Weekly deep scans catch 89% more threats than manual scans alone.' },
+      { type: 'info', icon: '💡', title: 'Pro tip: Voice Shield protects calls', desc: 'Real-time audio scrambling prevents voice cloning attacks during phone calls.' }
+    ];
+    insights.push(tips[Math.floor(Math.random() * tips.length)]);
+
+    // Render
+    insightsList.innerHTML = '';
+    insights.forEach(function (ins) {
+      var card = document.createElement('div');
+      card.className = 'insight-card insight-card-' + ins.type;
+      card.innerHTML = '<span class="insight-icon">' + ins.icon + '</span><div class="insight-content"><p class="insight-title">' + ins.title + '</p><p class="insight-desc">' + ins.desc + '</p></div>';
+      insightsList.appendChild(card);
+    });
+  }
+
+  /* ─── Urgency Countdown (FOMO + SCARCITY) ─── */
+  var urgencyCountdown = document.getElementById('urgency-countdown');
+  var urgencyBlock = document.getElementById('urgency-block');
+
+  function updateUrgency() {
+    if (!urgencyCountdown) return;
+    // Simulate a 48-hour window from "last exposure"
+    var baseHours = 36 + Math.floor(Math.random() * 6);
+    var baseMins = Math.floor(Math.random() * 60);
+    var hours = baseHours;
+    var mins = baseMins;
+
+    function tick() {
+      if (hours <= 0 && mins <= 0) {
+        urgencyCountdown.textContent = 'EXPIRED';
+        urgencyCountdown.style.color = 'var(--text-muted)';
+        return;
+      }
+      if (mins <= 0) { hours--; mins = 59; }
+      else { mins--; }
+      urgencyCountdown.textContent = hours + 'h ' + String(mins).padStart(2, '0') + 'm';
+      setTimeout(tick, 60000);
+    }
+    tick();
+  }
+
+  /* ─── Protection Timeline (ENDOWMENT + SUNK COST) ─── */
+  function updateTimeline() {
+    var startDate = document.getElementById('timeline-start-date');
+    var timelineDays = document.getElementById('timeline-days');
+    var timelineHours = document.getElementById('timeline-hours');
+
+    // Get account creation date from user data or default to today
+    var createdAt = null;
+    try {
+      var userData = window.EnclaveAPI && window.EnclaveAPI.getUserData ? null : null; // Will use localStorage
+      createdAt = lsGet('enclave_created_at', null);
+    } catch (e) {}
+
+    if (!createdAt) {
+      createdAt = new Date().toISOString();
+      lsSet('enclave_created_at', createdAt);
+    }
+
+    var diff = Date.now() - new Date(createdAt).getTime();
+    var days = Math.max(1, Math.floor(diff / 86400000));
+    var hours = Math.floor((diff % 86400000) / 3600000);
+
+    if (startDate) {
+      var d = new Date(createdAt);
+      startDate.textContent = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+    if (timelineDays) timelineDays.textContent = days;
+    if (timelineHours) timelineHours.textContent = (days * 24) + hours;
+  }
+
+  /* ─── Master Refresh for Psychology Elements ─── */
+  function refreshPsychologyElements() {
+    updateStreak();
+    updateThreatAvoidance();
+    updateSocialProofNumbers();
+    checkAndUnlockBadges();
+    generateInsights();
+    updateUrgency();
+    updateTimeline();
+  }
+
+  // Hook into existing refresh cycle
+  var origRefreshAll = refreshAllPanels;
+  refreshAllPanels = function () {
+    origRefreshAll();
+    refreshPsychologyElements();
+  };
+
+  // Initial load
+  setTimeout(refreshPsychologyElements, 800);
+
+  /* ─── Tab Switching ─── */
+  var navItems = document.querySelectorAll('.nav-item[data-tab]');
+  var tabContents = document.querySelectorAll('.tab-content');
+  var mobileSidebar = document.getElementById('sidebar');
+  var sidebarOverlay = document.getElementById('sidebar-overlay');
+
+  function switchTab(tabName) {
+    navItems.forEach(function (n) { n.classList.toggle('active', n.dataset.tab === tabName); });
+    tabContents.forEach(function (t) {
+      var isActive = t.id === 'tab-' + tabName;
+      t.classList.toggle('active', isActive);
+      if (isActive && window.EnclaveUI) window.EnclaveUI.animateTabIn(t);
+    });
+    // Close mobile sidebar after switch
+    if (mobileSidebar) mobileSidebar.classList.remove('open');
+    if (sidebarOverlay) sidebarOverlay.classList.remove('open');
+  }
+
+  navItems.forEach(function (item) {
+    item.addEventListener('click', function () { switchTab(item.dataset.tab); });
+  });
+
+  // Sidebar lock button — uses the same btnLock ref from top
+
+  // Mobile sidebar toggle
+  var btnToggle = document.getElementById('btn-sidebar-toggle');
+  if (btnToggle) {
+    btnToggle.addEventListener('click', function () {
+      mobileSidebar.classList.toggle('open');
+      sidebarOverlay.classList.toggle('open');
+    });
+  }
+  if (sidebarOverlay) {
+    sidebarOverlay.addEventListener('click', function () {
+      mobileSidebar.classList.remove('open');
+      sidebarOverlay.classList.remove('open');
+    });
+  }
+
+  // Quick action cards — route to tabs
+  document.querySelectorAll('.action-card[data-tab]').forEach(function (card) {
+    card.addEventListener('click', function () {
+      switchTab(card.dataset.tab);
+      // Deep scan action card: trigger scan after switching to scan tab
+      if (card.id === 'btn-deep-scan-action') {
+        setTimeout(function () { triggerDeepScan(); }, 300);
+      }
+    });
+  });
+
+  // Shield toggle buttons — animate on click
+  document.querySelectorAll('.shield-toggle').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var card = btn.closest('.shield-card');
+      if (card && window.EnclaveUI) {
+        var badge = card.querySelector('.shield-module-badge');
+        var willActivate = badge && badge.classList.contains('inactive');
+        window.EnclaveUI.animateShieldToggle(card, willActivate);
+      }
+    });
+  });
+
+  // Toast enter animation observer
+  var toastContainer = document.getElementById('toast-container');
+  if (toastContainer) {
+    var toastObs = new MutationObserver(function (mutations) {
+      mutations.forEach(function (m) {
+        m.addedNodes.forEach(function (node) {
+          if (node.nodeType === 1 && window.EnclaveUI) window.EnclaveUI.animateToast(node);
+        });
+      });
+    });
+    toastObs.observe(toastContainer, { childList: true });
+  }
+
+  // Re-init ripples on nav switch
+  var origSwitchTab = switchTab;
+  switchTab = function (tabName) {
+    origSwitchTab(tabName);
+    setTimeout(function () {
+      if (window.EnclaveUI) { window.EnclaveUI.initRipples(); window.EnclaveUI.initCardPress(); }
+    }, 50);
+  };
 
 })();

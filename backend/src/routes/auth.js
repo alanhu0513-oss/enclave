@@ -83,7 +83,7 @@ router.post('/forgot-password', async (req, res) => {
     const expires = Date.now() + 15 * 60 * 1000;
     passwordResetCodes.set(email.toLowerCase(), { code, expires, userId: user.id });
 
-    console.log(`[AUTH] Password reset code for ${email}: ${code}`);
+    console.log(`[AUTH] Password reset requested for ${email}`);
 
     return success(res, null, 'If that email is registered, a reset code has been sent.');
   } catch (e) {
@@ -124,7 +124,8 @@ router.post('/google', async (req, res) => {
     if (!credential) return error(res, 'Google credential required', 400);
     if (!OAuth2Client) return error(res, 'Google Auth library not installed', 500);
 
-    const clientId = process.env.GOOGLE_CLIENT_ID || '109956919732-4i8rg4r9p66mhajad8hvjsh7tjs7kmlj.apps.googleusercontent.com';
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+    if (!clientId) return error(res, 'Google Sign-In not configured', 500);
     const client = new OAuth2Client(clientId);
     const ticket = await client.verifyIdToken({ idToken: credential, audience: clientId });
     const payload = ticket.getPayload();

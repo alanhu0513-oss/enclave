@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS voiceprints (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   profile_json TEXT NOT NULL DEFAULT '[]',
+  variance_json TEXT DEFAULT '[]',
   bins INTEGER DEFAULT 64,
   sample_rate INTEGER DEFAULT 44100,
   fft_size INTEGER DEFAULT 128,
@@ -288,6 +289,19 @@ CREATE TABLE IF NOT EXISTS report_schedules (
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS monitoring_state (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  active BOOLEAN DEFAULT FALSE,
+  schedule TEXT DEFAULT 'daily',
+  sources TEXT DEFAULT '[]',
+  last_scan_at TIMESTAMP WITH TIME ZONE,
+  next_run_at TIMESTAMP WITH TIME ZONE,
+  total_findings INTEGER DEFAULT 0,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE
+);
+
 CREATE TABLE IF NOT EXISTS partners (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -361,3 +375,23 @@ DO $$ BEGIN
   ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL;
 EXCEPTION WHEN others THEN NULL;
 END $$;
+
+-- Migration: Add variance_json to voiceprints
+DO $$ BEGIN
+  ALTER TABLE voiceprints ADD COLUMN variance_json TEXT DEFAULT '[]';
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
+
+-- Migration: Add monitoring_state table
+CREATE TABLE IF NOT EXISTS monitoring_state (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  active BOOLEAN DEFAULT FALSE,
+  schedule TEXT DEFAULT 'daily',
+  sources TEXT DEFAULT '[]',
+  last_scan_at TIMESTAMP WITH TIME ZONE,
+  next_run_at TIMESTAMP WITH TIME ZONE,
+  total_findings INTEGER DEFAULT 0,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE
+);

@@ -271,7 +271,7 @@
 <!-- ════════════════════════════════════════════
      [1] MULTI-MODAL IDENTITY VERIFICATION GATE
      ════════════════════════════════════════════ -->
-<div id="auth-overlay" class="hidden" style="display:none !important">
+<div id="auth-overlay" class="hidden">
   <div id="auth-panel">
     <div class="auth-header">
       <h1>ENCLAVE</h1>
@@ -510,395 +510,527 @@
      ════════════════════════════════════════════ -->
 <div id="app-root" class="hidden">
 
+  <!-- ═══════════ TOAST CONTAINER ═══════════ -->
   <div id="toast-container" class="toast-container"></div>
 
-  <!-- Header -->
-  <header id="app-header" class="flex items-center justify-between px-4 py-3" style="position:sticky;top:0;z-index:50;background:rgba(5,5,7,0.85);backdrop-filter:blur(20px);border-bottom:1px solid rgba(255,255,255,0.04);">
-    <div class="header-left flex items-center gap-2">
-      <svg class="header-shield" viewBox="0 0 52 52" width="28" height="28">
-        <use href="#icon-shield" class="shield-core"/>
+  <!-- ═══════════ SIDEBAR ═══════════ -->
+  <aside id="sidebar" class="sidebar">
+    <div class="sidebar-brand">
+      <svg class="sidebar-logo" viewBox="0 0 52 52" width="24" height="24">
+        <use href="#icon-shield-ring" class="shield-ring-track"/>
+        <use href="#icon-shield" class="shield-core-glow"/>
       </svg>
-      <h1 style="font-size:0.8rem;letter-spacing:0.1em;">ENCLAVE</h1>
+      <span class="sidebar-brand-text">ENCLAVE</span>
     </div>
-    <div class="header-right flex items-center gap-3">
-      <span id="header-profile" class="header-profile" style="font-size:0.7rem;color:var(--text-secondary);"></span>
-      <span id="crawler-status" class="crawler-badge flex items-center gap-1" style="font-size:0.6rem;background:var(--green-dim);color:var(--green);padding:0.2rem 0.5rem;border-radius:999px;">
-        <svg viewBox="0 0 12 12" width="10" height="10"><use href="#icon-radar-dot"/></svg>
-        SCANNING
+
+    <nav class="sidebar-nav">
+      <button class="nav-item active" data-tab="home" id="nav-home">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        <span>Home</span>
+      </button>
+      <button class="nav-item" data-tab="shield" id="nav-shield">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        <span>Shields</span>
+      </button>
+      <button class="nav-item" data-tab="scan" id="nav-scan">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <span>Scan</span>
+      </button>
+      <button class="nav-item" data-tab="alerts" id="nav-alerts">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <span>Alerts</span>
+        <span id="nav-alert-badge" class="nav-badge" style="display:none;">0</span>
+      </button>
+      <button class="nav-item" data-tab="insights" id="nav-insights">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        <span>Insights</span>
+      </button>
+      <button class="nav-item" data-tab="settings" id="nav-settings">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        <span>Settings</span>
+      </button>
+    </nav>
+
+    <div class="sidebar-bottom">
+      <div class="sidebar-user">
+        <div class="sidebar-avatar" id="sidebar-avatar">U</div>
+        <div class="sidebar-user-info">
+          <span class="sidebar-user-name" id="header-profile">User</span>
+          <span class="sidebar-user-plan" id="sidebar-plan">Free Plan</span>
+        </div>
+      </div>
+      <button id="btn-lock" class="sidebar-lock-btn" title="Lock Vault">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ═══════════ MAIN CONTENT ═══════════ -->
+  <main id="main-content" class="main-content">
+
+    <!-- ─── MOBILE HEADER ─── -->
+    <header id="app-header" class="mobile-header">
+      <button id="btn-sidebar-toggle" class="mobile-menu-btn">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <div class="mobile-header-brand">
+        <svg viewBox="0 0 52 52" width="20" height="20"><use href="#icon-shield"/></svg>
+        <span>ENCLAVE</span>
+      </div>
+      <span id="crawler-status" class="crawler-badge-mobile" style="display:none;">
+        <svg viewBox="0 0 12 12" width="8" height="8"><circle cx="6" cy="6" r="4" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="6" cy="6" r="1.5" fill="currentColor"/></svg>
+        LIVE
       </span>
-      <button id="btn-settings-open" class="btn btn-icon">
-        <svg viewBox="0 0 32 32" width="16" height="16"><use href="#icon-gear"/></svg>
-      </button>
-      <button id="btn-lock" class="btn btn-icon">
-        <svg viewBox="0 0 32 32" width="16" height="16"><use href="#icon-lock"/></svg>
-      </button>
+    </header>
+
+    <!-- ═══════════ TAB: HOME ═══════════ -->
+    <div id="tab-home" class="tab-content active">
+      <!-- Hero Protection Ring -->
+      <section id="panel-hero" class="home-hero">
+        <div class="hero-ring-container">
+          <div class="hero-protection-ring">
+            <svg class="hero-ring-svg" viewBox="0 0 120 120" width="160" height="160">
+              <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(0,255,136,0.06)" stroke-width="5"/>
+              <circle id="hero-ring-fill" cx="60" cy="60" r="52" fill="none" stroke="url(#heroGrad)" stroke-width="5" stroke-linecap="round" stroke-dasharray="326.7" stroke-dashoffset="326.7" transform="rotate(-90 60 60)"/>
+              <defs><linearGradient id="heroGrad" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#00FF88"/><stop offset="100%" stop-color="#00BFFF"/></linearGradient></defs>
+              <circle cx="60" cy="60" r="42" fill="none" stroke="rgba(0,191,255,0.04)" stroke-width="1"/>
+              <circle id="hero-ring-inner" cx="60" cy="60" r="42" fill="none" stroke="#00BFFF" stroke-width="1.5" stroke-dasharray="263.9" stroke-dashoffset="263.9" transform="rotate(-90 60 60)" opacity="0.4"/>
+            </svg>
+            <div class="hero-ring-center">
+              <button id="btn-hero-shield" class="hero-shield-btn">
+                <svg class="hero-shield-svg" viewBox="0 0 52 52" width="36" height="36">
+                  <use href="#icon-shield-ring" class="shield-ring-track"/>
+                  <use href="#icon-shield" class="shield-core-glow"/>
+                </svg>
+              </button>
+              <span id="hero-shield-pct" class="hero-shield-pct">0%</span>
+              <span class="hero-shield-label">Protection</span>
+            </div>
+          </div>
+          <div class="hero-info">
+            <span id="hero-status-text" class="hero-status-badge">Initializing...</span>
+            <span id="hero-shields-active" class="hero-shields-badge">0/5 Shields Active</span>
+            <div class="hero-streak-row">
+              <div class="streak-counter" id="streak-counter">
+                <span class="streak-fire" id="streak-fire">🔥</span>
+                <span class="streak-number" id="streak-number">1</span>
+                <span class="streak-label">day streak</span>
+                <span class="streak-sub" id="streak-sub">Don't break it!</span>
+              </div>
+              <div class="threat-avoidance" id="threat-avoidance">
+                <span class="threat-avoidance-number" id="threat-avoidance-number">0</span>
+                <span class="threat-avoidance-label">threats blocked</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Quick Actions -->
+      <section class="quick-actions-grid">
+        <button class="action-card" onclick="document.querySelector('[data-tab=scan]').click()">
+          <div class="action-icon action-icon-scan"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
+          <span class="action-label">Quick Scan</span>
+          <span class="action-desc">Check a URL or image</span>
+        </button>
+        <button class="action-card" id="btn-deep-scan-action" data-tab="scan">
+          <div class="action-icon action-icon-deep"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></div>
+          <span class="action-label">Deep Scan</span>
+          <span class="action-desc">Full platform crawl</span>
+        </button>
+        <button class="action-card" onclick="document.querySelector('[data-tab=alerts]').click()">
+          <div class="action-icon action-icon-alert"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div>
+          <span class="action-label">Alerts</span>
+          <span class="action-desc" id="home-alert-count">0 pending</span>
+        </button>
+        <button class="action-card" id="btn-settings-action" data-tab="settings">
+          <div class="action-icon action-icon-settings"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.32 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></div>
+          <span class="action-label">Settings</span>
+          <span class="action-desc">Manage account</span>
+        </button>
+      </section>
+
+      <!-- Social Proof -->
+      <section id="panel-social-proof" class="social-proof-section">
+        <div class="sp-stats">
+          <div class="sp-stat"><span class="sp-stat-dot sp-dot-green"></span><span class="sp-stat-text"><strong id="sp-online-count">2,847</strong> online now</span></div>
+          <div class="sp-stat"><span class="sp-stat-dot sp-dot-blue"></span><span class="sp-stat-text"><strong id="sp-blocked-today">1,203</strong> blocked today</span></div>
+        </div>
+        <div class="sp-feed" id="social-proof-feed">
+          <div class="sp-entry"><span class="sp-dot"></span><span class="sp-msg">Someone in Tokyo just blocked a deepfake</span><span class="sp-time">2m ago</span></div>
+          <div class="sp-entry"><span class="sp-dot"></span><span class="sp-msg">Someone in London activated Camera Immunizer</span><span class="sp-time">5m ago</span></div>
+          <div class="sp-entry"><span class="sp-dot"></span><span class="sp-msg">Someone in New York completed a deep scan</span><span class="sp-time">8m ago</span></div>
+        </div>
+      </section>
+
+      <!-- Recent Alerts -->
+      <section class="home-recent-alerts">
+        <div class="section-header">
+          <h3 class="section-title">Recent Alerts</h3>
+          <button class="section-link" onclick="document.querySelector('[data-tab=alerts]').click()">View all →</button>
+        </div>
+        <div id="home-alert-list" class="alert-list-home"></div>
+      </section>
+
+      <!-- Achievements Row -->
+      <section class="home-achievements">
+        <div class="section-header">
+          <h3 class="section-title">Achievements</h3>
+          <span class="section-subtitle" id="badge-progress-text">0 of 8</span>
+        </div>
+        <div class="badges-scroll" id="badges-grid">
+          <div class="badge-chip badge-locked" id="badge-first-scan" data-badge="first-scan"><span class="badge-emoji">🔍</span><span>First Scan</span></div>
+          <div class="badge-chip badge-locked" id="badge-shield-1" data-badge="shield-1"><span class="badge-emoji">🛡️</span><span>First Shield</span></div>
+          <div class="badge-chip badge-locked" id="badge-shield-5" data-badge="shield-5"><span class="badge-emoji">🏰</span><span>Full Fortress</span></div>
+          <div class="badge-chip badge-locked" id="badge-streak-7" data-badge="streak-7"><span class="badge-emoji">🔥</span><span>Week Warrior</span></div>
+          <div class="badge-chip badge-locked" id="badge-takedown-1" data-badge="takedown-1"><span class="badge-emoji">⚖️</span><span>First Takedown</span></div>
+          <div class="badge-chip badge-locked" id="badge-scanner-10" data-badge="scanner-10"><span class="badge-emoji">🎯</span><span>Scan Master</span></div>
+          <div class="badge-chip badge-locked" id="badge-threat-blocked" data-badge="threat-blocked"><span class="badge-emoji">🚫</span><span>Threat Blocker</span></div>
+          <div class="badge-chip badge-locked" id="badge-pro-user" data-badge="pro-user"><span class="badge-emoji">⭐</span><span>Pro Member</span></div>
+        </div>
+      </section>
     </div>
-  </header>
 
-  <!-- Bento Grid Body -->
-  <div id="app-body">
+    <!-- ═══════════ TAB: SHIELD ═══════════ -->
+    <div id="tab-shield" class="tab-content">
+      <div class="tab-header">
+        <h2 class="tab-title">Shield Status</h2>
+        <p class="tab-subtitle">Activate and manage your protection modules</p>
+      </div>
 
-    <!-- ─── Center Hero: Glassmorphic Shield ─── -->
-    <section id="panel-hero" class="panel panel-hero">
-      <button id="btn-hero-shield" class="hero-shield-btn">
-        <svg class="hero-shield-svg" viewBox="0 0 52 52" width="80" height="80">
-          <use href="#icon-shield-ring" class="shield-ring-track"/>
-          <use href="#icon-shield" class="shield-core-glow"/>
-        </svg>
-        <span class="hero-label">TAP TO VERIFY</span>
-        <span id="hero-status-text" class="hero-status">Vault Locked</span>
-      </button>
-    </section>
+      <!-- Camera Immunizer -->
+      <section id="panel-camera" class="shield-card">
+        <div class="shield-card-header">
+          <div class="shield-card-icon shield-card-icon-green">
+            <svg viewBox="0 0 40 40" width="28" height="28"><use href="#icon-camera" class="camera-core-standby"/></svg>
+          </div>
+          <div class="shield-card-info">
+            <h3 class="shield-card-title">Camera Immunizer</h3>
+            <p class="shield-card-desc">Protects every photo with C2PA provenance + invisible watermark</p>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="toggle-camera-shield">
+            <span class="toggle-track"><span class="toggle-knob"></span></span>
+          </label>
+        </div>
+        <div class="shield-card-body">
+          <div class="shield-activity" id="camera-activity">
+            <div class="shield-activity-visual">
+              <div class="shield-pulse-ring"></div>
+              <div class="shield-pulse-ring shield-pulse-ring-2"></div>
+              <svg viewBox="0 0 32 32" width="20" height="20" style="color:var(--green);"><use href="#icon-camera"/></svg>
+            </div>
+            <div class="shield-activity-status">
+              <span class="shield-activity-label">Shield Status</span>
+              <span id="camera-shield-label" class="shield-activity-value">Inactive</span>
+            </div>
+          </div>
+          <div class="shield-card-metrics">
+            <div class="shield-metric"><span id="camera-cloak-count" class="shield-metric-val">0</span><span class="shield-metric-lbl">Photos Shielded</span></div>
+            <div class="shield-metric"><span id="camera-last-active" class="shield-metric-val">—</span><span class="shield-metric-lbl">Last Active</span></div>
+          </div>
+        </div>
+      </section>
 
-    <!-- ─── Shield Status Card ─── -->
-    <section id="panel-shield-status" class="panel panel-card glass-card-glow">
-      <div class="card-header">
-        <svg class="card-icon" viewBox="0 0 32 32" width="28" height="28">
-          <use href="#icon-shield-status"/>
-        </svg>
-        <div class="card-title-group">
-          <h2 class="card-title">Shield Status</h2>
-          <p class="card-subtitle">Active protection modules</p>
+      <!-- Voice Shield -->
+      <section id="panel-voice" class="shield-card">
+        <div class="shield-card-header">
+          <div class="shield-card-icon shield-card-icon-cyan">
+            <svg viewBox="0 0 40 40" width="28" height="28"><use href="#icon-voice" class="voice-core-standby"/></svg>
+          </div>
+          <div class="shield-card-info">
+            <h3 class="shield-card-title">Voice Shield</h3>
+            <p class="shield-card-desc">Real-time audio scrambling prevents voice cloning during calls</p>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="toggle-voice-shield">
+            <span class="toggle-track"><span class="toggle-knob"></span></span>
+          </label>
         </div>
-      </div>
-      <div class="card-body">
-        <div id="shield-modules" class="shield-modules">
-          <div class="shield-module">
-            <span class="shield-module-name">Camera Immunizer</span>
-            <span id="shield-camera-status" class="shield-module-badge inactive">OFF</span>
+        <div class="shield-card-body">
+          <div class="shield-activity" id="voice-activity">
+            <div class="shield-activity-visual">
+              <div class="shield-pulse-ring"></div>
+              <div class="shield-pulse-ring shield-pulse-ring-2"></div>
+              <svg viewBox="0 0 32 32" width="20" height="20" style="color:var(--cyan);"><use href="#icon-voice"/></svg>
+            </div>
+            <div class="shield-activity-status">
+              <span class="shield-activity-label">Shield Status</span>
+              <span id="voice-shield-label" class="shield-activity-value">Inactive</span>
+            </div>
           </div>
-          <div class="shield-module">
-            <span class="shield-module-name">Voice Shield</span>
-            <span id="shield-voice-status" class="shield-module-badge inactive">OFF</span>
-          </div>
-          <div class="shield-module">
-            <span class="shield-module-name">Deepfake Crawler</span>
-            <span id="shield-crawler-status" class="shield-module-badge inactive">OFF</span>
-          </div>
-          <div class="shield-module">
-            <span class="shield-module-name">ML Detection Engine</span>
-            <span id="shield-ml-engine-status" class="shield-module-badge inactive">OFF</span>
-          </div>
-          <div class="shield-module">
-            <span class="shield-module-name">On-Device ML</span>
-            <span id="shield-ml-status" class="shield-module-badge inactive">OFF</span>
+          <div class="shield-card-metrics">
+            <div class="shield-metric"><span id="voice-sessions-protected" class="shield-metric-val">0</span><span class="shield-metric-lbl">Sessions Protected</span></div>
+            <div class="shield-metric"><span id="voice-last-active" class="shield-metric-val">—</span><span class="shield-metric-lbl">Last Active</span></div>
           </div>
         </div>
-        <div class="card-metrics" style="margin-top:0.75rem;">
-          <div class="metric">
-            <span id="shield-total-scans" class="metric-value">0</span>
-            <span class="metric-label">Total Scans</span>
-          </div>
-          <div class="metric">
-            <span id="shield-takedowns" class="metric-value">0</span>
-            <span class="metric-label">Takedowns</span>
-          </div>
-        </div>
-      </div>
-    </section>
+      </section>
 
-    <!-- ─── Monitoring Sources Card (Phase 2) ─── -->
-    <section id="panel-monitoring" class="panel panel-card">
-      <div class="card-header">
-        <svg class="card-icon" viewBox="0 0 12 12" width="26" height="26">
-          <use href="#icon-radar-dot"/>
-        </svg>
-        <div class="card-title-group">
-          <h2 class="card-title">Monitoring Sources</h2>
-          <p class="card-subtitle" id="monitoring-schedule-label">Loading…</p>
-        </div>
-        <button id="btn-monitoring-toggle" class="btn btn-safe" style="font-size:0.7rem;">Start</button>
-      </div>
-      <div class="card-body">
-        <div id="monitoring-sources" class="shield-modules">
-          <p style="color:var(--text-muted);font-size:0.75rem;">No source data yet.</p>
-        </div>
-        <div class="card-metrics" style="margin-top:0.75rem;">
-          <div class="metric">
-            <span id="monitoring-last-scan" class="metric-value">—</span>
-            <span class="metric-label">Last Scan</span>
+      <!-- Deepfake Crawler -->
+      <section id="panel-monitoring" class="shield-card">
+        <div class="shield-card-header">
+          <div class="shield-card-icon shield-card-icon-blue">
+            <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
           </div>
-          <div class="metric">
-            <span id="monitoring-next-run" class="metric-value">—</span>
-            <span class="metric-label">Next Scan</span>
+          <div class="shield-card-info">
+            <h3 class="shield-card-title">Deepfake Crawler</h3>
+            <p class="shield-card-desc" id="monitoring-schedule-label">Scans the web for unauthorized use of your identity</p>
           </div>
-          <div class="metric">
-            <span id="monitoring-total-findings" class="metric-value">0</span>
-            <span class="metric-label">Findings</span>
-          </div>
+          <button id="btn-monitoring-toggle" class="btn btn-sm btn-outline-green">Start</button>
         </div>
-        <p id="monitoring-status-msg" class="status-msg" style="margin-top:0.4rem;"></p>
-      </div>
-    </section>
+        <div class="shield-card-body">
+          <div id="monitoring-sources" class="shield-modules-list">
+            <p class="text-muted-sm">Start monitoring to scan platforms</p>
+          </div>
+          <div class="shield-card-metrics">
+            <div class="shield-metric"><span id="monitoring-last-scan" class="shield-metric-val">—</span><span class="shield-metric-lbl">Last Scan</span></div>
+            <div class="shield-metric"><span id="monitoring-next-run" class="shield-metric-val">—</span><span class="shield-metric-lbl">Next Scan</span></div>
+            <div class="shield-metric"><span id="monitoring-total-findings" class="shield-metric-val">0</span><span class="shield-metric-lbl">Findings</span></div>
+          </div>
+          <p id="monitoring-status-msg" class="status-msg-sm"></p>
+        </div>
+      </section>
 
-    <!-- ─── Camera Immunizer Core Card ─── -->
-    <section id="panel-camera" class="panel panel-card">
-      <div class="card-header">
-        <svg class="card-icon" viewBox="0 0 40 40" width="32" height="32">
-          <use href="#icon-camera" class="camera-core-standby"/>
-        </svg>
-        <div class="card-title-group">
-          <h2 class="card-title">Camera Immunizer Core</h2>
-          <p class="card-subtitle">Real-time photo integrity shield</p>
-        </div>
-        <label class="toggle-switch">
-          <input type="checkbox" id="toggle-camera-shield">
-          <span class="toggle-track">
-            <span class="toggle-knob"></span>
-          </span>
-        </label>
-      </div>
-      <div class="card-body">
-        <p class="card-desc">Intercepts newly captured photos, applies C2PA provenance + LSB watermarking, and stores originals securely before any app can read them.</p>
-        <div class="card-metrics">
-          <div class="metric">
-            <span id="camera-cloak-count" class="metric-value">0</span>
-            <span class="metric-label">Photos Shielded</span>
+      <!-- ML Engine + On-Device ML -->
+      <section class="shield-card">
+        <div class="shield-card-header">
+          <div class="shield-card-icon shield-card-icon-purple">
+            <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
           </div>
-          <div class="metric">
-            <span id="camera-last-active" class="metric-value">—</span>
-            <span class="metric-label">Last Active</span>
+          <div class="shield-card-info">
+            <h3 class="shield-card-title">ML Detection Engine</h3>
+            <p class="shield-card-desc">AI-powered deepfake analysis with multiple providers</p>
+          </div>
+          <span id="shield-ml-engine-status" class="shield-module-badge inactive">OFF</span>
+        </div>
+        <div class="shield-card-body">
+          <div class="shield-modules-list">
+            <div class="shield-module"><span class="shield-module-indicator" id="indicator-ml-engine"></span><span class="shield-module-name">Cloud ML Engine</span><span id="shield-ml-engine-status-detail" class="shield-module-badge inactive">OFF</span></div>
+            <div class="shield-module"><span class="shield-module-indicator" id="indicator-ml-device"></span><span class="shield-module-name">On-Device ML</span><span id="shield-ml-status" class="shield-module-badge inactive">OFF</span></div>
           </div>
         </div>
-      </div>
-    </section>
+      </section>
 
-    <!-- ─── Voice Shield Tunnel Card ─── -->
-    <section id="panel-voice" class="panel panel-card">
-      <div class="card-header">
-        <svg class="card-icon" viewBox="0 0 40 40" width="32" height="32">
-          <use href="#icon-voice" class="voice-core-standby"/>
-        </svg>
-        <div class="card-title-group">
-          <h2 class="card-title">Voice Shield Tunnel</h2>
-          <p class="card-subtitle">Audio deepfake protection</p>
-        </div>
-        <label class="toggle-switch">
-          <input type="checkbox" id="toggle-voice-shield">
-          <span class="toggle-track">
-            <span class="toggle-knob"></span>
-          </span>
-        </label>
+      <!-- Shield Summary -->
+      <div class="shield-summary-bar">
+        <div class="shield-sum-item"><span id="shield-total-scans" class="shield-sum-val">0</span><span class="shield-sum-lbl">Total Scans</span></div>
+        <div class="shield-sum-divider"></div>
+        <div class="shield-sum-item"><span id="shield-takedowns" class="shield-sum-val">0</span><span class="shield-sum-lbl">Takedowns</span></div>
       </div>
-      <div class="card-body">
-        <p class="card-desc">Voice enrollment + MFCC voiceprint matching. Intercepts outgoing mic through BiquadFilter scrambling matrix. Native Foreground Service on Android / CoreAudio on iOS.</p>
-        <div class="card-metrics">
-          <div class="metric">
-            <span id="voice-sessions-protected" class="metric-value">0</span>
-            <span class="metric-label">Sessions Protected</span>
+    </div>
+
+    <!-- ═══════════ TAB: SCAN ═══════════ -->
+    <div id="tab-scan" class="tab-content">
+      <div class="tab-header">
+        <h2 class="tab-title">Manual Scan</h2>
+        <p class="tab-subtitle">Analyze URLs or images for deepfake content</p>
+      </div>
+
+      <section id="panel-scanner" class="scanner-section">
+        <div id="scanner-radar" class="scanner-radar" style="display:none;">
+          <svg viewBox="0 0 120 120" width="100" height="100">
+            <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(0,255,136,0.08)" stroke-width="1"/>
+            <circle cx="60" cy="60" r="35" fill="none" stroke="rgba(0,255,136,0.06)" stroke-width="1"/>
+            <circle cx="60" cy="60" r="20" fill="none" stroke="rgba(0,255,136,0.04)" stroke-width="1"/>
+            <line class="radar-sweep" x1="60" y1="60" x2="60" y2="10" stroke="url(#radarGrad2)" stroke-width="2"/>
+            <defs><linearGradient id="radarGrad2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#00FF88" stop-opacity="0.8"/><stop offset="100%" stop-color="#00FF88" stop-opacity="0"/></linearGradient></defs>
+          </svg>
+          <p id="scanner-radar-text" class="scanner-radar-text">Scanning...</p>
+        </div>
+        <div id="scanner-input-area" class="scanner-input-area">
+          <div class="scanner-url-row">
+            <input type="text" id="scanner-url" class="scanner-input" placeholder="Paste a suspicious URL...">
+            <button id="btn-scanner" class="btn btn-primary btn-scan">Scan URL</button>
           </div>
-          <div class="metric">
-            <span id="voice-last-active" class="metric-value">—</span>
-            <span class="metric-label">Last Active</span>
+          <div class="scanner-divider"><span>or</span></div>
+          <label class="scanner-upload-zone" id="scanner-upload-zone">
+            <input type="file" id="scanner-file" accept="image/*" style="display:none;">
+            <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--text-muted);"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <span class="scanner-upload-text">Drop an image or click to upload</span>
+            <span class="scanner-upload-hint">Supports JPG, PNG, WebP</span>
+          </label>
+        </div>
+        <p id="scanner-status" class="scanner-status-msg"></p>
+        <div id="scanner-result" class="scanner-result" style="display:none;">
+          <div class="scanner-result-gauge">
+            <svg viewBox="0 0 60 60" width="56" height="56">
+              <circle cx="30" cy="30" r="24" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="4"/>
+              <circle id="scanner-result-ring" cx="30" cy="30" r="24" fill="none" stroke="#00FF88" stroke-width="4" stroke-linecap="round" stroke-dasharray="150.8" stroke-dashoffset="150.8" transform="rotate(-90 30 30)"/>
+            </svg>
+            <span id="scanner-result-pct" class="scanner-result-pct">0%</span>
+          </div>
+          <div id="scanner-result-info" class="scanner-result-info"></div>
+        </div>
+        <p id="scanner-meta" class="scanner-meta-text" style="display:none;"></p>
+      </section>
+    </div>
+
+    <!-- ═══════════ TAB: ALERTS ═══════════ -->
+    <div id="tab-alerts" class="tab-content">
+      <div class="tab-header">
+        <h2 class="tab-title">Intelligence Feed</h2>
+        <p class="tab-subtitle">All detected threats and alerts</p>
+      </div>
+
+      <section class="alerts-section">
+        <div id="alert-list" class="alert-list-full">
+          <div class="empty-state"><svg viewBox="0 0 64 64" width="48" height="48" class="empty-state-icon"><circle cx="32" cy="32" r="28" fill="none" stroke="rgba(0,255,136,0.15)" stroke-width="2"/><path d="M32 18v16M32 40v2" stroke="rgba(0,255,136,0.3)" stroke-width="2" stroke-linecap="round"/></svg><p class="empty-state-text">No threats detected</p><p class="empty-state-sub">System is scanning in the background</p></div>
+        </div>
+        <p id="dashboard-status" class="status-msg-sm"></p>
+      </section>
+
+      <!-- Takedowns sub-section -->
+      <section class="takedowns-section">
+        <div class="section-header">
+          <h3 class="section-title">Takedowns</h3>
+          <button id="btn-takedowns-open" class="section-link">View all →</button>
+        </div>
+        <div id="takedown-list" class="takedown-list-clean"></div>
+        <div class="takedown-summary">
+          <div class="ts-item"><span id="takedown-active" class="ts-val ts-val-warning">0</span><span class="ts-lbl">Active</span></div>
+          <div class="ts-item"><span id="takedown-removed" class="ts-val ts-val-green">0</span><span class="ts-lbl">Removed</span></div>
+          <div class="ts-item"><span id="takedown-escalated" class="ts-val ts-val-red">0</span><span class="ts-lbl">Escalated</span></div>
+        </div>
+      </section>
+
+      <!-- Notifications -->
+      <section class="notifications-section">
+        <div class="section-header">
+          <h3 class="section-title">Notifications</h3>
+          <span id="notification-unread-badge" class="nav-badge" style="display:none;">0</span>
+          <button id="btn-notifications-clear" class="section-link">Clear all</button>
+        </div>
+        <div id="notification-list" class="notification-list-clean"></div>
+      </section>
+    </div>
+
+    <!-- ═══════════ TAB: INSIGHTS ═══════════ -->
+    <div id="tab-insights" class="tab-content">
+      <div class="tab-header">
+        <h2 class="tab-title">Security Insights</h2>
+        <p class="tab-subtitle">Your personalized risk profile and stats</p>
+      </div>
+
+      <!-- Personalized Insights -->
+      <section class="insights-section">
+        <div id="insights-list" class="insights-grid"></div>
+      </section>
+
+      <!-- Activity Stats -->
+      <section class="stats-section">
+        <div class="section-header"><h3 class="section-title">Activity Stats</h3></div>
+        <div class="stats-grid-v2">
+          <div class="stat-card stat-card-primary">
+            <div class="stat-card-header">
+              <span id="stat-total-scans" class="stat-card-value">0</span>
+              <span class="stat-trend stat-trend-neutral" id="stat-trend-scans">new</span>
+            </div>
+            <span class="stat-card-label">Total Scans</span>
+            <div class="mini-chart"><div class="mini-chart-bars" id="chart-scans"><span class="mini-bar" style="height:30%"></span><span class="mini-bar" style="height:50%"></span><span class="mini-bar" style="height:40%"></span><span class="mini-bar" style="height:70%"></span><span class="mini-bar" style="height:60%"></span><span class="mini-bar" style="height:80%"></span><span class="mini-bar" style="height:95%"></span></div></div>
+          </div>
+          <div class="stat-card stat-card-danger">
+            <div class="stat-card-header">
+              <span id="stat-threats-found" class="stat-card-value">0</span>
+              <span class="stat-trend stat-trend-neutral" id="stat-trend-threats">new</span>
+            </div>
+            <span class="stat-card-label">Threats Found</span>
+            <div class="mini-chart"><div class="mini-chart-bars" id="chart-threats"><span class="mini-bar mini-bar-danger" style="height:10%"></span><span class="mini-bar mini-bar-danger" style="height:20%"></span><span class="mini-bar mini-bar-danger" style="height:15%"></span><span class="mini-bar mini-bar-danger" style="height:5%"></span><span class="mini-bar mini-bar-danger" style="height:25%"></span><span class="mini-bar mini-bar-danger" style="height:10%"></span><span class="mini-bar mini-bar-danger" style="height:8%"></span></div></div>
+          </div>
+          <div class="stat-card stat-card-warning">
+            <div class="stat-card-header">
+              <span id="stat-takedowns-sent" class="stat-card-value">0</span>
+              <span class="stat-trend stat-trend-neutral" id="stat-trend-takedowns">new</span>
+            </div>
+            <span class="stat-card-label">Takedowns Sent</span>
+            <div class="mini-chart"><div class="mini-chart-bars" id="chart-takedowns"><span class="mini-bar mini-bar-warning" style="height:5%"></span><span class="mini-bar mini-bar-warning" style="height:15%"></span><span class="mini-bar mini-bar-warning" style="height:10%"></span><span class="mini-bar mini-bar-warning" style="height:20%"></span><span class="mini-bar mini-bar-warning" style="height:8%"></span><span class="mini-bar mini-bar-warning" style="height:12%"></span><span class="mini-bar mini-bar-warning" style="height:5%"></span></div></div>
+          </div>
+          <div class="stat-card">
+            <span id="stat-account-age" class="stat-card-value">—</span>
+            <span class="stat-card-label">Days Protected</span>
+            <div class="stat-card-sub"><svg viewBox="0 0 16 16" width="10" height="10" style="color:var(--green);"><use href="#icon-shield"/></svg> Continuous monitoring</div>
+          </div>
+          <div class="stat-card">
+            <span id="stat-scan-latency" class="stat-card-value">—</span>
+            <span class="stat-card-label">Avg Latency</span>
+            <div class="stat-card-sub"><span class="stat-latency-dot"></span><span id="stat-latency-status">Measuring...</span></div>
+          </div>
+          <div class="stat-card">
+            <span id="stat-cache-hits" class="stat-card-value">0</span>
+            <span class="stat-card-label">Cache Hits</span>
+            <div class="stat-card-sub">Faster re-scans</div>
           </div>
         </div>
-      </div>
-    </section>
+      </section>
 
-    <!-- ─── Alert Feed ─── -->
-    <section id="panel-alerts" class="panel panel-alerts">
-      <div class="panel-alerts-header">
-        <h2 class="panel-title">Intelligence Feed</h2>
-        <button id="btn-deep-scan" class="btn btn-ghost">Trigger Deep Scan</button>
-      </div>
-      <div id="alert-list" class="alert-list"></div>
-      <p id="dashboard-status" class="status-msg"></p>
-    </section>
-
-    <!-- ─── Scanner (Manual) ─── -->
-    <section id="panel-scanner" class="panel panel-scanner">
-      <h2 class="panel-title">Manual Scan</h2>
-      <input type="text" id="scanner-url" class="reg-input" placeholder="Paste suspicious URL...">
-      <div class="scanner-row">
-        <input type="file" id="scanner-file" accept="image/*">
-        <button id="btn-scanner" class="btn btn-warning">Scan</button>
-      </div>
-      <p id="scanner-status" class="status-msg"></p>
-      <p id="scanner-meta" class="card-desc" style="margin-bottom:0;"></p>
-    </section>
-
-    <!-- ─── Billing & Usage Card (ANCHORING + LOSS FRAMING) ─── -->
-    <section id="panel-billing" class="panel panel-card">
-      <div class="card-header">
-        <svg class="card-icon" viewBox="0 0 32 32" width="24" height="24" style="color:var(--accent-secondary);">
-          <use href="#icon-billing"/>
-        </svg>
-        <div class="card-title-group">
-          <h2 class="card-title">Billing & Usage</h2>
-          <p class="card-subtitle" id="billing-plan-label">Free Plan</p>
+      <!-- Protection Timeline -->
+      <section class="timeline-section">
+        <div class="section-header"><h3 class="section-title">Protection Timeline</h3></div>
+        <div class="timeline" id="protection-timeline">
+          <div class="tl-entry"><div class="tl-dot tl-dot-green"></div><div class="tl-content"><span class="tl-event">Account created — Protection started</span><span class="tl-date" id="timeline-start-date">Today</span></div></div>
+          <div class="tl-entry"><div class="tl-dot tl-dot-blue"></div><div class="tl-content"><span class="tl-event">Face enrolled — Identity fingerprint saved</span><span class="tl-date">Today</span></div></div>
+          <div class="tl-entry tl-entry-future" id="timeline-next-scan"><div class="tl-dot tl-dot-pulse"></div><div class="tl-content"><span class="tl-event">Next deep scan scheduled</span><span class="tl-date">In 6 hours</span></div></div>
         </div>
-        <button id="btn-billing-manage" class="btn btn-ghost" style="font-size:0.7rem;">Manage</button>
+        <div class="timeline-summary" id="timeline-summary"><span>Protected for <strong id="timeline-days">1</strong> day · <strong id="timeline-hours">24</strong> hours of monitoring</span></div>
+      </section>
+
+      <!-- Community -->
+      <section class="community-section">
+        <div class="section-header">
+          <h3 class="section-title">Community</h3>
+          <button id="btn-community-open" class="section-link">View forum →</button>
+        </div>
+        <div class="community-trust-row">
+          <div class="ct-item"><span class="ct-num" id="community-total-users">12,847</span><span class="ct-lbl">Protected Users</span></div>
+          <div class="ct-item"><span class="ct-num" id="community-today-active">2,847</span><span class="ct-lbl">Active Today</span></div>
+          <div class="ct-item"><span class="ct-num" id="community-threats-shared">89,421</span><span class="ct-lbl">Threats Shared</span></div>
+        </div>
+        <div class="community-user-stats">
+          <div class="metric"><span id="community-ioc-count" class="metric-value" style="color:var(--cyan);">0</span><span class="metric-label">IoCs You Shared</span></div>
+          <div class="metric"><span id="community-posts" class="metric-value" style="color:var(--cyan);">0</span><span class="metric-label">Forum Posts</span></div>
+        </div>
+        <div class="reciprocity-block" id="reciprocity-block"><p>🛡️ Community blocked <strong>847 threats</strong> for you this month</p></div>
+      </section>
+    </div>
+
+    <!-- ═══════════ TAB: SETTINGS ═══════════ -->
+    <div id="tab-settings" class="tab-content">
+      <div class="tab-header">
+        <h2 class="tab-title">Settings</h2>
+        <p class="tab-subtitle">Manage your account and preferences</p>
       </div>
-      <div class="card-body">
+
+      <!-- Billing -->
+      <section id="panel-billing" class="settings-card">
+        <div class="settings-card-header">
+          <h3 class="settings-card-title">Billing & Usage</h3>
+          <span id="billing-plan-label" class="plan-badge">Free Plan</span>
+        </div>
         <div class="usage-bars" id="usage-bars">
-          <div class="usage-bar-row">
-            <span class="usage-label">Scans</span>
-            <div class="usage-bar-track"><div id="usage-scans-bar" class="usage-bar-fill" style="width:10%"></div></div>
-            <span id="usage-scans-text" class="usage-count">0 / 5</span>
-          </div>
-          <div class="usage-bar-row">
-            <span class="usage-label">Takedowns</span>
-            <div class="usage-bar-track"><div id="usage-takedowns-bar" class="usage-bar-fill" style="width:0%"></div></div>
-            <span id="usage-takedowns-text" class="usage-count">0 / 2</span>
-          </div>
-          <div class="usage-bar-row">
-            <span class="usage-label">API Calls</span>
-            <div class="usage-bar-track"><div id="usage-api-bar" class="usage-bar-fill" style="width:5%"></div></div>
-            <span id="usage-api-text" class="usage-count">0 / 100</span>
-          </div>
+          <div class="usage-bar-row"><span class="usage-label">Scans</span><div class="usage-bar-track"><div id="usage-scans-bar" class="usage-bar-fill" style="width:10%"></div></div><span id="usage-scans-text" class="usage-count">0 / 5</span></div>
+          <div class="usage-bar-row"><span class="usage-label">Takedowns</span><div class="usage-bar-track"><div id="usage-takedowns-bar" class="usage-bar-fill" style="width:0%"></div></div><span id="usage-takedowns-text" class="usage-count">0 / 2</span></div>
+          <div class="usage-bar-row"><span class="usage-label">API Calls</span><div class="usage-bar-track"><div id="usage-api-bar" class="usage-bar-fill" style="width:5%"></div></div><span id="usage-api-text" class="usage-count">0 / 100</span></div>
         </div>
-        <p id="billing-next-reset" class="card-desc" style="margin-bottom:0.5rem;">Resets monthly</p>
-        <!-- ANCHORING: Show attack cost first, then protection cost -->
+        <p id="billing-next-reset" class="text-muted-sm">Resets monthly</p>
+        <div class="urgency-block" id="urgency-block">
+          <div class="urgency-header"><span class="urgency-pulse"></span><span class="urgency-text">⚡ Peak threat window</span></div>
+          <p class="urgency-detail">340% more attacks within 48h of exposure. Last detected <strong id="urgency-time-since">2 days ago</strong>.</p>
+          <div class="urgency-timer"><span class="urgency-timer-label">Window closes in:</span><span class="urgency-timer-value" id="urgency-countdown">36h 14m</span></div>
+        </div>
         <div class="anchoring-block">
-          <p class="anchoring-high">Average deepfake attack costs victims <strong>$12,400</strong></p>
+          <p class="anchoring-high">Average attack costs victims <strong>$12,400</strong></p>
           <p class="anchoring-vs">vs.</p>
-          <p class="anchoring-low">Enclave Shield protects you for <strong>$19.99/mo</strong></p>
-          <p class="anchoring-percentage">That's 0.16% of the cost of one attack</p>
+          <p class="anchoring-low">Enclave Pro: <strong>$9.99/mo</strong></p>
+          <p class="anchoring-percentage">0.08% of one attack</p>
         </div>
-        <!-- LOSS FRAMING: What you lose without upgrading -->
-        <div class="loss-framing-block">
-          <p class="loss-framing-title">Without Pro, you lose:</p>
-          <ul class="loss-framing-list">
-            <li>Unlimited deepfake scans</li>
-            <li>Priority takedown (48h SLA)</li>
-            <li>Dark web monitoring</li>
-            <li>Legal document generation</li>
-          </ul>
-        </div>
-        <div style="display:flex;gap:0.5rem;margin-top:0.75rem;">
-          <button id="btn-upgrade-pro" class="btn btn-safe" style="flex:1;">Don't Lose Protection — Pro $9.99/mo</button>
-        </div>
-        <p style="font-size:0.65rem;color:var(--text-muted);text-align:center;margin-top:0.4rem;">Cancel anytime. 14-day money-back guarantee.</p>
-      </div>
-    </section>
+        <button id="btn-upgrade-pro" class="btn btn-primary btn-full">Upgrade to Pro — $9.99/mo</button>
+        <button id="btn-billing-manage" class="btn btn-ghost btn-full" style="margin-top:0.5rem;">Manage Billing</button>
+      </section>
+    </div>
 
-    <!-- ─── Community & Threat Intel Card ─── -->
-    <section id="panel-community" class="panel panel-card">
-      <div class="card-header">
-        <svg class="card-icon" viewBox="0 0 32 32" width="24" height="24" style="color:var(--accent-info);">
-          <use href="#icon-community"/>
-        </svg>
-        <div class="card-title-group">
-          <h2 class="card-title">Community</h2>
-          <p class="card-subtitle">Threat intel & forum</p>
-        </div>
-        <button id="btn-community-open" class="btn btn-ghost" style="font-size:0.7rem;">View</button>
-      </div>
-      <div class="card-body">
-        <div class="community-stats">
-          <div class="metric">
-            <span id="community-ioc-count" class="metric-value" style="color:var(--accent-info);">0</span>
-            <span class="metric-label">IoCs Shared</span>
-          </div>
-          <div class="metric">
-            <span id="community-posts" class="metric-value" style="color:var(--accent-info);">0</span>
-            <span class="metric-label">Forum Posts</span>
-          </div>
-        </div>
-        <p class="card-desc" style="margin-top:0.75rem;">Share and vote on community threat indicators. Browse the anonymous forum for deepfake protection tips.</p>
-      </div>
-    </section>
+  </main>
 
-    <!-- ─── Recent Takedowns Card ─── -->
-    <section id="panel-takedowns" class="panel panel-card">
-      <div class="card-header">
-        <svg class="card-icon" viewBox="0 0 32 32" width="24" height="24" style="color:var(--accent-warning);">
-          <use href="#icon-legal"/>
-        </svg>
-        <div class="card-title-group">
-          <h2 class="card-title">Takedowns</h2>
-          <p class="card-subtitle">Active removal requests</p>
-        </div>
-        <button id="btn-takedowns-open" class="btn btn-ghost" style="font-size:0.7rem;">All</button>
-      </div>
-      <div class="card-body">
-        <div id="takedown-list" class="takedown-list">
-          <p style="color:var(--text-muted);font-size:0.8rem;">No active takedowns</p>
-        </div>
-        <div class="card-metrics" style="margin-top:0.75rem;">
-          <div class="metric">
-            <span id="takedown-active" class="metric-value" style="color:var(--accent-warning);">0</span>
-            <span class="metric-label">Active</span>
-          </div>
-          <div class="metric">
-            <span id="takedown-removed" class="metric-value" style="color:var(--accent-primary);">0</span>
-            <span class="metric-label">Removed</span>
-          </div>
-          <div class="metric">
-            <span id="takedown-escalated" class="metric-value" style="color:var(--accent-danger);">0</span>
-            <span class="metric-label">Escalated</span>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ─── Notifications Card ─── -->
-    <section id="panel-notifications" class="panel panel-card">
-      <div class="card-header">
-        <svg class="card-icon" viewBox="0 0 32 32" width="24" height="24" style="color:var(--text-secondary);">
-          <use href="#icon-bell"/>
-        </svg>
-        <div class="card-title-group">
-          <h2 class="panel-title" style="font-size:0.75rem;">Notifications</h2>
-          <span id="notification-unread-badge" class="notification-badge" style="display:none;">0</span>
-        </div>
-        <button id="btn-notifications-clear" class="btn btn-ghost" style="font-size:0.7rem;">Clear All</button>
-      </div>
-      <div id="notification-list" class="notification-list">
-        <p style="color:var(--text-muted);font-size:0.8rem;">No new notifications</p>
-      </div>
-    </section>
-
-    <!-- ─── Activity Stats Card ─── -->
-    <section id="panel-stats" class="panel panel-card">
-      <div class="card-header">
-        <svg class="card-icon" viewBox="0 0 32 32" width="24" height="24" style="color:var(--accent-primary);">
-          <use href="#icon-chart"/>
-        </svg>
-        <div class="card-title-group">
-          <h2 class="panel-title" style="font-size:0.75rem;">Activity Stats</h2>
-        </div>
-      </div>
-      <div class="card-body">
-        <div class="stats-grid">
-          <div class="stat-item">
-            <span id="stat-total-scans" class="stat-value">0</span>
-            <span class="stat-label">Total Scans</span>
-          </div>
-          <div class="stat-item">
-            <span id="stat-threats-found" class="stat-value" style="color:var(--accent-danger);">0</span>
-            <span class="stat-label">Threats Found</span>
-          </div>
-          <div class="stat-item">
-            <span id="stat-takedowns-sent" class="stat-value" style="color:var(--accent-warning);">0</span>
-            <span class="stat-label">Takedowns Sent</span>
-          </div>
-          <div class="stat-item">
-            <span id="stat-account-age" class="stat-value">—</span>
-            <span class="stat-label">Days Protected</span>
-          </div>
-          <div class="stat-item">
-            <span id="stat-scan-latency" class="stat-value">—</span>
-            <span class="stat-label">Avg Scan Latency</span>
-          </div>
-          <div class="stat-item">
-            <span id="stat-cache-hits" class="stat-value">0</span>
-            <span class="stat-label">Cache Hits</span>
-          </div>
-        </div>
-      </div>
-    </section>
-
-  </div>
-
-  <footer id="app-footer">
-    <p>Enclave v5.0 — Offline · Local · Private · Zero-Knowledge</p>
-    <p style="margin-top:0.3rem;display:flex;gap:0.9rem;justify-content:center;flex-wrap:wrap;">
-      <a href="#" class="footer-link" data-legal="tos">Terms of Service</a>
-      <a href="#" class="footer-link" data-legal="privacy">Privacy Policy</a>
-      <a href="#" class="footer-link" data-legal="dmca">DMCA Policy</a>
-    </p>
-  </footer>
+  <!-- ═══════════ SIDEBAR OVERLAY (mobile) ═══════════ -->
+  <div id="sidebar-overlay" class="sidebar-overlay"></div>
 </div>
 
 <!-- ════════════════════════════════════════════
@@ -997,6 +1129,7 @@
 <script src="api.js?v=5"></script>
 <script src="native-bridge.js?v=5"></script>
 <script src="auth-ui.js?v=5"></script>
-<script src="app.js?v=5"></script>
+<script src="interactions.js?v=1"></script>
+<script src="app.js?v=6"></script>
 </body>
 </html>

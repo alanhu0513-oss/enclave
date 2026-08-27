@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { useApp } from "@/lib/app-context";
 import { api } from "@/lib/api";
+import { usePsychology } from "@/lib/psychology";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,6 +26,7 @@ type Tool = "url" | "image" | "deep" | "reverse" | "watermark";
 
 export function ScanView() {
   const { toast } = useApp();
+  const psych = usePsychology();
   const [url, setUrl] = useState("");
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<{ type: Tool; data: any } | null>(null);
@@ -42,6 +44,10 @@ export function ScanView() {
     try {
       const data = await api.scanUrl(url);
       setResult({ type: "url", data });
+      psych.recordScan();
+      psych
+        .checkBadges(5)
+        .forEach((name) => toast({ title: `🏆 Badge unlocked: ${name}!`, variant: "success" }));
       toast({ title: "Scan complete", variant: "success" });
     } catch (e: any) {
       toast({ title: "Scan failed", body: e.message, variant: "error" });
@@ -56,6 +62,10 @@ export function ScanView() {
     try {
       const data = await api.scanImage(file);
       setResult({ type: "image", data });
+      psych.recordScan();
+      psych
+        .checkBadges(5)
+        .forEach((name) => toast({ title: `🏆 Badge unlocked: ${name}!`, variant: "success" }));
       toast({ title: "Image scan complete", variant: "success" });
     } catch (e: any) {
       toast({ title: "Scan failed", body: e.message, variant: "error" });

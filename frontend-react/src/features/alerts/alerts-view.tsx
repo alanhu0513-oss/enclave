@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { useApp } from "@/lib/app-context";
 import { api, type Alert } from "@/lib/api";
+import { usePsychology } from "@/lib/psychology";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +20,7 @@ import { confidenceColor, confidenceLabel, timeAgo } from "@/lib/utils";
 
 export function AlertsView() {
   const { toast } = useApp();
+  const psych = usePsychology();
   const [alerts, setAlerts] = useState<Alert[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [action, setAction] = useState<string | null>(null);
@@ -44,6 +46,10 @@ export function AlertsView() {
     setAction(a.id);
     try {
       await api.initiateTakedown(a.id, "dmca");
+      psych.recordTakedown();
+      psych
+        .checkBadges(5)
+        .forEach((name) => toast({ title: `🏆 Badge unlocked: ${name}!`, variant: "success" }));
       toast({
         title: "Takedown initiated",
         body: a.url || a.description || "Request filed",

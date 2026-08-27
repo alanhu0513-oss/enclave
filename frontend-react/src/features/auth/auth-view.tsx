@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "motion/react";
-import { Loader2, LogIn, UserPlus, ShieldQuestion, ArrowLeft } from "lucide-react";
+import { Loader2, LogIn, UserPlus, ShieldQuestion, ArrowLeft, Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useApp } from "@/lib/app-context";
 import { api } from "@/lib/api";
@@ -17,6 +17,8 @@ export function AuthView() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -75,8 +77,9 @@ export function AuthView() {
         <form onSubmit={submit} className="space-y-4">
           {mode === "register" && (
             <div>
-              <Label>Full name</Label>
+              <Label htmlFor="full-name">Full name</Label>
               <Input
+                id="full-name"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 placeholder="Jane Doe"
@@ -85,8 +88,9 @@ export function AuthView() {
             </div>
           )}
           <div>
-            <Label>Email</Label>
+            <Label htmlFor="email">Email</Label>
             <Input
+              id="email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -96,18 +100,34 @@ export function AuthView() {
           </div>
           {mode !== "forgot" && (
             <div>
-              <Label>Password</Label>
-              <Input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                required
-              />
+              <Label htmlFor="password">Password</Label>
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-ink-faint hover:text-ink"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
             </div>
           )}
 
-          <Button type="submit" className="w-full" disabled={loading} size="lg">
+          <Button 
+            type="submit" 
+            className="w-full" 
+            disabled={loading} 
+            size="lg"
+            aria-label={mode === "login" ? "Unlock vault" : mode === "register" ? "Create account" : "Send reset link"}
+          >
             {loading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : mode === "login" ? (
@@ -125,13 +145,25 @@ export function AuthView() {
           </Button>
 
           {mode !== "forgot" && (
-            <button
-              type="button"
-              onClick={() => setMode("forgot")}
-              className="w-full text-center text-xs text-ink-muted transition-colors hover:text-cyan"
-            >
-              Forgot password?
-            </button>
+            <div className="flex items-center justify-between">
+              <label className="flex items-center gap-2 text-xs text-ink-muted">
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="rounded border-white/12 bg-white/[0.03] text-green focus:ring-green"
+                />
+                Remember me
+              </label>
+              <button
+                type="button"
+                onClick={() => setMode("forgot")}
+                className="text-xs text-ink-muted transition-colors hover:text-cyan"
+                aria-label="Forgot password"
+              >
+                Forgot password?
+              </button>
+            </div>
           )}
         </form>
 
@@ -142,6 +174,7 @@ export function AuthView() {
               <button
                 onClick={() => setMode("register")}
                 className="font-medium text-green transition-colors hover:text-[#66ffc2]"
+                aria-label="Sign up free"
               >
                 Sign up free
               </button>
@@ -152,6 +185,7 @@ export function AuthView() {
               <button
                 onClick={() => setMode("login")}
                 className="font-medium text-green transition-colors hover:text-[#66ffc2]"
+                aria-label="Sign in"
               >
                 Sign in
               </button>
@@ -163,9 +197,12 @@ export function AuthView() {
   );
 }
 
-function Label({ children }: { children: React.ReactNode }) {
+function Label({ children, htmlFor }: { children: React.ReactNode; htmlFor?: string }) {
   return (
-    <label className="mb-1.5 block text-xs font-medium text-ink-muted">
+    <label 
+      htmlFor={htmlFor}
+      className="mb-1.5 block text-xs font-medium text-ink-muted"
+    >
       {children}
     </label>
   );

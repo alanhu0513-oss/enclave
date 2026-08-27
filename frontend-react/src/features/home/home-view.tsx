@@ -4,15 +4,16 @@ import {
   ShieldX,
   ShieldCheck,
   ScanSearch,
-  Camera,
   BellRing,
   AlertTriangle,
   ArrowRight,
   Zap,
+  Sparkles,
 } from "lucide-react";
 import { useApp } from "@/lib/app-context";
 import { useAuth } from "@/lib/auth";
 import { api, type UserData } from "@/lib/api";
+import { usePsychology } from "@/lib/psychology";
 import { ProgressRing } from "@/components/ui/progress-ring";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,10 +21,22 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StaggerContainer, StaggerItem } from "@/components/ui/motion";
 import { confidenceColor, confidenceLabel, cn } from "@/lib/utils";
+import {
+  StreakWidget,
+  ThreatAvoidanceWidget,
+  UrgencyCountdown,
+  AnchorMetric,
+} from "@/components/psychology/motivation";
+import { SocialProofFeed } from "@/components/psychology/social-proof";
+import { BadgesGrid } from "@/components/psychology/badges";
+import { InsightsList, ProtectionTimeline } from "@/components/psychology/insights";
+
+const SHIELDS_ACTIVE = 5;
 
 export function HomeView() {
-  const { setTab } = useApp();
+  const { setTab, toast } = useApp();
   const { user } = useAuth();
+  const psych = usePsychology();
   const [data, setData] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -48,21 +61,28 @@ export function HomeView() {
 
   const protectionScore = Math.max(
     8,
-    Math.round(
-      100 - Math.min(92, critical * 18 + elevated * 9) + Math.min(20, safe)
-    )
+    Math.round(100 - Math.min(92, critical * 18 + elevated * 9) + Math.min(20, safe))
   );
 
   const firstName = user?.fullName || "Guardian";
+  const shieldsActive = Math.min(SHIELDS_ACTIVE, 2 + Math.min(critical, 3));
+
+  useEffect(() => {
+    const newly = psych.checkBadges(shieldsActive);
+    newly.forEach((name) =>
+      toast({ title: `🏆 Badge unlocked: ${name}!`, variant: "success" })
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [alerts.length, psych.streak, psych.scans, psych.takedowns]);
 
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-6">
-      {/* Hero */}
-      <StaggerContainer className="grid gap-6 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]">
+    <div className="mx-auto w-full max-w-6xl space-y-5">
+      {/* ─── HERO ─── */}
+      <StaggerContainer className="grid gap-5 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
         <StaggerItem>
-          <Card className="relative overflow-hidden p-6 md:p-8">
+          <Card className="relative overflow-hidden p-6 md:p-7">
             <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-green/10 blur-3xl" />
-            <div className="relative flex flex-col gap-6 md:flex-row md:items-center md:gap-8">
+            <div className="relative flex flex-col gap-6 md:flex-row md:items-center md:gap-7">
               <div className="relative mx-auto shrink-0">
                 <motion.div
                   animate={{ rotate: 360 }}
@@ -100,15 +120,18 @@ export function HomeView() {
                     <ScanSearch className="h-4 w-4" />
                     Run Scan
                   </Button>
-                  <Button
-                    variant="glass"
-                    onClick={() => setTab("alerts")}
-                  >
+                  <Button variant="glass" onClick={() => setTab("alerts")}>
                     View Alerts
                     <ArrowRight className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
+            </div>
+
+            {/* Anchoring strip */}
+            <div className="relative mt-6 flex flex-wrap items-center justify-between gap-4 border-t border-white/[0.07] pt-5">
+              <StreakWidget streak={psych.streak} sub={psych.streakSub} />
+              <ThreatAvoidanceWidget count={psych.threatsBlocked} />
             </div>
           </Card>
         </StaggerItem>
@@ -133,17 +156,29 @@ export function HomeView() {
             value={loading ? "—" : critical.toString()}
             label="Critical threats"
           />
-          <StatTile
-            icon={Zap}
-            color="cyan"
-            value={loading ? "—" : "5"}
-            label="Shields active"
-          />
+          <div className="flex flex-col justify-center rounded-2xl glass p-4 md:p-5">
+            <AnchorMetric
+              icon={ScanSearch}
+              color="cyan"
+              value={psych.scans}
+              label="scans run"
+              sub="Deep scan power"
+            />
+          </div>
         </StaggerItem>
       </StaggerContainer>
 
-      {/* Bento: Quick actions + latest */}
-      <StaggerContainer className="grid gap-6 lg:grid-cols-3">
+      {/* ─── URGENCY BANNER (FOMO + SCARCITY) ─── */}
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.15 }}
+      >
+        <UrgencyCountdown />
+      </motion.div>
+
+      {/* ─── BENTO: detections + social proof ─── */}
+      <StaggerContainer className="grid gap-5 lg:grid-cols-3">
         <StaggerItem className="lg:col-span-2">
           <Card className="h-full">
             <CardContent className="p-5">
@@ -168,7 +203,7 @@ export function HomeView() {
                 <EmptyState />
               ) : (
                 <div className="space-y-2">
-                  {alerts.slice(0, 4).map((a, i) => (
+                  {alerts.slice(0, 3).map((a, i) => (
                     <motion.div
                       key={a.id}
                       initial={{ opacity: 0, x: -10 }}
@@ -208,6 +243,42 @@ export function HomeView() {
         </StaggerItem>
 
         <StaggerItem>
+          <SocialProofFeed />
+        </StaggerItem>
+      </StaggerContainer>
+
+      {/* ─── BENTO: insights + badges ─── */}
+      <StaggerContainer className="grid gap-5 lg:grid-cols-3">
+        <StaggerItem className="lg:col-span-2">
+          <Card className="h-full">
+            <CardContent className="p-5">
+              <div className="mb-4 flex items-center gap-2">
+                <Zap className="h-4 w-4 text-amber" />
+                <h3 className="font-display text-sm font-semibold text-ink">
+                  Smart Insights
+                </h3>
+              </div>
+              <InsightsList
+                psych={psych}
+                shieldsActive={shieldsActive}
+                alerts={alerts}
+              />
+            </CardContent>
+          </Card>
+        </StaggerItem>
+
+        <StaggerItem>
+          <Card className="h-full">
+            <CardContent className="p-5">
+              <BadgesGrid unlockedIds={psych.unlockedIds} />
+            </CardContent>
+          </Card>
+        </StaggerItem>
+      </StaggerContainer>
+
+      {/* ─── BENTO: quick actions + timeline ─── */}
+      <StaggerContainer className="grid gap-5 lg:grid-cols-3">
+        <StaggerItem>
           <Card className="h-full">
             <CardContent className="flex h-full flex-col p-5">
               <h3 className="mb-4 font-display text-sm font-semibold text-ink">
@@ -222,7 +293,7 @@ export function HomeView() {
                   onClick={() => setTab("scan")}
                 />
                 <QuickAction
-                  icon={Camera}
+                  icon={Sparkles}
                   color="green"
                   label="Protect an Image"
                   sub="Watermark & rights shield"
@@ -236,6 +307,17 @@ export function HomeView() {
                   onClick={() => setTab("settings")}
                 />
               </div>
+            </CardContent>
+          </Card>
+        </StaggerItem>
+
+        <StaggerItem className="lg:col-span-2">
+          <Card className="h-full">
+            <CardContent className="p-5">
+              <h3 className="mb-4 font-display text-sm font-semibold text-ink">
+                Protection Timeline
+              </h3>
+              <ProtectionTimeline createdAt={psych.createdAt} alerts={alerts} />
             </CardContent>
           </Card>
         </StaggerItem>
@@ -264,7 +346,12 @@ function StatTile({
   return (
     <Card>
       <CardContent className="p-4 md:p-5">
-        <div className={cn("mb-3 flex h-9 w-9 items-center justify-center rounded-lg", colors[color])}>
+        <div
+          className={cn(
+            "mb-3 flex h-9 w-9 items-center justify-center rounded-lg",
+            colors[color]
+          )}
+        >
           <Icon className="h-4.5 w-4.5" />
         </div>
         <p className="font-display text-2xl font-bold text-ink">{value}</p>
@@ -297,7 +384,12 @@ function QuickAction({
       onClick={onClick}
       className="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] p-3 text-left transition-all duration-200 hover:border-white/15 hover:bg-white/[0.05]"
     >
-      <span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-lg", colors[color])}>
+      <span
+        className={cn(
+          "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg",
+          colors[color]
+        )}
+      >
         <Icon className="h-4 w-4" />
       </span>
       <span className="min-w-0">

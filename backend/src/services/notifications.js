@@ -48,12 +48,20 @@ async function notifyNewAlert(user, alert) {
   try {
     const notifications = await table('notifications');
     const notifId = uuidv4();
+    let hostname = 'an unknown site';
+    try {
+      const url = new URL(alert.source_url);
+      hostname = url.hostname;
+    } catch (_) {
+      // Relative path or invalid URL
+      hostname = 'local upload';
+    }
     await notifications.insert({
       id: notifId,
       user_id: user.id,
       type: 'new_alert',
       title: 'New threat detected',
-      body: `A potential deepfake was found on ${new URL(alert.source_url).hostname || 'an unknown site'}. Confidence: ${alert.confidence}%`,
+      body: `A potential deepfake was found on ${hostname}. Confidence: ${alert.confidence}%`,
       data: JSON.stringify({ alertId: alert.id, sourceUrl: alert.source_url }),
       read: false,
       created_at: new Date().toISOString(),

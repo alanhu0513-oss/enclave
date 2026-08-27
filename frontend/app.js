@@ -2387,14 +2387,215 @@
       var hasFace = status.faceprint !== null;
       var hasVoice = status.voiceprint !== null;
       if (!hasFace || !hasVoice) {
-        if (registerPortal) registerPortal.classList.remove('hidden');
+        // Offload enrollment to the onboarding wizard when appropriate, else registration portal
+        if (!maybeStartOnboarding()) {
+          if (registerPortal) registerPortal.classList.remove('hidden');
+        }
       }
       renderDashboard();
     }).catch(function () {
-      if (registerPortal) registerPortal.classList.remove('hidden');
+      if (!maybeStartOnboarding()) {
+        if (registerPortal) registerPortal.classList.remove('hidden');
+      }
       renderDashboard();
     });
   }
+
+  /* ─── Phase 1.1: Onboarding Wizard ─── */
+  var ONB_KEY = 'enclave_onboarding_done';
+  var onbOverlay, onbCurrentStep = 1, onbFaceEnrolled = false;
+
+  function maybeStartOnboarding() {
+    if (localStorage.getItem(ONB_KEY) === '1') return false;
+    startOnboarding();
+    return true;
+  }
+
+  function startOnboarding() {
+    onbOverlay = document.getElementById('onboarding-overlay');
+    if (!onbOverlay) return;
+    onbCurrentStep = 1;
+    onbOverlay.classList.remove('hidden');
+    showOnbStep(1);
+    wireOnboarding();
+  }
+
+  function showOnbStep(step) {
+    onbCurrentStep = step;
+    for (var s = 1; s <= 3; s++) {
+      var stepEl = document.getElementById('onb-step-' + s);
+      if (stepEl) stepEl.classList.toggle('active', s === step);
+    }
+    var dots = document.querySelectorAll('#onb-progress-dots .onb-dot');
+    dots.forEach(function (d, i) {
+      d.className = 'onb-dot' + (i + 1 === step ? ' active' : (i + 1 < step ? ' done' : ''));
+    });
+    var labels = ['Face Enrollment', 'First Scan', 'Dashboard Tour'];
+    var pl = document.getElementById('onb-progress-label');
+    if (pl) pl.textContent = 'Step ' + step + ' of 3 — ' + labels[step - 1];
+    var next = document.getElementById('onb-next');
+    if (next) next.style.display = 'block';
+    if (step === 3) { if (next) next.style.display = 'none'; }
+  }
+
+  function finishOnboarding() {
+    localStorage.setItem(ONB_KEY, '1');
+    if (onbOverlay) onbOverlay.classList.add('hidden');
+    if (window.EnclaveUI) window.EnclaveUI.initRipples();
+  }
+
+  function wireOnboarding() {
+    var btnNext = document.getElementById('onb-next');
+    var btnSkip = document.getElementById('onb-skip');
+    var btnFinish = document.getElementById('onb-finish');
+
+    if (btnNext && !btnNext._onbWired) {
+      btnNext._onbWired = true;
+      btnNext.addEventListener('click', function () {
+        if (onbCurrentStep < 3) showOnbStep(onbCurrentStep + 1);
+      });
+    }
+    if (btnSkip && !btnSkip._onbWired) {
+      btnSkip._onbWired = true;
+      btnSkip.addEventListener('click', finishOnboarding);
+    }
+    if (btnFinish && !btnFinish._onbWired) {
+      btnFinish._onbWired = true;
+      btnFinish.addEventListener('click', finishOnboarding);
+    }
+
+    // Step 1: face upload
+    var faceFile = document.getElementById('onb-face-file');
+    if (faceFile && !faceFile._onbWired) {
+      faceFile._onbWired = true;
+      faceFile.addEventListener('change', onOnbFaceUpload);
+    }
+
+    // Step 2: scan
+    var scanFile = document.getElementById('onb-scan-file');
+    var scanGo = document.getElementById('onb-scan-go');
+    var scanUrl = document.getElementById('onb-scan-url');
+    if (scanFile && !scanFile._onbWired) {
+      scanFile._onbWired = true;
+      scanFile.addEventListener('change', function () { onOnbScanFile(scanFile.files[0]); });
+    }
+    if (scanGo && !scanGo._onbWired) {
+      scanGo._onbWired = true;
+      scanGo.addEventListener('click', function () {
+        var url = scanUrl.value.trim();
+        if (url) onOnbScanUrl(url); else flashOnbStatus('Enter a URL or pick an image.', 'error', 'onb-scan-status');
+      });
+    }
+
+    // Face enrollment status feedback on "Continue" from step 1
+    if (btnNext && !btnNext._onbFaceGuard) {
+      btnNext._onbFaceGuard = true;
+      var origNext = btnNext.onclick;
+    }
+  }
+
+  function onOnbFaceUpload(e) {
+    var file = e.target.files[0];
+    if (!file) return;
+    var status = document.getElementById('onb-face-status');
+    var canvas = document.getElementById('onb-face-preview');
+    var uploadText = document.getElementById('onb-upload-text');
+    var reader = new FileReader();
+    reader.onload = function (ev) {
+      var img = new Image();
+      img.onload = function () {
+        if (canvas) {
+          var ctx = canvas.getContext('2d');
+          var size = 120;
+          canvas.width = size; canvas.height = size;
+          ctx.drawImage(img, 0, 0, size, size);
+          canvas.classList.remove('hidden');
+        }
+        if (uploadText) uploadText.textContent = file.name;
+        if (status) { status.textContent = 'Enrolling faceprint…'; status.className = 'onb-status'; }
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+
+    // Upload to server if logged in
+    if (window.EnclaveAPI && window.EnclaveAPI.isLoggedIn()) {
+      window.EnclaveAPI.uploadFace(file).then(function () {
+        onbFaceEnrolled = true;
+        if (status) { status.textContent = '✓ Faceprint enrolled'; status.className = 'onb-status success'; }
+        if (window.EnclaveUI) window.EnclaveUI.flashSuccess(document.getElementById('btn-onb-face'), '✓');
+      }).catch(function (err) {
+        onbFaceEnrolled = false;
+        if (status) { status.textContent = (err && err.message) || 'Face enrollment failed — you can try again'; status.className = 'onb-status error'; }
+      });
+    } else {
+      onbFaceEnrolled = true;
+      if (status) { status.textContent = '✓ Face loaded (local)'; status.className = 'onb-status success'; }
+    }
+  }
+
+  function onOnbScanFile(file) {
+    if (!file || !window.EnclaveAPI) return;
+    showOnbScanProgress(true);
+    var status = document.getElementById('onb-scan-status');
+    advanceOnbProgress('Uploading image…', 20);
+    window.EnclaveAPI.scanImage(file).then(function (result) {
+      var conf = result ? result.confidence || 0 : 0;
+      advanceOnbProgress('Analyzing…', 100);
+      markOnbScanDone(conf);
+    }).catch(function (err) {
+      showOnbScanProgress(false);
+      if (status) { status.textContent = (err && err.message) || 'Scan failed'; status.className = 'onb-status error'; }
+    });
+  }
+
+  function onOnbScanUrl(url) {
+    if (!window.EnclaveAPI) return;
+    showOnbScanProgress(true);
+    var status = document.getElementById('onb-scan-status');
+    advanceOnbProgress('Initializing ML pipeline…', 15);
+    window.EnclaveAPI.scanUrl(url).then(function (result) {
+      var conf = result ? result.confidence || 0 : 0;
+      advanceOnbProgress('Analyzing…', 100);
+      markOnbScanDone(conf);
+    }).catch(function (err) {
+      showOnbScanProgress(false);
+      if (status) { status.textContent = (err && err.message) || 'Scan failed'; status.className = 'onb-status error'; }
+    });
+  }
+
+  function showOnbScanProgress(show) {
+    var wrap = document.getElementById('onb-scan-progress');
+    if (wrap) wrap.style.display = show ? 'block' : 'none';
+  }
+
+  function advanceOnbProgress(text, pct) {
+    var label = document.getElementById('onb-scan-progress-step');
+    var fill = document.getElementById('onb-scan-progress-fill');
+    if (label) label.textContent = text;
+    if (fill) fill.style.width = pct + '%';
+  }
+
+  function markOnbScanDone(conf) {
+    var status = document.getElementById('onb-scan-status');
+    var fill = document.getElementById('onb-scan-progress-fill');
+    if (fill) fill.style.width = '100%';
+    if (status) {
+      status.textContent = conf >= 60
+        ? '⚠ Threat detected (' + conf + '%) — Enclave has your back'
+        : '✓ Scan complete (' + conf + '%) — your first result is in';
+      status.className = 'onb-status success';
+    }
+    var btnNext = document.getElementById('onb-next');
+    if (btnNext) btnNext.style.display = 'block';
+    setTimeout(function () { if (onbCurrentStep === 2) { showOnbStep(3); } }, 1200);
+  }
+
+  function flashOnbStatus(msg, type, id) {
+    var status = document.getElementById(id);
+    if (status) { status.textContent = msg; status.className = 'onb-status ' + type; }
+  }
+
 
   // Check JWT first, then show login
   (async function () {
@@ -3177,6 +3378,7 @@
     loadNotifications();
     loadStats();
     loadMonitoring();
+    loadReports();
   }
 
   // Initial load after login
@@ -3499,34 +3701,114 @@
   }
 
   function computeProtectionLevel() {
-    var shields = [
-      document.getElementById('shield-camera-status'),
-      document.getElementById('shield-voice-status'),
-      document.getElementById('shield-crawler-status'),
-      document.getElementById('shield-ml-engine-status'),
-      document.getElementById('shield-ml-status')
+    // Weighted 0-100 security score. Weights defined by PLAN.md §1.2.
+    var weights = [
+      { label: 'Face enrolled', max: 20, active: function () { return !!lsGet(LS_FACEPRINT, null); } },
+      { label: 'Voice enrolled', max: 10, active: function () { return !!lsGet(LS_VOICEPRINT, null); } },
+      { label: 'Signature enrolled', max: 5, active: function () { return !!lsGet(LS_SIGNATURE, ''); } },
+      { label: 'Camera shield', max: 15, active: function () { return isShieldActive('shield-camera-status'); } },
+      { label: 'Voice shield', max: 10, active: function () { return isShieldActive('shield-voice-status'); } },
+      { label: 'Crawler monitoring', max: 15, active: function () { return isShieldActive('shield-crawler-status'); } },
+      { label: 'ML engine loaded', max: 10, active: function () { return isShieldActive('shield-ml-engine-status'); } },
+      { label: 'Alerts resolved', max: 15, active: function () { return alertsResolvedRatio() >= 0.75; } },
+      { label: 'Takedowns completed', max: 10, active: function () { return (lsGet(LS_TAKEDOWNS_DONE, 0) || 0) > 0; } }
     ];
-    var active = 0;
-    shields.forEach(function (s) {
-      if (s && (s.classList.contains('active') || s.textContent === 'LOADED')) active++;
+
+    var activeCount = 0;
+    var score = 0;
+    var rows = weights.map(function (w) {
+      var on = w.active() === true;
+      if (on) { score += w.max; activeCount++; }
+      return { label: w.label, max: w.max, earned: on ? w.max : 0, active: on };
     });
-    return { active: active, total: shields.length, pct: Math.round((active / shields.length) * 100) };
+
+    return {
+      active: activeCount,
+      total: weights.length,
+      totalShields: 5,
+      score: Math.max(0, Math.min(100, Math.round(score))),
+      pct: Math.max(0, Math.min(100, Math.round(score))),
+      rows: rows
+    };
+  }
+
+  function isShieldActive(id) {
+    var s = document.getElementById(id);
+    return !!(s && (s.classList.contains('active') || s.textContent === 'LOADED'));
+  }
+
+  function alertsResolvedRatio() {
+    if (!alerts || !alerts.length) return 0;
+    var resolved = alerts.filter(function (a) {
+      return a.status === 'RESOLVED' || a.status === 'WHITELISTED' || a.confidence < 40;
+    }).length;
+    return resolved / alerts.length;
+  }
+
+  function renderScoreBreakdown(anchor) {
+    var el = document.getElementById('score-breakdown');
+    var list = document.getElementById('score-breakdown-list');
+    if (!el || !list || !anchor) return;
+    var level = computeProtectionLevel();
+    var html = '<div class="score-breakdown-title">Security Score Breakdown</div>';
+    var used = 0;
+    level.rows.forEach(function (r) {
+      html += '<div class="sb-row">'
+        + '<span class="sb-label">' + r.label + '</span>'
+        + '<span class="sb-track"><span class="sb-fill" style="width:' + (r.active ? 100 : 0) + '%"></span></span>'
+        + '<span class="sb-val">' + (r.active ? '+' + r.max : '0') + '</span>'
+        + '</div>';
+      used++;
+    });
+    html += '<div class="sb-total"><span>Overall protection</span><span>' + level.score + '/100</span></div>';
+    list.innerHTML = html;
+    el.classList.remove('hidden');
+
+    var rect = anchor.getBoundingClientRect();
+    el.style.position = 'fixed';
+    el.style.top = Math.min(window.innerHeight - 220, rect.bottom + 8) + 'px';
+    el.style.left = Math.max(8, Math.min(window.innerWidth - 280, rect.left)) + 'px';
+  }
+
+  function hideScoreBreakdown() {
+    var el = document.getElementById('score-breakdown');
+    if (el) el.classList.add('hidden');
   }
 
   function refreshHeroRing() {
     var level = computeProtectionLevel();
-    updateHeroRing(level.pct);
-    if (heroShieldsActive) heroShieldsActive.textContent = level.active + '/' + level.total + ' Shields Active';
+    updateHeroRing(level.score);
+    if (heroShieldsActive) heroShieldsActive.textContent = level.active + '/' + level.total + ' Defenses Active';
     if (heroStatusText) {
-      if (level.active === 0) {
-        heroStatusText.textContent = 'No Shields Active';
-      } else if (level.active < level.total) {
-        heroStatusText.textContent = 'Partial Protection';
+      if (level.score >= 90) {
+        heroStatusText.textContent = 'Maximum Protection';
+      } else if (level.score >= 60) {
+        heroStatusText.textContent = 'Strong Protection';
+      } else if (level.score >= 30) {
+        heroStatusText.textContent = 'Partial Protection — add defenses';
       } else {
-        heroStatusText.textContent = 'Full Protection Active';
+        heroStatusText.textContent = 'Minimal Protection — take action';
       }
     }
   }
+
+  // Hero ring — show score breakdown on hover / tap
+  var btnHeroShield = document.getElementById('btn-hero-shield');
+  if (btnHeroShield) {
+    var breakdownTimer = null;
+    btnHeroShield.addEventListener('mouseenter', function (e) {
+      clearTimeout(breakdownTimer);
+      renderScoreBreakdown(btnHeroShield);
+    });
+    btnHeroShield.addEventListener('mouseleave', function () {
+      breakdownTimer = setTimeout(hideScoreBreakdown, 250);
+    });
+    btnHeroShield.addEventListener('click', function () {
+      renderScoreBreakdown(btnHeroShield);
+      setTimeout(hideScoreBreakdown, 3000);
+    });
+  }
+  window.addEventListener('scroll', hideScoreBreakdown);
 
   /* ─── Shield Module Indicator Dots ─── */
   function refreshShieldIndicators() {
@@ -3569,15 +3851,74 @@
   var scannerResultInfo = document.getElementById('scanner-result-info');
   var SCANNER_RING_CIRC = 150.8;
 
+  var SCAN_STEPS = [
+    { label: 'Initializing ML pipeline…' },
+    { label: 'Extracting image features…' },
+    { label: 'Running deepfake detection…' },
+    { label: 'Checking face matches…' },
+    { label: 'Generating report…' }
+  ];
+  var scanStepTimers = [];
+
+  function clearScanStepTimers() {
+    scanStepTimers.forEach(clearTimeout);
+    scanStepTimers = [];
+  }
+
+  function renderScanSteps() {
+    var container = document.getElementById('scan-steps');
+    if (!container) return;
+    container.innerHTML = SCAN_STEPS.map(function (s, i) {
+      return '<div class="scan-step-row" id="scan-step-' + i + '" data-idx="' + i + '">'
+        + '<span class="scan-step-dot"></span>'
+        + '<span>' + s.label + '</span>'
+        + '<span class="scan-step-check">✓</span></div>';
+    }).join('');
+  }
+
+  function startScanProgress() {
+    clearScanStepTimers();
+    renderScanSteps();
+    var fill = document.getElementById('scan-progress-fill');
+    if (fill) fill.style.width = '0%';
+    SCAN_STEPS.forEach(function (s, i) {
+      var t = setTimeout(function () {
+        setScanStep(i);
+        if (fill) fill.style.width = Math.round(((i + 1) / SCAN_STEPS.length) * 100) + '%';
+      }, (i + 1) * 400);
+      scanStepTimers.push(t);
+    });
+  }
+
+  function setScanStep(idx) {
+    for (var i = 0; i < SCAN_STEPS.length; i++) {
+      var row = document.getElementById('scan-step-' + i);
+      if (!row) continue;
+      var cls = 'scan-step-row';
+      if (i < idx) cls += ' scan-step-done';
+      else if (i === idx) cls += ' scan-step-active';
+      row.className = cls;
+    }
+  }
+
+  function completeScanProgress() {
+    clearScanStepTimers();
+    for (var i = 0; i < SCAN_STEPS.length; i++) setScanStep(i + 1);
+    var fill = document.getElementById('scan-progress-fill');
+    if (fill) fill.style.width = '100%';
+  }
+
   function showScannerRadar(text) {
     if (scannerRadar) scannerRadar.style.display = 'flex';
     if (scannerInputArea) scannerInputArea.style.display = 'none';
     if (scannerResult) scannerResult.style.display = 'none';
     var radarText = document.getElementById('scanner-radar-text');
     if (radarText) radarText.textContent = text || 'Scanning...';
+    startScanProgress();
   }
 
   function hideScannerRadar(confidence, metaText, isSafe) {
+    clearScanStepTimers();
     if (scannerRadar) scannerRadar.style.display = 'none';
     if (scannerInputArea) scannerInputArea.style.display = 'block';
     if (scannerResult && confidence !== undefined) {
@@ -3953,7 +4294,6 @@
     // Get account creation date from user data or default to today
     var createdAt = null;
     try {
-      var userData = window.EnclaveAPI && window.EnclaveAPI.getUserData ? null : null; // Will use localStorage
       createdAt = lsGet('enclave_created_at', null);
     } catch (e) {}
 
@@ -3972,6 +4312,37 @@
     }
     if (timelineDays) timelineDays.textContent = days;
     if (timelineHours) timelineHours.textContent = (days * 24) + hours;
+
+    // ── Phase 3.1: inject scan-history entries into the protection timeline ──
+    var timeline = document.getElementById('protection-timeline');
+    if (!timeline) return;
+
+    // Remove previously injected scan rows (mark them with data-injected)
+    var injected = timeline.querySelectorAll('[data-injected]');
+    injected.forEach(function (n) { n.remove(); });
+
+    if (alerts && alerts.length) {
+      var recent = alerts.slice(0, 5);
+      var beforeNext = document.getElementById('timeline-next-scan');
+      recent.forEach(function (a) {
+        var isThreat = (a.confidence || 0) >= 60;
+        var isSusp = (a.confidence || 0) >= 40 && (a.confidence || 0) < 60;
+        var dotClass = isThreat ? 'tl-dot' : (isSusp ? 'tl-dot tl-dot-blue' : 'tl-dot tl-dot-green');
+        var label = isThreat ? 'Threat detected' : (isSusp ? 'Suspicious scan' : 'Scan — no threat');
+        var date = a.timestamp ? new Date(a.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'Today';
+        var src = (a.source || a.sourceUrl || 'scan').length > 28
+          ? (a.source || a.sourceUrl || 'scan').slice(0, 28) + '…'
+          : (a.source || a.sourceUrl || 'scan');
+        var row = document.createElement('div');
+        row.className = 'tl-entry';
+        row.setAttribute('data-injected', '1');
+        row.innerHTML = '<div class="' + dotClass + '" style="' + (isThreat ? 'background:var(--red);box-shadow:0 0 5px rgba(244,63,94,0.4);' : '') + '"></div>'
+          + '<div class="tl-content"><span class="tl-event">' + label + ' (' + Math.round(a.confidence || 0) + '%) — ' + src + '</span>'
+          + '<span class="tl-date">' + date + '</span></div>';
+        if (beforeNext) timeline.insertBefore(row, beforeNext);
+        else timeline.appendChild(row);
+      });
+    }
   }
 
   /* ─── Master Refresh for Psychology Elements ─── */
@@ -4078,5 +4449,255 @@
       if (window.EnclaveUI) { window.EnclaveUI.initRipples(); window.EnclaveUI.initCardPress(); }
     }, 50);
   };
+
+  /* ─── Reports (Phase 3) ─── */
+  function loadReports() {
+    var section = document.getElementById('reports-section');
+    var reportsSection = document.querySelector('.reports-section');
+    if (!section && !reportsSection) return;
+    if (reportsSection) reportsSection.style.display = '';
+    if (!window.EnclaveAPI || !window.EnclaveAPI.getReports) return;
+    window.EnclaveAPI.getReports(8).then(function (list) {
+      var container = document.getElementById('reports-list');
+      var empty = document.getElementById('reports-empty');
+      if (!container) return;
+      container.innerHTML = '';
+      if (!list || !list.length) {
+        if (empty) empty.style.display = '';
+        return;
+      }
+      if (empty) empty.style.display = 'none';
+      list.forEach(function (r) {
+        var item = document.createElement('div');
+        item.className = 'report-item';
+        var fileName = 'enclave-' + r.reportType + '-' + r.id + '.' + (r.format === 'csv' ? 'csv' : 'json');
+        var link = window.EnclaveAPI.getReportDownloadUrl(r.id);
+        item.innerHTML = '<div class="report-item-main"><span class="report-item-name">' + r.reportType.replace(/_/g, ' ').replace(/\b\w/g, function (c) { return c.toUpperCase(); }) + '</span>'
+          + '<span class="report-item-date">' + new Date(r.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + ' · ' + (r.format || 'pdf').toUpperCase() + '</span></div>'
+          + '<a class="report-item-dl" href="' + link + '" download="' + fileName + '">⬇</a>';
+        container.appendChild(item);
+      });
+    }).catch(function () {});
+  }
+
+  function setupReports() {
+    var genGo = document.getElementById('btn-generate-report-go');
+    var genBtn = document.getElementById('btn-generate-report');
+    var typeSel = document.getElementById('report-type-select');
+    var dailyToggle = document.getElementById('report-daily-toggle');
+
+    function generate(type) {
+      if (!window.EnclaveAPI || !window.EnclaveAPI.generateReport) return;
+      type = type || (typeSel ? typeSel.value : 'threat_summary');
+      window.EnclaveAPI.generateReport({ type: type }).then(function (res) {
+        if (window.EnclaveUI && window.EnclaveUI.toast) {
+          window.EnclaveUI.toast('Report generated (' + (res.format || 'json').toUpperCase() + ')', 'success');
+        }
+        loadReports();
+      }).catch(function (e) {
+        if (window.EnclaveUI && window.EnclaveUI.toast) window.EnclaveUI.toast(e.message || 'Failed to generate report', 'error');
+      });
+    }
+
+    if (genGo) genGo.addEventListener('click', function () { generate(); });
+    if (genBtn) genBtn.addEventListener('click', function () { generate(); });
+    if (dailyToggle) dailyToggle.addEventListener('change', function () {
+      var enabled = dailyToggle.checked;
+      if (!window.EnclaveAPI || !window.EnclaveAPI.scheduleReport) { dailyToggle.checked = !enabled; return; }
+      var p = enabled
+        ? window.EnclaveAPI.scheduleReport({ type: (typeSel ? typeSel.value : 'threat_summary'), frequency: 'daily', time: '09:00' })
+        : Promise.resolve();
+      p.then(function () {
+        if (window.EnclaveUI && window.EnclaveUI.toast) {
+          window.EnclaveUI.toast(enabled ? 'Daily report scheduled' : 'Daily report disabled', 'success');
+        }
+      }).catch(function (e) {
+        dailyToggle.checked = !enabled;
+        if (window.EnclaveUI && window.EnclaveUI.toast) window.EnclaveUI.toast(e.message || 'Failed', 'error');
+      });
+    });
+  }
+
+  setTimeout(function () { try { setupReports(); } catch (e) {} }, 1200);
+
+  /* ─── Phase 4: Advanced Detection Tools ─── */
+  function setupAdvancedTools() {
+    var API = window.EnclaveAPI;
+    if (!API || !API.reverseImageSearch) return;
+
+    function el(id) { return document.getElementById(id); }
+    function out(id, html) { var o = el(id); if (o) o.innerHTML = html; }
+    function status(html, cls) { return '<div class="adv-status ' + (cls || '') + '">' + html + '</div>'; }
+    function busy() { return '<div class="adv-status adv-busy">Processing…</div>'; }
+
+    // Reverse image search
+    var revFile = el('adv-reverse-file');
+    if (revFile) revFile.addEventListener('change', function () {
+      var f = revFile.files && revFile.files[0];
+      if (!f) return;
+      out('adv-reverse-out', busy());
+      API.reverseImageSearch(f).then(function (res) {
+        var html = '';
+        html += status('Scanned <strong>' + (res.checked || 0) + '</strong> of ' + (res.candidates || 0) + ' candidate images.', 'adv-info');
+        if (res.matches && res.matches.length) {
+          html += '<div class="adv-match">' + res.matches.length + ' match(es) found</div>';
+          res.matches.forEach(function (m) {
+            html += '<div class="adv-match-row"><span class="adv-match-url">' + (m.sourceUrl || '') + '</span><span class="adv-match-sim">' + Math.round((m.similarity || 0) * 100) + '%</span></div>';
+          });
+        } else {
+          html += status('No matches found — your likeness was not detected in monitored sources.', 'adv-safe');
+        }
+        out('adv-reverse-out', html);
+      }).catch(function (e) {
+        out('adv-reverse-out', status((e.message || 'Reverse search failed'), 'adv-err'));
+      });
+      revFile.value = '';
+    });
+
+    // Identity change check
+    var idFile = el('adv-identity-file');
+    if (idFile) idFile.addEventListener('change', function () {
+      var f = idFile.files && idFile.files[0];
+      if (!f) return;
+      out('adv-identity-out', busy());
+      API.checkIdentityChanges(f).then(function (res) {
+        var cls = res.status === 'normal' ? 'adv-safe' : (res.status === 'suspicious' ? 'adv-warn' : 'adv-err');
+        var label = res.status === 'normal' ? 'Identity match confirmed' : (res.status === 'suspicious' ? 'Suspicious identity variation' : 'Possible identity change detected');
+        out('adv-identity-out', status('<strong>' + label + '</strong> — ' + Math.round((res.similarity || 0) * 100) + '% similarity to enrolled face.', cls));
+      }).catch(function (e) {
+        out('adv-identity-out', status(e.message || 'Identity check failed', 'adv-err'));
+      });
+      idFile.value = '';
+    });
+
+    // Watermark embed
+    var wmFile = el('adv-wm-file');
+    if (wmFile) wmFile.addEventListener('change', function () {
+      var f = wmFile.files && wmFile.files[0];
+      if (!f) return;
+      out('adv-wm-out', busy());
+      API.embedWatermark(f, 'Enclave Vault').then(function (res) {
+        var url = res.url ? (API.getBaseUrl().replace(/\/api$/, '') + res.url) : null;
+        var html = status('Watermark embedded successfully. Payload: ' + (res.payload ? JSON.stringify(res.payload) : 'verified'), 'adv-safe');
+        if (url) html += '<a class="adv-download" href="' + url + '" download="watermarked.png">⬇ Download watermarked PNG</a>';
+        out('adv-wm-out', html);
+      }).catch(function (e) {
+        out('adv-wm-out', status(e.message || 'Watermark embedding failed', 'adv-err'));
+      });
+      wmFile.value = '';
+    });
+
+    // Watermark verify
+    var wmVFile = el('adv-wm-verify-file');
+    if (wmVFile) wmVFile.addEventListener('change', function () {
+      var f = wmVFile.files && wmVFile.files[0];
+      if (!f) return;
+      out('adv-wm-out', busy());
+      API.verifyWatermark(f).then(function (res) {
+        if (res.watermarked) {
+          out('adv-wm-out', status('Valid Enclave watermark detected. Payload: ' + JSON.stringify(res.payload), 'adv-safe'));
+        } else {
+          out('adv-wm-out', status('No Enclave watermark detected.', 'adv-warn'));
+        }
+      }).catch(function (e) {
+        out('adv-wm-out', status(e.message || 'Verification failed', 'adv-err'));
+      });
+      wmVFile.value = '';
+    });
+  }
+
+  setTimeout(function () { try { setupAdvancedTools(); } catch (e) {} }, 1500);
+
+  /* ─── Phase 5: Family Protection ─── */
+  function loadFamily() {
+    var API = window.EnclaveAPI;
+    var list = document.getElementById('family-list');
+    var count = document.getElementById('family-count');
+    if (!list || !API || !API.listFamilyMembers) return;
+    API.listFamilyMembers().then(function (res) {
+      var members = (res && res.members) || [];
+      if (count) count.textContent = members.length + '/' + (res.maxMembers || 5);
+      var empty = document.getElementById('family-empty');
+      list.innerHTML = '';
+      if (!members.length) { if (empty) empty.style.display = ''; return; }
+      if (empty) empty.style.display = 'none';
+      members.forEach(function (m) {
+        var row = document.createElement('div');
+        row.className = 'family-member';
+        row.innerHTML = '<div class="family-member-info"><span class="family-member-name">' + (m.name || m.email) + '</span>'
+          + '<span class="family-member-email">' + m.email + '</span></div>'
+          + '<span class="family-member-badge family-member-badge-' + (m.status === 'active' ? 'active' : 'pending') + '">' + m.status + '</span>'
+          + '<button class="family-member-remove" data-id="' + m.id + '" aria-label="Remove">✕</button>';
+        list.appendChild(row);
+        var rm = row.querySelector('.family-member-remove');
+        if (rm) rm.addEventListener('click', function () {
+          API.removeFamilyMember(m.id).then(loadFamily).catch(function (e) {
+            if (window.EnclaveUI && window.EnclaveUI.toast) window.EnclaveUI.toast(e.message || 'Failed to remove member', 'error');
+          });
+        });
+      });
+    }).catch(function () {});
+  }
+
+  function setupFamily() {
+    var btn = document.getElementById('btn-family-add');
+    var email = document.getElementById('family-email');
+    var name = document.getElementById('family-name');
+    if (!btn || !window.EnclaveAPI) return;
+    btn.addEventListener('click', function () {
+      if (!email.value) return;
+      window.EnclaveAPI.addFamilyMember({ email: email.value, name: name.value, profile: 'full' })
+        .then(function () {
+          if (window.EnclaveUI && window.EnclaveUI.toast) window.EnclaveUI.toast('Family member invited', 'success');
+          email.value = ''; name.value = '';
+          loadFamily();
+        })
+        .catch(function (e) {
+          if (window.EnclaveUI && window.EnclaveUI.toast) window.EnclaveUI.toast(e.message || 'Failed to add member', 'error');
+        });
+    });
+  }
+
+  /* ─── Phase 6: Referrals ─── */
+  function loadReferrals() {
+    var API = window.EnclaveAPI;
+    var codeInput = document.getElementById('referral-code-input');
+    var stats = document.getElementById('referral-stats');
+    if (!codeInput || !API || !API.getReferralStats) return;
+    Promise.all([API.getReferralCode(), API.getReferralStats()])
+      .then(function (res) {
+        var code = (res[0] && res[0].code) || '';
+        var s = res[1] || {};
+        codeInput.value = code;
+        if (stats) stats.textContent = (s.referralCount || 0) + ' referrals · ' + (s.rewardClaimed || 0) + ' rewards claimed' + ((s.pendingRewards || 0) > 0 ? ' · ' + s.pendingRewards + ' pending' : '');
+      })
+      .catch(function () {});
+  }
+
+  function setupReferrals() {
+    var copyBtn = document.getElementById('btn-referral-copy');
+    var claimBtn = document.getElementById('btn-referral-claim');
+    var codeInput = document.getElementById('referral-code-input');
+    if (!window.EnclaveAPI) return;
+    if (copyBtn && codeInput) copyBtn.addEventListener('click', function () {
+      if (navigator.clipboard) navigator.clipboard.writeText(codeInput.value);
+      if (window.EnclaveUI && window.EnclaveUI.toast) window.EnclaveUI.toast('Referral link copied', 'success');
+    });
+    if (claimBtn) claimBtn.addEventListener('click', function () {
+      window.EnclaveAPI.claimReferralReward().then(function () {
+        if (window.EnclaveUI && window.EnclaveUI.toast) window.EnclaveUI.toast('Reward claimed!', 'success');
+        loadReferrals();
+      }).catch(function (e) {
+        if (window.EnclaveUI && window.EnclaveUI.toast) window.EnclaveUI.toast(e.message || 'No rewards to claim', 'error');
+      });
+    });
+  }
+
+  setTimeout(function () {
+    try { setupFamily(); } catch (e) {}
+    try { setupReferrals(); } catch (e) {}
+    try { loadFamily(); } catch (e) {}
+    try { loadReferrals(); } catch (e) {}
+  }, 1800);
 
 })();

@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://rbk8qolrpkys-production-jd0sc3vz.us-central1.suga.run/api/:path*"
+    }
+  ]
+}

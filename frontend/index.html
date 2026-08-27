@@ -839,6 +839,8 @@
             <defs><linearGradient id="radarGrad2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#00FF88" stop-opacity="0.8"/><stop offset="100%" stop-color="#00FF88" stop-opacity="0"/></linearGradient></defs>
           </svg>
           <p id="scanner-radar-text" class="scanner-radar-text">Scanning...</p>
+          <div class="scan-progress-track"><div id="scan-progress-fill" class="scan-progress-fill"></div></div>
+          <div id="scan-steps" class="scan-steps"></div>
         </div>
         <div id="scanner-input-area" class="scanner-input-area">
           <div class="scanner-url-row">
@@ -865,6 +867,63 @@
           <div id="scanner-result-info" class="scanner-result-info"></div>
         </div>
         <p id="scanner-meta" class="scanner-meta-text" style="display:none;"></p>
+      </section>
+
+      <!-- Phase 4: Advanced Detection Tools -->
+      <section class="advanced-detection-section">
+        <div class="section-header"><h3 class="section-title">Advanced Detection</h3></div>
+        <div class="adv-tools">
+          <div class="adv-tool" id="adv-reverse">
+            <div class="adv-tool-head">
+              <span class="adv-tool-icon">🔎</span>
+              <div class="adv-tool-title">
+                <span class="adv-tool-name">Reverse Image Search</span>
+                <span class="adv-tool-desc">Find your face across monitored &amp; community sources</span>
+              </div>
+            </div>
+            <label class="adv-upload">
+              <input type="file" id="adv-reverse-file" accept="image/*" style="display:none;">
+              <span>Upload face photo</span>
+            </label>
+            <div class="adv-output" id="adv-reverse-out"></div>
+          </div>
+
+          <div class="adv-tool" id="adv-identity">
+            <div class="adv-tool-head">
+              <span class="adv-tool-icon">🧬</span>
+              <div class="adv-tool-title">
+                <span class="adv-tool-name">Identity Change Check</span>
+                <span class="adv-tool-desc">Compare a scan to your enrolled face</span>
+              </div>
+            </div>
+            <label class="adv-upload">
+              <input type="file" id="adv-identity-file" accept="image/*" style="display:none;">
+              <span>Upload scan to compare</span>
+            </label>
+            <div class="adv-output" id="adv-identity-out"></div>
+          </div>
+
+          <div class="adv-tool" id="adv-watermark">
+            <div class="adv-tool-head">
+              <span class="adv-tool-icon">💧</span>
+              <div class="adv-tool-title">
+                <span class="adv-tool-name">Invisible Watermark</span>
+                <span class="adv-tool-desc">Embed ownership metadata before sharing (PNG)</span>
+              </div>
+            </div>
+            <div class="adv-actions">
+              <label class="adv-upload">
+                <input type="file" id="adv-wm-file" accept="image/png" style="display:none;">
+                <span>Embed watermark</span>
+              </label>
+              <label class="adv-upload adv-upload-alt">
+                <input type="file" id="adv-wm-verify-file" accept="image/*" style="display:none;">
+                <span>Verify watermark</span>
+              </label>
+            </div>
+            <div class="adv-output" id="adv-wm-out"></div>
+          </div>
+        </div>
       </section>
     </div>
 
@@ -965,6 +1024,31 @@
         </div>
       </section>
 
+      <!-- Reports (Phase 3) -->
+      <section class="reports-section section-card" id="reports-section" style="display:none;">
+        <div class="section-header">
+          <h3 class="section-title">Reports</h3>
+          <button id="btn-generate-report" class="section-link">Generate new →</button>
+        </div>
+        <div class="reports-row">
+          <select id="report-type-select" class="report-select" aria-label="Report type">
+            <option value="threat_summary">Threat Summary</option>
+            <option value="usage_analytics">Usage Analytics</option>
+            <option value="compliance">Compliance Report</option>
+            <option value="incident">Incident Report</option>
+            <option value="monthly_executive">Monthly Executive</option>
+            <option value="raw_data">Raw Data Export (CSV)</option>
+          </select>
+          <button id="btn-generate-report-go" class="btn btn-primary btn-sm">Generate</button>
+          <label class="report-schedule-label">
+            <input type="checkbox" id="report-daily-toggle"> Auto by email daily
+          </label>
+        </div>
+        <div id="reports-list" class="reports-list">
+          <p class="reports-empty" id="reports-empty">No reports generated yet.</p>
+        </div>
+      </section>
+
       <!-- Protection Timeline -->
       <section class="timeline-section">
         <div class="section-header"><h3 class="section-title">Protection Timeline</h3></div>
@@ -1027,6 +1111,37 @@
         </div>
         <button id="btn-upgrade-pro" class="btn btn-primary btn-full">Upgrade to Pro — $9.99/mo</button>
         <button id="btn-billing-manage" class="btn btn-ghost btn-full" style="margin-top:0.5rem;">Manage Billing</button>
+      </section>
+
+      <!-- Family Protection (Phase 5) -->
+      <section id="panel-family" class="settings-card">
+        <div class="settings-card-header">
+          <h3 class="settings-card-title">Family Protection</h3>
+          <span class="plan-badge" id="family-count">0/5</span>
+        </div>
+        <p class="text-muted-sm">Protect up to 5 family members under one plan. Each member gets their own monitoring profile.</p>
+        <div class="family-add-row">
+          <input type="email" id="family-email" class="scanner-input" placeholder="family@email.com" style="flex:1;">
+          <input type="text" id="family-name" class="scanner-input" placeholder="Name" style="flex:1;">
+          <button id="btn-family-add" class="btn btn-primary btn-sm">Add</button>
+        </div>
+        <div id="family-list" class="family-list">
+          <p class="reports-empty" id="family-empty">No family members yet.</p>
+        </div>
+      </section>
+
+      <!-- Referrals (Phase 6) -->
+      <section id="panel-referrals" class="settings-card">
+        <div class="settings-card-header">
+          <h3 class="settings-card-title">Referrals</h3>
+        </div>
+        <p class="text-muted-sm">Earn <strong>1 month of Pro free</strong> for every <strong>3 friends</strong> you invite.</p>
+        <div class="referral-code-row">
+          <input type="text" id="referral-code-input" class="scanner-input" readonly placeholder="Your code">
+          <button id="btn-referral-copy" class="btn btn-ghost btn-sm">Copy link</button>
+        </div>
+        <p class="referral-stats text-muted-sm" id="referral-stats">0 referrals · 0 rewards claimed</p>
+        <button id="btn-referral-claim" class="btn btn-primary btn-sm">Claim rewards</button>
       </section>
     </div>
 
@@ -1129,10 +1244,93 @@
 <script src="https://cdn.jsdelivr.net/npm/tsparticles-engine@2/tsparticles.engine.min.js" defer onerror="console.warn('tsparticles-engine failed to load')"></script>
 <script src="https://cdn.jsdelivr.net/npm/tsparticles-slim@2/tsparticles.slim.bundle.min.js" defer onerror="console.warn('tsparticles-slim failed to load')"></script>
 <script src="https://cdn.jsdelivr.net/npm/vanilla-tilt@1.8.1/dist/vanilla-tilt.min.js" defer onerror="console.warn('vanilla-tilt failed to load')"></script>
+<!-- ════════════════════════════════════════════
+     ONBOARDING WIZARD (3-STEP) — Phase 1.1
+     ════════════════════════════════════════════ -->
+<div id="onboarding-overlay" class="hidden">
+  <div id="onboarding-panel">
+    <div class="onb-progress-dots" id="onb-progress-dots">
+      <span class="onb-dot active"></span>
+      <span class="onb-dot"></span>
+      <span class="onb-dot"></span>
+    </div>
+    <p class="onb-progress-label" id="onb-progress-label">Step 1 of 3 — Face Enrollment</p>
+
+    <!-- Step 1: Selfie / face enrollment -->
+    <div id="onb-step-1" class="onb-step active">
+      <div class="onb-icon">🤳</div>
+      <h3 class="onb-title">Establish your identity baseline</h3>
+      <p class="onb-desc">Upload a clear photo of your face so Enclave can recognize and defend <em>your</em> identity across the web.</p>
+      <label class="onb-upload" id="onb-upload-label">
+        <input type="file" id="onb-face-file" accept="image/*" class="onb-file-input">
+        <span class="onb-upload-icon">📸</span>
+        <span class="onb-upload-text" id="onb-upload-text">Tap to upload a selfie</span>
+        <span class="onb-upload-hint">JPG / PNG · clear frontal face · good lighting</span>
+      </label>
+      <canvas id="onb-face-preview" class="onb-face-preview"></canvas>
+      <p class="onb-status" id="onb-face-status"></p>
+    </div>
+
+    <!-- Step 2: First scan -->
+    <div id="onb-step-2" class="onb-step">
+      <div class="onb-icon">🛰️</div>
+      <h3 class="onb-title">Run your first scan</h3>
+      <p class="onb-desc">Scan an image or URL through the deepfake detection engine and see your first result.</p>
+      <div class="onb-scan-options" id="onb-scan-options">
+        <label class="onb-upload">
+          <input type="file" id="onb-scan-file" accept="image/*" class="onb-file-input">
+          <span class="onb-upload-icon">🖼️</span>
+          <span class="onb-upload-text">Scan an image</span>
+          <span class="onb-upload-hint">Select a photo to analyze</span>
+        </label>
+        <div class="onb-or">or</div>
+        <div class="onb-url-row">
+          <input type="url" id="onb-scan-url" class="onb-url-input" placeholder="Paste an image or video URL…">
+          <button id="onb-scan-go" class="btn btn-primary btn-sm">Scan</button>
+        </div>
+      </div>
+      <div class="onb-progress-wrap" id="onb-scan-progress" style="display:none">
+        <div class="onb-progress-track"><div class="onb-progress-fill" id="onb-scan-progress-fill"></div></div>
+        <p class="onb-progress-step" id="onb-scan-progress-step">Initializing ML pipeline…</p>
+      </div>
+      <p class="onb-status" id="onb-scan-status"></p>
+    </div>
+
+    <!-- Step 3: Dashboard tour -->
+    <div id="onb-step-3" class="onb-step">
+      <div class="onb-icon">🗺️</div>
+      <h3 class="onb-title">A quick tour of your vault</h3>
+      <p class="onb-desc">Here's where everything lives:</p>
+      <ul class="onb-tour-list">
+        <li><span class="onb-tour-tag">Shield</span> Activate camera, voice &amp; crawler defenses</li>
+        <li><span class="onb-tour-tag">Scan</span> Detect deepfakes in images and URLs</li>
+        <li><span class="onb-tour-tag">Alerts</span> Review threats &amp; initiate takedowns</li>
+        <li><span class="onb-tour-tag">Insights</span> Track your protection over time</li>
+      </ul>
+      <div class="onb-score-preview">
+        <span class="onb-score-label">Your vault is ready</span>
+        <button id="onb-finish" class="btn btn-primary">Enter Enclave →</button>
+      </div>
+    </div>
+
+    <div class="onb-footer">
+      <button id="onb-skip" class="btn btn-ghost btn-sm">Skip for now</button>
+      <button id="onb-next" class="btn btn-primary btn-sm">Continue →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     SECURITY SCORE BREAKDOWN (Phase 1.2 tooltip)
+     ════════════════════════════════════════════ -->
+<div id="score-breakdown" class="hidden">
+  <div class="score-breakdown-list" id="score-breakdown-list"></div>
+</div>
+
 <script src="api.js?v=5"></script>
 <script src="native-bridge.js?v=5"></script>
 <script src="auth-ui.js?v=5"></script>
 <script src="interactions.js?v=1"></script>
-<script src="app.js?v=6"></script>
+<script src="app.js?v=7"></script>
 </body>
 </html>

@@ -188,11 +188,11 @@ async function matchFaceAgainstEnrolled(imageBuffer, filename, userId) {
 
     let bestMatch = null;
     for (const fp of enrolled) {
-      if (!fp.embedding) continue;
+      if (!fp.file_path) continue;
       try {
         const result = await mlClient.matchFaces(
           tempPath,
-          fp.embedding_file || tempPath,
+          fp.file_path,
           0.65
         );
         if (result.match) {

@@ -343,6 +343,74 @@
     getCommunityStats: function () { return apiFetch('/community/forum/stats'); },
     getThreatStats: function () { return apiFetch('/community/threats/stats'); },
 
+    // Reports (Phase 3)
+    getReportTypes: function () { return apiFetch('/reports/types'); },
+    generateReport: function (data) {
+      return apiFetch('/reports/generate', {
+        method: 'POST',
+        body: JSON.stringify(data || { type: 'threat_summary' })
+      });
+    },
+    scheduleReport: function (data) {
+      return apiFetch('/reports/schedule', {
+        method: 'POST',
+        body: JSON.stringify(data)
+      });
+    },
+    getReports: function (limit) {
+      return apiFetch('/reports' + (limit ? '?limit=' + limit : ''));
+    },
+    getReportSchedules: function () { return apiFetch('/reports/schedules'); },
+    getReportDownloadUrl: function (id) { return API_BASE + '/reports/' + id + '/download'; },
+
+    // Phase 4: Advanced Detection
+    reverseImageSearch: function (file) {
+      var fd = new FormData();
+      fd.append('image', file);
+      return apiFetch('/detect/reverse', { method: 'POST', body: fd });
+    },
+    checkIdentityChanges: function (file) {
+      var fd = new FormData();
+      fd.append('image', file);
+      return apiFetch('/biometrics/identity-changes', { method: 'POST', body: fd });
+    },
+    embedWatermark: function (file, copyright) {
+      var fd = new FormData();
+      fd.append('image', file);
+      if (copyright) fd.append('copyright', copyright);
+      return apiFetch('/alerts/watermark/embed', { method: 'POST', body: fd });
+    },
+    verifyWatermark: function (file) {
+      var fd = new FormData();
+      fd.append('image', file);
+      return apiFetch('/alerts/watermark/verify', { method: 'POST', body: fd });
+    },
+
+    // Phase 5: Family Protection
+    listFamilyMembers: function () { return apiFetch('/family/members'); },
+    addFamilyMember: function (data) {
+      return apiFetch('/family/members', { method: 'POST', body: JSON.stringify(data) });
+    },
+    updateFamilyMember: function (id, data) {
+      return apiFetch('/family/members/' + id, { method: 'PATCH', body: JSON.stringify(data) });
+    },
+    removeFamilyMember: function (id) {
+      return apiFetch('/family/members/' + id, { method: 'DELETE' });
+    },
+    getFamilyMemberAlerts: function (id) {
+      return apiFetch('/family/members/' + id + '/alerts');
+    },
+
+    // Phase 6: Referrals
+    getReferralCode: function () { return apiFetch('/referrals/code'); },
+    getReferralStats: function () { return apiFetch('/referrals/stats'); },
+    applyReferral: function (code) {
+      return apiFetch('/referrals/apply', { method: 'POST', body: JSON.stringify({ code: code }) });
+    },
+    claimReferralReward: function () {
+      return apiFetch('/referrals/claim', { method: 'POST' });
+    },
+
     // Health
     getHealth: function () { return apiFetch('/health'); }
   };

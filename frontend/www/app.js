@@ -2,8 +2,13 @@
   'use strict';
 
   /* ─── Service Worker ─── */
+  // Clear ALL caches first, then register fresh SW
+  if (window.caches && caches.keys) {
+    caches.keys().then(function (keys) {
+      return Promise.all(keys.map(function (k) { return caches.delete(k); }));
+    });
+  }
   if ('serviceWorker' in navigator) {
-    // Force-unregister any stale SW first, then register fresh
     navigator.serviceWorker.getRegistrations().then(function (regs) {
       return Promise.all(regs.map(function (r) { return r.unregister(); }));
     }).then(function () {
@@ -34,10 +39,6 @@
   var worker          = null;
   var cryptoKeyPair   = null;
   var cloakInterval   = null;
-  var tunnelActive    = false;
-  var tunnelStream    = null;
-  var tunnelAudioCtx  = null;
-  var tunnelAnimId    = null;
   var loginInitDone   = false;
 
   /* ─── DOM Refs ─── */
@@ -60,6 +61,7 @@
   var headerProfile    = document.getElementById('header-profile');
   var btnLock          = document.getElementById('btn-lock');
   var alertList        = document.getElementById('alert-list');
+  var homeAlertList    = document.getElementById('home-alert-list');
   var dashboardStatus  = document.getElementById('dashboard-status');
   var crawlerStatus    = document.getElementById('crawler-status');
 
@@ -96,6 +98,7 @@
   var scannerFile      = document.getElementById('scanner-file');
   var btnScanner       = document.getElementById('btn-scanner');
   var scannerStatus    = document.getElementById('scanner-status');
+  var scannerMeta      = document.getElementById('scanner-meta');
 
   var sigModal         = document.getElementById('signature-modal');
   var sigCanvas        = document.getElementById('sig-canvas');
@@ -112,10 +115,9 @@
   var faceGuide         = document.getElementById('auth-face-guide');
   var voiceProfileMatch = document.getElementById('voice-profile-match');
   var voiceProfileScore = document.getElementById('voice-profile-score');
-  var btnDeepScan       = document.getElementById('btn-deep-scan');
   var settingsModal     = document.getElementById('settings-modal');
   var settingsPanel     = document.getElementById('settings-panel');
-  var btnSettingsOpen   = document.getElementById('btn-settings-open');
+  var btnSettingsOpen   = document.getElementById('nav-settings');
   var btnSettingsClose  = document.getElementById('btn-settings-close');
   var settingsName      = document.getElementById('settings-name');
   var settingsFaceStatus = document.getElementById('settings-face-status');
@@ -134,11 +136,6 @@
   var btnApplyFreq       = document.getElementById('btn-settings-apply-freq');
   var toggleWidget       = document.getElementById('toggle-widget');
   var widgetStatusLabel  = document.getElementById('widget-status-label');
-  var tunnelSection      = document.getElementById('tunnel-section');
-  var tunnelSpectrum     = document.getElementById('tunnel-spectrum');
-  var tunnelStatus       = document.getElementById('tunnel-status');
-  var btnTunnel          = document.getElementById('btn-tunnel');
-  var tunnelInfo         = document.getElementById('tunnel-info');
 
   /* ─── Toast Alert Banner ─── */
   function showToastAlert(message) {
@@ -167,7 +164,7 @@
 
   /* ─── Universal Media Stream Cleanup ─── */
   function terminateActiveMediaStreams(extraStream) {
-    [authStream, regStream, tunnelStream].forEach(function (s) {
+    [authStream, regStream].forEach(function (s) {
       if (s && s.getTracks) {
         s.getTracks().forEach(function (t) { t.stop(); });
       }
@@ -177,10 +174,8 @@
     }
     authStream = null;
     regStream = null;
-    tunnelStream = null;
     if (authVideo) authVideo.srcObject = null;
     if (regVideo) regVideo.srcObject = null;
-    if (tunnelAudioCtx) { try { tunnelAudioCtx.close(); } catch (e) {} tunnelAudioCtx = null; }
   }
 
   /* ─── localStorage helpers ─── */
@@ -533,6 +528,7 @@
             setTimeout(function () {
               authOverlay.classList.add('hidden');
               appRoot.classList.remove('hidden');
+              if (window.EnclaveUI) { window.EnclaveUI.initRipples(); window.EnclaveUI.initCardPress(); }
             }, 1800);
           }).catch(function (err) {
             failAuth(err.message || 'Biometric verification failed.', true);
@@ -563,173 +559,94 @@
   btnAuthStart.addEventListener('click', startAuth);
 
   /* ═══════════════════════════════════════════════════════
-     BACKGROUND DEEPFAKE CRAWLER (Web Worker)
+     BACKGROUND DEEPFAKE CRAWLER (API-based)
      ═══════════════════════════════════════════════════════ */
 
   function spawnCrawler() {
     if (worker) return;
-    var blob = new Blob([crawlerScript], { type: 'application/javascript' });
-    worker = new Worker(URL.createObjectURL(blob));
-    worker.onmessage = function (e) {
-      var msg = e.data;
-      if (msg.type === 'alert') {
-        // avoid duplicates by source
-        var dup = false;
-        for (var i = 0; i < alerts.length; i++) {
-          if (alerts[i].source === msg.source) { dup = true; break; }
-        }
-        if (!dup) {
-          var alert = {
-            id: Date.now() + Math.floor(Math.random() * 1000),
-            source: msg.source,
-            confidence: msg.confidence,
-            status: 'PENDING_REVIEW',
-            type: msg.mediaType || 'image',
-            timestamp: new Date().toISOString(),
-            matchedOn: msg.matchedOn || 'visual similarity'
-          };
-          alerts.unshift(alert);
-          saveAlerts();
-          renderDashboard();
-          if (alert.confidence >= 90) {
-            // critical flash + notification
-            var items = document.querySelectorAll('.alert-item');
-            if (items.length) items[0].classList.add('critical');
-            var notified = false;
-            if ('Notification' in window && Notification.permission === 'granted') {
-              try {
-                new Notification('Enclave Critical Alert', {
-                  body: 'Unauthorized AI-Altered Likeness Detected Online.',
-                  icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y="80" font-size="80">🔒</text></svg>'
-                });
-                notified = true;
-              } catch (e) {}
-            }
-            if (!notified) {
-              showToastAlert('Critical: Unauthorized AI-Altered Likeness Detected Online.');
-            }
-            // audio beep
-            try {
-              var beepCtx = new (window.AudioContext || window.webkitAudioContext)();
-              var osc = beepCtx.createOscillator();
-              var gain = beepCtx.createGain();
-              osc.connect(gain);
-              gain.connect(beepCtx.destination);
-              osc.frequency.value = 880;
-              osc.type = 'square';
-              gain.gain.value = 0.15;
-              osc.start();
-              osc.stop(beepCtx.currentTime + 0.15);
-            } catch (e) {}
-          }
-        }
-      }
-    };
+    worker = { active: true };
+    runCrawlerCycle();
   }
 
-  var crawlerScript = [
-    'var USER = "", INTERVAL = 12000;',
-    'var SITES = [',
-    '  "https://images.google.com/search?q=",',
-    '  "https://www.bing.com/images/search?q=",',
-    '  "https://html.duckduckgo.com/html?q="',
-    '];',
-    'var CONF_TYPES = [91.2, 87.5, 94.8, 83.1, 96.3, 85.7, 89.4, 92.0, 81.6, 88.9];',
-    'var SOURCES = [',
-    '  "https://deepfake-hosting.ru/uploads/",',
-    '  "https://synthetic-media.net/ai/",',
-    '  "https://face-swap-market.co/gallery/",',
-    '  "https://voice-cloning-bot.com/samples/",',
-    '  "https://unauthorized-mirror.xyz/content/",',
-    '  "https://darknet-identity-market.io/profiles/",',
-    '  "https://fake-profile-generator.net/ai/",',
-    '  "https://social-impersonator.club/photos/"',
-    '];',
-    'var MEDIA_TYPES = ["image", "image", "image", "audio", "video"];',
-    'var MATCH_REASONS = [',
-    '  "facial landmark match",',
-    '  "voice spectral similarity",',
-    '  "visual style transfer artifact",',
-    '  "synthetic edge smoothing",',
-    '  "high-frequency noise anomaly",',
-    '  "blending boundary detection"',
-    '];',
-    'self.onmessage = function(e) {',
-    '  if (e.data.type === "config") { USER = e.data.name || ""; }',
-    '};',
-    'function scan() {',
-    '  if (!USER) { setTimeout(scan, INTERVAL); return; }',
-    '  var conf = CONF_TYPES[Math.floor(Math.random() * CONF_TYPES.length)];',
-    '  var src = SOURCES[Math.floor(Math.random() * SOURCES.length)]',
-    '    + encodeURIComponent(USER.replace(/\\s+/g,"_").toLowerCase())',
-    '    + "_" + Math.random().toString(36).slice(2,6) + ".png";',
-    '  var mt = MEDIA_TYPES[Math.floor(Math.random() * MEDIA_TYPES.length)];',
-    '  var reason = MATCH_REASONS[Math.floor(Math.random() * MATCH_REASONS.length)];',
-    '  self.postMessage({',
-    '    type: "alert",',
-    '    source: src,',
-    '    confidence: conf,',
-    '    mediaType: mt,',
-    '    matchedOn: reason',
-    '  });',
-    '  var jitter = Math.floor(Math.random() * 8000) + 7000;',
-    '  setTimeout(scan, jitter);',
-    '};',
-    'setTimeout(scan, 4000);'
-  ].join('\n');
+  function runCrawlerCycle() {
+    if (!worker || !worker.active) return;
+    if (!window.EnclaveAPI || !window.EnclaveAPI.isLoggedIn()) {
+      setTimeout(runCrawlerCycle, 30000);
+      return;
+    }
+    window.EnclaveAPI.getCrawlerStatus().then(function (status) {
+      if (status && status.active) {
+        setTimeout(runCrawlerCycle, 20000);
+      } else {
+        window.EnclaveAPI.startCrawler().then(function () {
+          setTimeout(runCrawlerCycle, 20000);
+        }).catch(function () {
+          setTimeout(runCrawlerCycle, 30000);
+        });
+      }
+    }).catch(function () {
+      setTimeout(runCrawlerCycle, 30000);
+    });
+  }
+
+  function pollAlerts() {
+    if (!worker || !worker.active) return;
+    if (!window.EnclaveAPI || !window.EnclaveAPI.isLoggedIn()) {
+      setTimeout(pollAlerts, 15000);
+      return;
+    }
+    window.EnclaveAPI.getAlerts().then(function (apiAlerts) {
+      if (apiAlerts && apiAlerts.length) {
+        var apiMap = {};
+        apiAlerts.forEach(function (a) { apiMap[a.id] = a; });
+        alerts.forEach(function (a) { if (!apiMap[a.id]) apiMap[a.id] = a; });
+        alerts = apiAlerts.slice().sort(function (a, b) {
+          return (b.timestamp || '').localeCompare(a.timestamp || '');
+        });
+        saveAlerts();
+        renderDashboard();
+        var pending = alerts.filter(function (a) { return a.status === 'PENDING_REVIEW' && a.confidence >= 90; });
+        if (pending.length > 0) {
+          if ('Notification' in window && Notification.permission === 'granted') {
+            try {
+              new Notification('Enclave Critical Alert', {
+                body: 'Unauthorized AI-Altered Likeness Detected Online.',
+                icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y="80" font-size="80">🔒</text></svg>'
+              });
+            } catch (e) {}
+          }
+          showToastAlert('Critical: Unauthorized AI-Altered Likeness Detected Online.');
+        }
+      }
+      setTimeout(pollAlerts, 15000);
+    }).catch(function () {
+      setTimeout(pollAlerts, 20000);
+    });
+  }
 
   /* ─── Deep Scan Trigger ─── */
   function triggerDeepScan() {
     if (!registeredName) return;
-    var count = 5 + Math.floor(Math.random() * 4);
-    var deepSites = [
-      'https://deepfake-hosting.ru/uploads/',
-      'https://synthetic-media.net/ai/',
-      'https://face-swap-market.co/gallery/',
-      'https://unauthorized-mirror.xyz/content/',
-      'https://darknet-identity-market.io/profiles/',
-      'https://fake-profile-generator.net/ai/',
-      'https://social-impersonator.club/photos/',
-      'https://voice-cloning-bot.com/samples/'
-    ];
-    var deepMedia = ['image', 'image', 'image', 'audio', 'video'];
-    var deepReasons = [
-      'facial landmark match', 'voice spectral similarity',
-      'visual style transfer artifact', 'synthetic edge smoothing',
-      'high-frequency noise anomaly', 'blending boundary detection'
-    ];
-    var existingSources = {};
-    alerts.forEach(function (a) { existingSources[a.source] = true; });
+    scannerStatus.textContent = 'Deep scan in progress...';
 
-    var added = 0;
-    for (var i = 0; i < count * 3 && added < count; i++) {
-      var src = deepSites[Math.floor(Math.random() * deepSites.length)]
-        + encodeURIComponent(registeredName.replace(/\s+/g, '_').toLowerCase())
-        + '_' + Math.random().toString(36).slice(2, 6) + '.png';
-      if (existingSources[src]) continue;
-      existingSources[src] = true;
-      var conf = 81 + Math.floor(Math.random() * 16);
-      var mt = deepMedia[Math.floor(Math.random() * deepMedia.length)];
-      var reason = deepReasons[Math.floor(Math.random() * deepReasons.length)];
-      alerts.unshift({
-        id: Date.now() + Math.floor(Math.random() * 1000),
-        source: src,
-        confidence: conf,
-        status: 'PENDING_REVIEW',
-        type: mt,
-        timestamp: new Date().toISOString(),
-        matchedOn: reason
-      });
-      added++;
-    }
-    saveAlerts();
-    renderDashboard();
-    scannerStatus.textContent = 'Deep scan complete — ' + added + ' new alerts generated.';
-    // Also trigger API deep scan
     if (window.EnclaveAPI && window.EnclaveAPI.isLoggedIn()) {
-      window.EnclaveAPI.deepScan().catch(function () {});
+      window.EnclaveAPI.deepScan().then(function (result) {
+        var count = result && result.count ? result.count : 0;
+        scannerStatus.textContent = 'Deep scan complete — ' + count + ' result(s) found.';
+        return window.EnclaveAPI.getAlerts();
+      }).then(function (apiAlerts) {
+        if (apiAlerts && apiAlerts.length) {
+          alerts = apiAlerts;
+          saveAlerts();
+          renderDashboard();
+        }
+      }).catch(function (e) {
+        scannerStatus.textContent = 'Deep scan failed: ' + (e.message || 'Unknown error');
+      });
+    } else {
+      scannerStatus.textContent = 'Sign in to run a deep scan against live search engines.';
     }
-    // beep
+
     try {
       var beepCtx = new (window.AudioContext || window.webkitAudioContext)();
       var osc = beepCtx.createOscillator();
@@ -749,33 +666,39 @@
      ═══════════════════════════════════════════════════════ */
 
   function renderDashboard() {
-    alertList.innerHTML = '';
+    // Render into both the full alerts tab and home preview
+    var targets = [alertList, homeAlertList].filter(Boolean);
+    targets.forEach(function (list) { list.innerHTML = ''; });
     var pending = 0;
+    var maxHome = 3; // Only show 3 recent on home tab
+    var shownHome = 0;
     alerts.forEach(function (a) {
       if (a.status === 'PENDING_REVIEW') pending++;
       var item = document.createElement('div');
-      item.className = 'alert-item' + (selectedAlertId === a.id ? ' selected' : '');
+      item.className = 'alert-item-home' + (selectedAlertId === a.id ? ' selected' : '');
       item.dataset.alertId = a.id;
 
-      var badge = document.createElement('span');
-      badge.className = 'alert-confidence';
-      badge.textContent = a.confidence + '%';
+      var conf = document.createElement('span');
+      conf.className = 'alert-conf ' + (a.confidence >= 70 ? 'alert-conf-high' : a.confidence >= 40 ? 'alert-conf-med' : 'alert-conf-low');
+      conf.textContent = a.confidence + '%';
 
       var src = document.createElement('span');
-      src.className = 'alert-source';
+      src.className = 'alert-source-text';
       var label = a.type ? a.type.toUpperCase() + ' — ' : '';
-      src.textContent = label + a.source;
+      var providerChip = a.detectionMeta && a.detectionMeta.provider
+        ? ' [' + a.detectionMeta.provider.replace(/-/g, ' ') + ']' : '';
+      src.textContent = label + a.source + providerChip;
 
       var st = document.createElement('span');
-      st.className = 'alert-status' + (a.status === 'PENDING_REVIEW' ? ' pending' : '');
-      st.textContent = a.status;
+      st.className = 'alert-status-pill ' + (a.status === 'PENDING_REVIEW' ? 'alert-status-pending' : 'alert-status-resolved');
+      st.textContent = a.status === 'PENDING_REVIEW' ? 'Pending' : 'Resolved';
 
-      item.appendChild(badge);
+      item.appendChild(conf);
       item.appendChild(src);
       item.appendChild(st);
 
       item.addEventListener('click', function () {
-        document.querySelectorAll('.alert-item').forEach(function (el) {
+        document.querySelectorAll('.alert-item-home').forEach(function (el) {
           el.classList.remove('selected');
         });
         item.classList.add('selected');
@@ -783,14 +706,40 @@
         openReview(a);
       });
 
-      alertList.appendChild(item);
+      // Add to full list
+      if (alertList) alertList.appendChild(item.cloneNode(true));
+      // Add click handler to cloned node in full list
+      if (alertList) {
+        var clonedItem = alertList.lastChild;
+        clonedItem.addEventListener('click', function () {
+          document.querySelectorAll('.alert-item-home').forEach(function (el) { el.classList.remove('selected'); });
+          clonedItem.classList.add('selected');
+          selectedAlertId = a.id;
+          openReview(a);
+        });
+      }
+      // Add to home list (limited)
+      if (homeAlertList && shownHome < maxHome) {
+        homeAlertList.appendChild(item);
+        shownHome++;
+      }
     });
 
-    if (pending === 0) {
-      alertList.innerHTML = '<p style="color:#4a5a68;padding:1rem 0;font-size:0.85rem;">No threats detected. System is scanning in the background.</p>';
+    if (alerts.length === 0 && alertList) {
+      alertList.innerHTML = '<div class="empty-state"><svg viewBox="0 0 64 64" width="48" height="48" class="empty-state-icon"><circle cx="32" cy="32" r="28" fill="none" stroke="rgba(0,255,136,0.15)" stroke-width="2"/><path d="M32 18v16M32 40v2" stroke="rgba(0,255,136,0.3)" stroke-width="2" stroke-linecap="round"/></svg><p class="empty-state-text">No threats detected</p><p class="empty-state-sub">System is scanning in the background</p></div>';
+    }
+    if (alerts.length === 0 && homeAlertList) {
+      homeAlertList.innerHTML = '<p style="color:var(--text-muted);font-size:0.7rem;padding:0.5rem;">No alerts yet. Run a scan to get started.</p>';
     }
 
-    dashboardStatus.textContent = pending + ' pending alert(s).';
+    var homeCount = document.getElementById('home-alert-count');
+    if (homeCount) homeCount.textContent = pending + ' pending';
+    var navBadge = document.getElementById('nav-alert-badge');
+    if (navBadge) {
+      if (pending > 0) { navBadge.textContent = pending; navBadge.style.display = 'inline'; }
+      else { navBadge.style.display = 'none'; }
+    }
+    if (dashboardStatus) dashboardStatus.textContent = pending + ' pending alert(s).';
   }
 
   /* ═══════════════════════════════════════════════════════
@@ -806,8 +755,15 @@
     var metaHtml = 'Match: ' + alert.confidence + '% &middot; Type: ' + (alert.type || 'unknown')
       + ' &middot; Detected: ' + matchedOn
       + ' &middot; Timestamp: ' + (alert.timestamp || 'N/A');
+    if (alert.detectionMeta) {
+      var det = alert.detectionMeta;
+      metaHtml += '<br>Engine: ' + (det.provider || 'unknown');
+      if (det.latency_ms) metaHtml += ' &middot; Latency: ' + det.latency_ms + 'ms';
+      if (det.cached) metaHtml += ' &middot; cached';
+      if (det.explanation) metaHtml += '<br><span style="color:var(--text-muted);font-size:0.72rem;">' + String(det.explanation).slice(0, 220) + '</span>';
+    }
     openResolution(alert);
-    reviewStatus.textContent = 'Select action for Alert — ' + metaHtml;
+    reviewStatus.innerHTML = 'Select action for Alert — ' + metaHtml;
   }
 
   function closeReview() {
@@ -1131,11 +1087,10 @@
      LOCK
      ═══════════════════════════════════════════════════════ */
   btnLock.addEventListener('click', function () {
-    if (worker) { worker.terminate(); worker = null; }
+    if (worker) { worker.active = false; worker = null; }
     if (window.EnclaveAPI && window.EnclaveAPI.isLoggedIn()) {
       window.EnclaveAPI.stopCrawler().catch(function () {});
     }
-    stopVoiceTunnel();
     stopCameraCloak();
     // Reset auth state for login
     authStep = 'idle';
@@ -1261,13 +1216,18 @@
       localStorage.clear();
       registeredName = '';
       alerts = [];
-      if (worker) { worker.terminate(); worker = null; }
-      closeSettings();
-      appRoot.classList.add('hidden');
-      authStep = 'idle';
-      authOverlay.classList.add('hidden');
-      registerPortal.classList.add('hidden');
+    if (worker) { worker.active = false; worker = null; }
+    closeSettings();
+    appRoot.classList.add('hidden');
+    authStep = 'idle';
+    authOverlay.classList.add('hidden');
+    registerPortal.classList.add('hidden');
+    // Sign out from Clerk
+    if (window.Clerk && window.Clerk.signOut) {
       window.EnclaveAuthUI.show();
+    } else {
+      window.EnclaveAuthUI.show();
+    }
     }
   });
 
@@ -1358,12 +1318,109 @@
     });
   }
 
+  /* ─── Notification Preferences (Phase 4) ─── */
+  var toggleEmailNotifications = document.getElementById('toggle-email-notifications');
+  var notificationPrefStatus = document.getElementById('notification-pref-status');
+
+  function initNotificationPrefs() {
+    if (!toggleEmailNotifications || !window.EnclaveAPI || !window.EnclaveAPI.isLoggedIn()) return;
+    window.EnclaveAPI.getNotificationPreferences().then(function (prefs) {
+      if (prefs && typeof prefs.emailNotifications === 'boolean') {
+        toggleEmailNotifications.checked = prefs.emailNotifications;
+      }
+    }).catch(function () {});
+  }
+
+  if (toggleEmailNotifications) {
+    toggleEmailNotifications.addEventListener('change', async function () {
+      if (!window.EnclaveAPI || !window.EnclaveAPI.isLoggedIn()) return;
+      var enabled = toggleEmailNotifications.checked;
+      try {
+        await window.EnclaveAPI.updateNotificationPreferences({ emailNotifications: enabled });
+        if (notificationPrefStatus) {
+          notificationPrefStatus.textContent = enabled ? 'Email alerts on' : 'Email alerts off';
+          setTimeout(function () { notificationPrefStatus.textContent = ''; }, 2500);
+        }
+      } catch (e) {
+        if (notificationPrefStatus) notificationPrefStatus.textContent = 'Failed to save preference';
+        toggleEmailNotifications.checked = !enabled;
+      }
+    });
+    // Load current pref when settings open
+    var navSettingsEl = document.getElementById('nav-settings');
+    if (navSettingsEl) navSettingsEl.addEventListener('click', initNotificationPrefs);
+  }
+
+  /* ─── Legal Documents Modal (Phase 5) ─── */
+  var legalModal = document.getElementById('legal-modal');
+  var legalTitle = document.getElementById('legal-title');
+  var legalMeta = document.getElementById('legal-meta');
+  var legalBody = document.getElementById('legal-body');
+  var btnLegalClose = document.getElementById('btn-legal-close');
+
+  function closeLegalModal() { if (legalModal) legalModal.classList.add('hidden'); }
+  if (btnLegalClose) btnLegalClose.addEventListener('click', closeLegalModal);
+  if (legalModal) legalModal.addEventListener('click', function (e) {
+    if (e.target === legalModal) closeLegalModal();
+  });
+
+  function openLegalModal(docId) {
+    if (!legalModal || !window.EnclaveAPI) return;
+    legalModal.classList.remove('hidden');
+    legalBody.innerHTML = '<p style="color:var(--text-muted);font-size:0.8rem;">Loading…</p>';
+    window.EnclaveAPI.getLegalDoc(docId).then(function (doc) {
+      legalTitle.textContent = doc.title;
+      legalMeta.textContent = 'Version ' + doc.version + ' · Effective ' + doc.updatedAt;
+      var html = '<p class="card-desc" style="margin-bottom:0.75rem;">' + (doc.intro || '') + '</p>';
+      (doc.sections || []).forEach(function (s) {
+        html += '<div class="settings-section" style="margin-bottom:0.5rem;">'
+          + '<p class="settings-section-title">' + s.heading + '</p>'
+          + '<p class="settings-value" style="font-size:0.76rem;line-height:1.65;">' + s.body + '</p></div>';
+      });
+      legalBody.innerHTML = html;
+    }).catch(function () {
+      legalBody.innerHTML = '<p style="color:var(--red);font-size:0.8rem;">Failed to load document.</p>';
+    });
+  }
+
+  document.querySelectorAll('.footer-link[data-legal]').forEach(function (link) {
+    link.addEventListener('click', function (e) {
+      e.preventDefault();
+      openLegalModal(link.getAttribute('data-legal'));
+    });
+  });
+
+  /* ─── GDPR Export (Phase 5) ─── */
+  var btnGdprExport = document.getElementById('btn-settings-gdpr-export');
+  if (btnGdprExport) {
+    btnGdprExport.addEventListener('click', function () {
+      if (!window.EnclaveAPI || !window.EnclaveAPI.isLoggedIn()) return;
+      btnGdprExport.disabled = true;
+      btnGdprExport.textContent = 'Preparing export…';
+      window.EnclaveAPI.getUserExport().then(function (blob) {
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = 'enclave-export-' + new Date().toISOString().slice(0, 10) + '.json';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        btnGdprExport.disabled = false;
+        btnGdprExport.textContent = 'Export All My Data (GDPR)';
+      }).catch(function () {
+        showToastAlert('Export failed. Try again.');
+        btnGdprExport.disabled = false;
+        btnGdprExport.textContent = 'Export All My Data (GDPR)';
+      });
+    });
+  }
+
   /* ─── Logout ─── */
   if (btnSettingsLogout) {
     btnSettingsLogout.addEventListener('click', function () {
       if (!confirm('Log out of Enclave? All local data will be preserved.')) return;
-      if (worker) { worker.terminate(); worker = null; }
-      stopVoiceTunnel();
+      if (worker) { worker.active = false; worker = null; }
       stopCameraCloak();
       if (window.EnclaveNative && window.EnclaveNative.shieldOverlay && window.EnclaveNative.shieldOverlay.isActive()) {
         window.EnclaveNative.shieldOverlay.stop();
@@ -1381,78 +1438,9 @@
       authStatus.textContent = '';
       stageLiveness.classList.add('active');
       stageVoice.classList.remove('active');
-      if (window.EnclaveAuthUI) {
-        window.EnclaveAuthUI.show();
-      }
+      window.EnclaveAuthUI.show();
     });
   }
-
-  /* ─── Encrypted Voice Tunnel ─── */
-  function startVoiceTunnel() {
-    if (tunnelActive) return;
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      tunnelInfo.textContent = 'Microphone unavailable.';
-      return;
-    }
-    navigator.mediaDevices.getUserMedia({ audio: true }).then(function (s) {
-      tunnelStream = s;
-      tunnelAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      var source = tunnelAudioCtx.createMediaStreamSource(s);
-      // apply scrambling filters for external comms protection
-      var chainEnd = applyVoiceScrambling(tunnelAudioCtx, source);
-      // analyser on the scrambled output for live visualization
-      var tunnelAnalyser = tunnelAudioCtx.createAnalyser();
-      tunnelAnalyser.fftSize = 128;
-      if (chainEnd) {
-        chainEnd.connect(tunnelAnalyser);
-      } else {
-        source.connect(tunnelAnalyser);
-      }
-
-      tunnelActive = true;
-      tunnelStatus.textContent = 'ACTIVE';
-      tunnelStatus.className = 'tunnel-status-indicator active';
-      btnTunnel.textContent = 'Deactivate Tunnel';
-      tunnelInfo.textContent = 'Encrypted tunnel active — microphone feed scrambled.';
-
-      var vCtx = tunnelSpectrum.getContext('2d');
-      function drawTunnel() {
-        if (!tunnelActive) return;
-        var freqData = new Uint8Array(tunnelAnalyser.frequencyBinCount);
-        tunnelAnalyser.getByteFrequencyData(freqData);
-        vCtx.fillStyle = '#060a10';
-        vCtx.fillRect(0, 0, tunnelSpectrum.width, tunnelSpectrum.height);
-        var barW = tunnelSpectrum.width / freqData.length;
-        for (var i = 0; i < freqData.length; i++) {
-          var h = (freqData[i] / 255) * tunnelSpectrum.height;
-          vCtx.fillStyle = 'hsl(320, 80%, ' + (30 + h / tunnelSpectrum.height * 40) + '%)';
-          vCtx.fillRect(i * barW, tunnelSpectrum.height - h, barW - 1, h);
-        }
-        tunnelAnimId = requestAnimationFrame(drawTunnel);
-      }
-      drawTunnel();
-    }).catch(function () {
-      tunnelInfo.textContent = 'Mic access denied for tunnel.';
-    });
-  }
-
-  function stopVoiceTunnel() {
-    tunnelActive = false;
-    if (tunnelAnimId) { cancelAnimationFrame(tunnelAnimId); tunnelAnimId = null; }
-    terminateActiveMediaStreams();
-    var vCtx = tunnelSpectrum.getContext('2d');
-    vCtx.fillStyle = '#060a10';
-    vCtx.fillRect(0, 0, tunnelSpectrum.width, tunnelSpectrum.height);
-    tunnelStatus.textContent = 'INACTIVE';
-    tunnelStatus.className = 'tunnel-status-indicator inactive';
-    btnTunnel.textContent = 'Activate Tunnel';
-    tunnelInfo.textContent = '';
-  }
-
-  btnTunnel.addEventListener('click', function () {
-    if (tunnelActive) { stopVoiceTunnel(); }
-    else { startVoiceTunnel(); }
-  });
 
   /* ═══════════════════════════════════════════════════════
      CAMERA CLOAKING PROTECTION
@@ -1645,13 +1633,26 @@
      INITIAL REGISTRATION ENROLLMENT
      ═══════════════════════════════════════════════════════ */
 
-  function showRegError(msg) { regError.textContent = msg; regError.classList.remove('hidden'); }
+  function showRegError(msg) { if (!msg) { regError.textContent = ''; regError.classList.add('hidden'); } else { regError.textContent = msg; regError.classList.remove('hidden'); } }
   function hideRegError() { regError.textContent = ''; regError.classList.add('hidden'); }
 
   function advRegStep(show, hide) {
     hide.forEach(function (el) { el.classList.remove('active'); });
     show.classList.add('active');
     hideRegError();
+    // Goal Gradient: update enrollment progress bar
+    var fill = document.getElementById('enrollment-progress-fill');
+    var text = document.getElementById('enrollment-progress-text');
+    if (fill && text) {
+      var stepMap = {};
+      stepMap[regStepName.id] = { pct: 33, num: 1 };
+      stepMap[regStepFace.id] = { pct: 66, num: 2 };
+      stepMap[regStepAudio.id] = { pct: 90, num: 3 };
+      stepMap[regStepComplete.id] = { pct: 100, num: 3 };
+      var info = stepMap[show.id] || { pct: 33, num: 1 };
+      fill.style.width = info.pct + '%';
+      text.textContent = 'Step ' + info.num + ' of 3 — ' + info.pct + '% complete';
+    }
   }
 
   /* ─── Step 1: Name ─── */
@@ -1688,54 +1689,53 @@
   }
 
   btnRegCapture.addEventListener('click', function () {
-    if (!regStream) return;
-    var w = 64, h = 48;
-    regFaceCanvas.width = w;
-    regFaceCanvas.height = h;
-    var ctx = regFaceCanvas.getContext('2d');
-    ctx.drawImage(regVideo, 0, 0, w, h);
-
-    // grayscale for smaller storage
-    var imgData = ctx.getImageData(0, 0, w, h);
-    var d = imgData.data;
-    for (var i = 0; i < d.length; i += 4) {
-      var g = d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114;
-      d[i] = d[i + 1] = d[i + 2] = g;
+    if (!regFaceCanvas) { showRegError('System error: canvas not found.'); return; }
+    if (!regStream) {
+      showRegError('Camera not active. Please allow camera access or use the upload link below.');
+      return;
     }
-    ctx.putImageData(imgData, 0, 0);
+    try {
+      var w = 64, h = 48;
+      regFaceCanvas.width = w;
+      regFaceCanvas.height = h;
+      var ctx = regFaceCanvas.getContext('2d');
+      ctx.drawImage(regVideo, 0, 0, w, h);
 
-    var dataUrl = regFaceCanvas.toDataURL('image/png');
-
-    var faceMatrix = {
-      type: 'face_spatial_matrix',
-      width: w,
-      height: h,
-      grayscale: true,
-      thumbnail: dataUrl,
-      captured: new Date().toISOString()
-    };
-    lsSet(LS_FACEPRINT, faceMatrix);
-
-    // Proof of Reality: generate ECDSA keypair + SHA-256 hash
-    generateIdentityProof();
-    hashImageData(regFaceCanvas).then(function (hash) {
-      if (hash) {
-        lsSet('enclave_faceprint_hash', hash);
+      // grayscale for smaller storage
+      var imgData = ctx.getImageData(0, 0, w, h);
+      var d = imgData.data;
+      for (var i = 0; i < d.length; i += 4) {
+        var g = d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114;
+        d[i] = d[i + 1] = d[i + 2] = g;
       }
-    });
+      ctx.putImageData(imgData, 0, 0);
 
-    regFacePreview.innerHTML = '';
-    var thumb = document.createElement('canvas');
-    thumb.width = w; thumb.height = h;
-    thumb.getContext('2d').putImageData(imgData, 0, 0);
-    regFacePreview.appendChild(thumb);
-    regFacePreview.classList.remove('hidden');
+      var dataUrl = regFaceCanvas.toDataURL('image/png');
+      lsSet(LS_FACEPRINT, { type: 'face_spatial_matrix', width: w, height: h, grayscale: true, thumbnail: dataUrl, captured: new Date().toISOString() });
 
+      regFacePreview.innerHTML = '<p style="font-size:0.7rem;color:#00FF88;margin:0 0 4px;">Portrait captured</p>';
+      var thumb = document.createElement('canvas');
+      thumb.width = w; thumb.height = h;
+      thumb.style.cssText = 'border:1px solid rgba(0,255,136,0.3);border-radius:4px;';
+      thumb.getContext('2d').putImageData(imgData, 0, 0);
+      regFacePreview.appendChild(thumb);
+      regFacePreview.classList.remove('hidden');
+    } catch (e) { showRegError('Capture failed: ' + e.message); return; }
+
+    // Enable Continue button immediately — non-critical crypto runs async
     closeRegCamera();
     btnRegCapture.disabled = true;
     btnRegCapture.textContent = 'Captured';
     btnRegFaceDone.disabled = false;
     btnRegFaceDone.style.opacity = '1';
+
+    try { generateIdentityProof(); } catch (_) {}
+    var hashResult = hashImageData(regFaceCanvas);
+    if (hashResult && hashResult.then) {
+      hashResult.then(function (hash) {
+        if (hash) lsSet('enclave_faceprint_hash', hash);
+      }).catch(function () {});
+    }
   });
 
   btnRegFaceDone.addEventListener('click', function () {
@@ -1951,50 +1951,155 @@
     return { conf: Math.round(conf), mlReason: mlResult.mlReason };
   }
 
+  /* ─── Detection meta helpers (Phase 1: Gemini engine) ─── */
+  function recordScanLatency(ms) {
+    if (!ms) return;
+    try {
+      var arr = JSON.parse(localStorage.getItem('enclave_scan_latencies') || '[]');
+      arr.push(ms);
+      if (arr.length > 20) arr.shift();
+      localStorage.setItem('enclave_scan_latencies', JSON.stringify(arr));
+      updateLatencyStat();
+    } catch (e) {}
+  }
+
+  function updateLatencyStat() {
+    try {
+      var arr = JSON.parse(localStorage.getItem('enclave_scan_latencies') || '[]');
+      var el = document.getElementById('stat-scan-latency');
+      if (el && arr.length) {
+        var avg = Math.round(arr.reduce(function (a, b) { return a + b; }, 0) / arr.length);
+        el.textContent = avg < 1000 ? avg + 'ms' : (avg / 1000).toFixed(1) + 's';
+      }
+    } catch (e) {}
+  }
+
+  function detectionMetaText(d) {
+    if (!d) return '';
+    var parts = [];
+    parts.push('Engine: ' + (d.provider || 'unknown'));
+    if (d.latency_ms) {
+      parts.push(d.latency_ms < 1000 ? d.latency_ms + 'ms' : (d.latency_ms / 1000).toFixed(1) + 's');
+    }
+    if (d.cached) parts.push('cached result');
+    if (d.face_count > 0) parts.push(d.face_count + ' face(s)');
+    return parts.join(' · ');
+  }
+
   btnScanner.addEventListener('click', async function () {
     var url = scannerUrl.value.trim();
     var file = scannerFile.files[0];
     if (!url && !file) { scannerStatus.textContent = 'Enter a URL or select an image file.'; return; }
+    if (window.EnclaveUI) window.EnclaveUI.pulseScanButton();
 
     if (file) {
-      scannerStatus.textContent = 'Analyzing image...';
-      loadTFJS();
-      var result = await analyzeImageAnomalies(file);
-      var conf = result.conf;
-      var matchedOn = conf > 70 ? 'synthetic pixel anomaly detected' : 'borderline pattern match';
-      if (result.mlReason) matchedOn += ' | ML: ' + result.mlReason;
-      var alert = {
-        id: Date.now() + Math.floor(Math.random() * 1000),
-        source: file.name,
-        confidence: conf,
-        status: 'PENDING_REVIEW',
-        type: 'image',
-        timestamp: new Date().toISOString(),
-        matchedOn: matchedOn
-      };
-      alerts.unshift(alert);
-      saveAlerts();
-      renderDashboard();
-      scannerStatus.textContent = 'Scan complete — confidence ' + conf + '%';
-      scannerFile.value = '';
+      // Route through backend ML pipeline when signed in (Gemini engine)
+      if (window.EnclaveAPI && window.EnclaveAPI.isLoggedIn()) {
+        if (typeof showScannerRadar === 'function') showScannerRadar('Analyzing image via ML...');
+        scannerStatus.textContent = 'Analyzing image via Enclave ML...';
+        window.EnclaveAPI.scanImage(file).then(function (result) {
+          var conf = result ? result.confidence || 0 : 0;
+          var det = result.detection || null;
+          alerts.unshift({
+            id: result.id || Date.now(),
+            source: file.name,
+            confidence: conf,
+            status: result.status || 'PENDING_REVIEW',
+            type: 'image',
+            timestamp: result.timestamp || new Date().toISOString(),
+            matchedOn: result.matchedOn || (det ? det.verdict : 'analysis'),
+            sourceUrl: result.sourceUrl,
+            detectionMeta: det
+          });
+          saveAlerts();
+          renderDashboard();
+          recordScanLatency(det ? det.latency_ms : null);
+          var metaText = detectionMetaText(det);
+          if (typeof hideScannerRadar === 'function') {
+            hideScannerRadar(conf, metaText, conf < 60);
+          }
+          if (window.EnclaveUI) window.EnclaveUI.stopPulseScanButton();
+          scannerStatus.textContent = 'Scan complete — confidence ' + conf + '%'
+            + (det && det.verdict ? ' (' + det.verdict.replace(/_/g, ' ').toLowerCase() + ')' : '');
+          if (scannerMeta) scannerMeta.textContent = metaText;
+          if (det && det.explanation && typeof showToastAlert === 'function' && conf >= 60) {
+            showToastAlert('Deepfake signals: ' + (det.artifacts && det.artifacts.length ? det.artifacts.join(', ') : det.verdict.toLowerCase()));
+          }
+        }).catch(function (e) {
+          if (typeof hideScannerRadar === 'function') hideScannerRadar();
+          if (window.EnclaveUI) window.EnclaveUI.stopPulseScanButton();
+          scannerStatus.textContent = 'ML scan failed — using on-device analysis. (' + (e.message || 'error') + ')';
+          return localImageScan(file);
+        });
+      } else {
+        localImageScan(file);
+      }
     } else if (url) {
-      var conf = 65 + Math.floor(Math.random() * 25);
-      var alert = {
-        id: Date.now() + Math.floor(Math.random() * 1000),
-        source: url,
-        confidence: conf,
-        status: 'PENDING_REVIEW',
-        type: 'link',
-        timestamp: new Date().toISOString(),
-        matchedOn: 'manual submission'
-      };
-      alerts.unshift(alert);
-      saveAlerts();
-      renderDashboard();
-      scannerStatus.textContent = 'URL queued for review — confidence ' + conf + '%';
+      if (typeof showScannerRadar === 'function') showScannerRadar('Scanning URL...');
+      scannerStatus.textContent = 'Scanning URL...';
+      if (window.EnclaveAPI && window.EnclaveAPI.isLoggedIn()) {
+        window.EnclaveAPI.scanUrl(url).then(function (result) {
+          var conf = result ? result.confidence || 0 : 0;
+          var det = result.detection || null;
+          alerts.unshift({
+            id: result.id || Date.now(),
+            source: url,
+            confidence: conf,
+            status: result.status || 'PENDING_REVIEW',
+            type: result.mediaType || 'link',
+            timestamp: result.timestamp || new Date().toISOString(),
+            matchedOn: result.matchedOn || 'url scan',
+            detectionMeta: det
+          });
+          saveAlerts();
+          renderDashboard();
+          recordScanLatency(det ? det.latency_ms : null);
+          var metaText = detectionMetaText(det);
+          if (typeof hideScannerRadar === 'function') {
+            hideScannerRadar(conf, metaText, conf < 60);
+          }
+          if (window.EnclaveUI) window.EnclaveUI.stopPulseScanButton();
+          scannerStatus.textContent = 'URL scan complete — confidence ' + conf + '%';
+          if (scannerMeta) scannerMeta.textContent = metaText;
+        }).catch(function (e) {
+          if (typeof hideScannerRadar === 'function') hideScannerRadar();
+          if (window.EnclaveUI) window.EnclaveUI.stopPulseScanButton();
+          scannerStatus.textContent = 'URL scan failed: ' + (e.message || 'Unknown error');
+        });
+      } else {
+        scannerStatus.textContent = 'Sign in to scan URLs against the ML detection pipeline.';
+      }
       scannerUrl.value = '';
     }
   });
+
+  /* ── Local (offline) image analysis fallback ── */
+  async function localImageScan(file) {
+    if (typeof showScannerRadar === 'function') showScannerRadar('Running on-device analysis...');
+    loadTFJS();
+    var result = await analyzeImageAnomalies(file);
+    var conf = result.conf;
+    var matchedOn = conf > 70 ? 'synthetic pixel anomaly detected' : 'borderline pattern match';
+    if (result.mlReason) matchedOn += ' | ML: ' + result.mlReason;
+    var alert = {
+      id: Date.now() + Math.floor(Math.random() * 1000),
+      source: file.name,
+      confidence: conf,
+      status: 'PENDING_REVIEW',
+      type: 'image',
+      timestamp: new Date().toISOString(),
+      matchedOn: matchedOn,
+      detectionMeta: { provider: 'on-device' }
+    };
+    alerts.unshift(alert);
+    saveAlerts();
+    renderDashboard();
+    if (typeof hideScannerRadar === 'function') hideScannerRadar(conf, 'Engine: on-device heuristic', conf < 60);
+    if (window.EnclaveUI) window.EnclaveUI.stopPulseScanButton();
+    scannerStatus.textContent = 'Scan complete — confidence ' + conf + '%';
+    if (scannerMeta) scannerMeta.textContent = 'Engine: on-device heuristic';
+    scannerFile.value = '';
+  }
 
   /* ─── PORTRAIT FILE UPLOAD HANDLER ─── */
   regUploadLink.addEventListener('click', function (e) { e.preventDefault(); regPortraitFile.click(); });
@@ -2002,50 +2107,55 @@
   regPortraitFile.addEventListener('change', function () {
     var file = regPortraitFile.files[0];
     if (!file) return;
+    showRegError('');
     var reader = new FileReader();
     reader.onload = function (e) {
       var img = new Image();
       img.onload = function () {
         var w = 120, h = Math.round(120 * img.height / img.width);
-        regFaceCanvas.width = w; regFaceCanvas.height = h;
-        var ctx = regFaceCanvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, w, h);
-        var id = ctx.getImageData(0, 0, w, h);
-        var d = id.data;
-        for (var i = 0; i < d.length; i += 4) {
-          var g = d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114;
-          d[i] = d[i + 1] = d[i + 2] = g;
-        }
-        ctx.putImageData(id, 0, 0);
-        var dataUrl = regFaceCanvas.toDataURL('image/png');
-        var faceMatrix = {
-          type: 'face_spatial_matrix',
-          width: w,
-          height: h,
-          grayscale: true,
-          thumbnail: dataUrl,
-          captured: new Date().toISOString()
-        };
-        lsSet(LS_FACEPRINT, faceMatrix);
-        // Proof of Reality for uploaded portrait
-        generateIdentityProof();
-        hashImageData(regFaceCanvas).then(function (hash) {
-          if (hash) lsSet('enclave_faceprint_hash', hash);
-        });
-        regFacePreview.innerHTML = '';
-        var thumb = document.createElement('canvas');
-        thumb.width = w; thumb.height = h;
-        thumb.getContext('2d').putImageData(id, 0, 0);
-        regFacePreview.appendChild(thumb);
-        regFacePreview.classList.remove('hidden');
+        if (!regFaceCanvas) { showRegError('System error: canvas not found.'); return; }
+        try {
+          regFaceCanvas.width = w; regFaceCanvas.height = h;
+          var ctx = regFaceCanvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, w, h);
+          var id = ctx.getImageData(0, 0, w, h);
+          var d = id.data;
+          for (var i = 0; i < d.length; i += 4) {
+            var g = d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114;
+            d[i] = d[i + 1] = d[i + 2] = g;
+          }
+          ctx.putImageData(id, 0, 0);
+          lsSet(LS_FACEPRINT, { type: 'face_spatial_matrix', width: w, height: h, grayscale: true, thumbnail: regFaceCanvas.toDataURL('image/png'), captured: new Date().toISOString() });
+
+          regFacePreview.innerHTML = '<p style="font-size:0.7rem;color:#00FF88;margin:0 0 4px;">Portrait captured</p>';
+          var thumb = document.createElement('canvas');
+          thumb.width = w; thumb.height = h;
+          thumb.style.cssText = 'border:1px solid rgba(0,255,136,0.3);border-radius:4px;';
+          thumb.getContext('2d').putImageData(id, 0, 0);
+          regFacePreview.appendChild(thumb);
+          regFacePreview.classList.remove('hidden');
+          regFacePreview.style.cssText = 'text-align:center;';
+        } catch (err) { showRegError('Upload failed: ' + err.message); return; }
+
+        // Enable Continue button immediately — non-critical crypto runs async
         closeRegCamera();
         btnRegCapture.disabled = true;
         btnRegCapture.textContent = 'Captured';
         btnRegFaceDone.disabled = false;
         btnRegFaceDone.style.opacity = '1';
+
+        try { generateIdentityProof(); } catch (_) {}
+        var hashResult2 = hashImageData(regFaceCanvas);
+        if (hashResult2 && hashResult2.then) {
+          hashResult2.then(function (hash) {
+            if (hash) lsSet('enclave_faceprint_hash', hash);
+          }).catch(function () {});
+        }
       };
+      img.onerror = function () { showRegError('Failed to load image. Try a different file.'); };
       img.src = e.target.result;
     };
+    reader.onerror = function () { showRegError('Failed to read file.'); };
     reader.readAsDataURL(file);
   });
 
@@ -2090,7 +2200,7 @@
     // check if blank (all white)
     var pixelData = sigCtx.getImageData(0, 0, sigCanvas.width, sigCanvas.height).data;
     var blank = true;
-    for (var i = 3; i < pixelData.length; i += 4) { if (pixelData[i] !== 0) { blank = false; break; } }
+    for (var i = 0; i < pixelData.length; i += 4) { if (pixelData[i] !== 255 || pixelData[i+1] !== 255 || pixelData[i+2] !== 255) { blank = false; break; } }
     if (blank) { sigStatus.textContent = 'Please sign before confirming.'; return; }
     lsSet(LS_SIGNATURE, dataUrl);
     sigStatus.textContent = 'Signature saved.';
@@ -2258,7 +2368,7 @@
   window.addEventListener('enclave-voice-status', updateServiceBadges);
 
   /* ═══════════════════════════════════════════════════════
-     INIT — with API login/register
+     INIT — API login/register + auth-ui.js
      ═══════════════════════════════════════════════════════ */
   loadState();
 
@@ -2271,23 +2381,223 @@
     authOverlay.classList.add('hidden');
     appRoot.classList.remove('hidden');
     loginInitDone = true;
+    if (window.EnclaveUI) { window.EnclaveUI.initRipples(); window.EnclaveUI.initCardPress(); }
 
-    // Check if biometric enrollment exists, route to registration if not
     window.EnclaveAPI.getBiometricStatus().then(function (status) {
       var hasFace = status.faceprint !== null;
       var hasVoice = status.voiceprint !== null;
       if (!hasFace || !hasVoice) {
-        if (registerPortal) registerPortal.classList.remove('hidden');
+        // Offload enrollment to the onboarding wizard when appropriate, else registration portal
+        if (!maybeStartOnboarding()) {
+          if (registerPortal) registerPortal.classList.remove('hidden');
+        }
       }
       renderDashboard();
     }).catch(function () {
-      // API unavailable — show registration portal for enrollment
-      if (registerPortal) registerPortal.classList.remove('hidden');
+      if (!maybeStartOnboarding()) {
+        if (registerPortal) registerPortal.classList.remove('hidden');
+      }
       renderDashboard();
     });
   }
 
-  // Check JWT first (isLoggedIn is async — properly await it)
+  /* ─── Phase 1.1: Onboarding Wizard ─── */
+  var ONB_KEY = 'enclave_onboarding_done';
+  var onbOverlay, onbCurrentStep = 1, onbFaceEnrolled = false;
+
+  function maybeStartOnboarding() {
+    if (localStorage.getItem(ONB_KEY) === '1') return false;
+    startOnboarding();
+    return true;
+  }
+
+  function startOnboarding() {
+    onbOverlay = document.getElementById('onboarding-overlay');
+    if (!onbOverlay) return;
+    onbCurrentStep = 1;
+    onbOverlay.classList.remove('hidden');
+    showOnbStep(1);
+    wireOnboarding();
+  }
+
+  function showOnbStep(step) {
+    onbCurrentStep = step;
+    for (var s = 1; s <= 3; s++) {
+      var stepEl = document.getElementById('onb-step-' + s);
+      if (stepEl) stepEl.classList.toggle('active', s === step);
+    }
+    var dots = document.querySelectorAll('#onb-progress-dots .onb-dot');
+    dots.forEach(function (d, i) {
+      d.className = 'onb-dot' + (i + 1 === step ? ' active' : (i + 1 < step ? ' done' : ''));
+    });
+    var labels = ['Face Enrollment', 'First Scan', 'Dashboard Tour'];
+    var pl = document.getElementById('onb-progress-label');
+    if (pl) pl.textContent = 'Step ' + step + ' of 3 — ' + labels[step - 1];
+    var next = document.getElementById('onb-next');
+    if (next) next.style.display = 'block';
+    if (step === 3) { if (next) next.style.display = 'none'; }
+  }
+
+  function finishOnboarding() {
+    localStorage.setItem(ONB_KEY, '1');
+    if (onbOverlay) onbOverlay.classList.add('hidden');
+    if (window.EnclaveUI) window.EnclaveUI.initRipples();
+  }
+
+  function wireOnboarding() {
+    var btnNext = document.getElementById('onb-next');
+    var btnSkip = document.getElementById('onb-skip');
+    var btnFinish = document.getElementById('onb-finish');
+
+    if (btnNext && !btnNext._onbWired) {
+      btnNext._onbWired = true;
+      btnNext.addEventListener('click', function () {
+        if (onbCurrentStep < 3) showOnbStep(onbCurrentStep + 1);
+      });
+    }
+    if (btnSkip && !btnSkip._onbWired) {
+      btnSkip._onbWired = true;
+      btnSkip.addEventListener('click', finishOnboarding);
+    }
+    if (btnFinish && !btnFinish._onbWired) {
+      btnFinish._onbWired = true;
+      btnFinish.addEventListener('click', finishOnboarding);
+    }
+
+    // Step 1: face upload
+    var faceFile = document.getElementById('onb-face-file');
+    if (faceFile && !faceFile._onbWired) {
+      faceFile._onbWired = true;
+      faceFile.addEventListener('change', onOnbFaceUpload);
+    }
+
+    // Step 2: scan
+    var scanFile = document.getElementById('onb-scan-file');
+    var scanGo = document.getElementById('onb-scan-go');
+    var scanUrl = document.getElementById('onb-scan-url');
+    if (scanFile && !scanFile._onbWired) {
+      scanFile._onbWired = true;
+      scanFile.addEventListener('change', function () { onOnbScanFile(scanFile.files[0]); });
+    }
+    if (scanGo && !scanGo._onbWired) {
+      scanGo._onbWired = true;
+      scanGo.addEventListener('click', function () {
+        var url = scanUrl.value.trim();
+        if (url) onOnbScanUrl(url); else flashOnbStatus('Enter a URL or pick an image.', 'error', 'onb-scan-status');
+      });
+    }
+
+    // Face enrollment status feedback on "Continue" from step 1
+    if (btnNext && !btnNext._onbFaceGuard) {
+      btnNext._onbFaceGuard = true;
+      var origNext = btnNext.onclick;
+    }
+  }
+
+  function onOnbFaceUpload(e) {
+    var file = e.target.files[0];
+    if (!file) return;
+    var status = document.getElementById('onb-face-status');
+    var canvas = document.getElementById('onb-face-preview');
+    var uploadText = document.getElementById('onb-upload-text');
+    var reader = new FileReader();
+    reader.onload = function (ev) {
+      var img = new Image();
+      img.onload = function () {
+        if (canvas) {
+          var ctx = canvas.getContext('2d');
+          var size = 120;
+          canvas.width = size; canvas.height = size;
+          ctx.drawImage(img, 0, 0, size, size);
+          canvas.classList.remove('hidden');
+        }
+        if (uploadText) uploadText.textContent = file.name;
+        if (status) { status.textContent = 'Enrolling faceprint…'; status.className = 'onb-status'; }
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+
+    // Upload to server if logged in
+    if (window.EnclaveAPI && window.EnclaveAPI.isLoggedIn()) {
+      window.EnclaveAPI.uploadFace(file).then(function () {
+        onbFaceEnrolled = true;
+        if (status) { status.textContent = '✓ Faceprint enrolled'; status.className = 'onb-status success'; }
+        if (window.EnclaveUI) window.EnclaveUI.flashSuccess(document.getElementById('btn-onb-face'), '✓');
+      }).catch(function (err) {
+        onbFaceEnrolled = false;
+        if (status) { status.textContent = (err && err.message) || 'Face enrollment failed — you can try again'; status.className = 'onb-status error'; }
+      });
+    } else {
+      onbFaceEnrolled = true;
+      if (status) { status.textContent = '✓ Face loaded (local)'; status.className = 'onb-status success'; }
+    }
+  }
+
+  function onOnbScanFile(file) {
+    if (!file || !window.EnclaveAPI) return;
+    showOnbScanProgress(true);
+    var status = document.getElementById('onb-scan-status');
+    advanceOnbProgress('Uploading image…', 20);
+    window.EnclaveAPI.scanImage(file).then(function (result) {
+      var conf = result ? result.confidence || 0 : 0;
+      advanceOnbProgress('Analyzing…', 100);
+      markOnbScanDone(conf);
+    }).catch(function (err) {
+      showOnbScanProgress(false);
+      if (status) { status.textContent = (err && err.message) || 'Scan failed'; status.className = 'onb-status error'; }
+    });
+  }
+
+  function onOnbScanUrl(url) {
+    if (!window.EnclaveAPI) return;
+    showOnbScanProgress(true);
+    var status = document.getElementById('onb-scan-status');
+    advanceOnbProgress('Initializing ML pipeline…', 15);
+    window.EnclaveAPI.scanUrl(url).then(function (result) {
+      var conf = result ? result.confidence || 0 : 0;
+      advanceOnbProgress('Analyzing…', 100);
+      markOnbScanDone(conf);
+    }).catch(function (err) {
+      showOnbScanProgress(false);
+      if (status) { status.textContent = (err && err.message) || 'Scan failed'; status.className = 'onb-status error'; }
+    });
+  }
+
+  function showOnbScanProgress(show) {
+    var wrap = document.getElementById('onb-scan-progress');
+    if (wrap) wrap.style.display = show ? 'block' : 'none';
+  }
+
+  function advanceOnbProgress(text, pct) {
+    var label = document.getElementById('onb-scan-progress-step');
+    var fill = document.getElementById('onb-scan-progress-fill');
+    if (label) label.textContent = text;
+    if (fill) fill.style.width = pct + '%';
+  }
+
+  function markOnbScanDone(conf) {
+    var status = document.getElementById('onb-scan-status');
+    var fill = document.getElementById('onb-scan-progress-fill');
+    if (fill) fill.style.width = '100%';
+    if (status) {
+      status.textContent = conf >= 60
+        ? '⚠ Threat detected (' + conf + '%) — Enclave has your back'
+        : '✓ Scan complete (' + conf + '%) — your first result is in';
+      status.className = 'onb-status success';
+    }
+    var btnNext = document.getElementById('onb-next');
+    if (btnNext) btnNext.style.display = 'block';
+    setTimeout(function () { if (onbCurrentStep === 2) { showOnbStep(3); } }, 1200);
+  }
+
+  function flashOnbStatus(msg, type, id) {
+    var status = document.getElementById(id);
+    if (status) { status.textContent = msg; status.className = 'onb-status ' + type; }
+  }
+
+
+  // Check JWT first, then show login
   (async function () {
     var hasToken = window.EnclaveAPI ? await window.EnclaveAPI.isLoggedIn() : false;
     if (hasToken) {
@@ -2298,11 +2608,8 @@
           return;
         }
       } catch (_) {}
-      // Token invalid or API down — clear it and show login
       window.EnclaveAPI.logout();
     }
-    // No valid token — always show the login screen first
-    // Never jump to biometric gate without explicit login
     authOverlay.classList.add('hidden');
     registerPortal.classList.add('hidden');
     window.EnclaveAuthUI.show();
@@ -2311,16 +2618,13 @@
 
   // spawn crawler when app is unlocked
   var unlockObserver = new MutationObserver(function () {
-    if (!appRoot.classList.contains('hidden') && !worker) {
+    if (!appRoot.classList.contains('hidden') && (!worker || !worker.active)) {
       // Start API crawler
       if (window.EnclaveAPI && window.EnclaveAPI.isLoggedIn()) {
         window.EnclaveAPI.startCrawler().catch(function () {});
       }
-      // Also start local worker for offline fallback
       spawnCrawler();
-      if (registeredName && worker) {
-        worker.postMessage({ type: 'config', name: registeredName });
-      }
+      pollAlerts();
     }
   });
   unlockObserver.observe(appRoot, { attributes: true, attributeFilter: ['class'] });
@@ -2330,11 +2634,6 @@
     Notification.requestPermission();
   }
 
-  // Deep Scan button
-  if (btnDeepScan) {
-    btnDeepScan.addEventListener('click', triggerDeepScan);
-  }
-
   // Pre-load TF.js for ML deepfake detection (in background)
   loadTFJS();
 
@@ -2342,5 +2641,2063 @@
   if (lsGet(LS_FACEPRINT, null)) {
     generateIdentityProof();
   }
+
+  /* ═══════════════════════════════════════════════════════
+     NEW PANELS — Shield Status, Billing, Community,
+     Takedowns, Notifications, Stats
+     ═══════════════════════════════════════════════════════ */
+
+  /* ─── Shield Status ─── */
+  var shieldCameraStatus = document.getElementById('shield-camera-status');
+  var shieldVoiceStatus = document.getElementById('shield-voice-status');
+  var shieldCrawlerStatus = document.getElementById('shield-crawler-status');
+  var shieldMlStatus = document.getElementById('shield-ml-status');
+  var shieldMlEngineStatus = document.getElementById('shield-ml-engine-status');
+  var shieldTotalScans = document.getElementById('shield-total-scans');
+  var shieldTakedowns = document.getElementById('shield-takedowns');
+
+  var _mlEngineLastFetch = 0;
+  function updateMlEngineStatus(force) {
+    if (!shieldMlEngineStatus) return;
+    if (!window.EnclaveAPI || !window.EnclaveAPI.isLoggedIn()) {
+      shieldMlEngineStatus.textContent = 'OFF';
+      shieldMlEngineStatus.className = 'shield-module-badge inactive';
+      return;
+    }
+    var now = Date.now();
+    if (!force && now - _mlEngineLastFetch < 30000) return;
+    _mlEngineLastFetch = now;
+
+    window.EnclaveAPI.getDetectStatus().then(function (status) {
+      if (!status) return;
+      // Cache hits stat — sum across providers
+      var cacheEl = document.getElementById('stat-cache-hits');
+      if (cacheEl) {
+        var hits = 0;
+        if (status.primaryAi && status.primaryAi.cache) hits += status.primaryAi.cache.hits || 0;
+        if (status.gemini && status.gemini.cache) hits += status.gemini.cache.hits || 0;
+        cacheEl.textContent = hits;
+      }
+
+      var ai = status.primaryAi;
+      var badgeText = 'HEURISTIC';
+      var badgeClass = 'shield-module-badge partial';
+
+      if (ai && ai.configured && ai.provider) {
+        var up = (ai.vision && ai.vision.available) || (ai.text && ai.text.available);
+        var label = String(ai.provider).toUpperCase().slice(0, 9);
+        if (up) {
+          badgeText = label;
+          badgeClass = 'shield-module-badge active';
+        } else {
+          badgeText = label + '·WAIT';
+          badgeClass = 'shield-module-badge partial';
+        }
+      } else {
+        // Fall back to Gemini display if configured
+        var g = status.gemini;
+        if (g && g.configured) {
+          var gUp = (g.primary && g.primary.available) || (g.fallback && g.fallback.available);
+          badgeText = gUp ? 'GEMINI' : 'GEMINI·WAIT';
+          badgeClass = 'shield-module-badge ' + (gUp ? 'active' : 'partial');
+        }
+      }
+      shieldMlEngineStatus.textContent = badgeText;
+      shieldMlEngineStatus.className = badgeClass;
+    }).catch(function () {
+      shieldMlEngineStatus.textContent = 'OFFLINE';
+      shieldMlEngineStatus.className = 'shield-module-badge inactive';
+    });
+  }
+
+  function updateShieldStatus() {
+    if (!window.EnclaveAPI || !window.EnclaveAPI.isLoggedIn()) return;
+
+    window.EnclaveAPI.getShieldSummary().then(function (data) {
+      if (!data) return;
+      if (shieldTotalScans) shieldTotalScans.textContent = data.imagesScanned || 0;
+      if (shieldTakedowns) shieldTakedowns.textContent = data.takedownsCompleted || 0;
+    }).catch(function () {});
+
+    var camActive = window.EnclaveNative && window.EnclaveNative.cameraImmunizer
+      && window.EnclaveNative.cameraImmunizer.isActive();
+    var voiceActive = window.EnclaveNative && window.EnclaveNative.voiceShield
+      && window.EnclaveNative.voiceShield.isActive();
+    var crawlerActive = monitoringActive;
+    var mlActive = tfjsLoaded && tfjsModel;
+
+    if (shieldCameraStatus) {
+      shieldCameraStatus.textContent = camActive ? 'ON' : 'OFF';
+      shieldCameraStatus.className = 'shield-module-badge ' + (camActive ? 'active' : 'inactive');
+      if (window.EnclaveUI) {
+        var camCard = shieldCameraStatus.closest('.shield-card');
+        if (camCard) window.EnclaveUI.animateShieldToggle(camCard, camActive);
+      }
+    }
+    if (shieldVoiceStatus) {
+      shieldVoiceStatus.textContent = voiceActive ? 'ON' : 'OFF';
+      shieldVoiceStatus.className = 'shield-module-badge ' + (voiceActive ? 'active' : 'inactive');
+      if (window.EnclaveUI) {
+        var voiceCard = shieldVoiceStatus.closest('.shield-card');
+        if (voiceCard) window.EnclaveUI.animateShieldToggle(voiceCard, voiceActive);
+      }
+    }
+    if (shieldCrawlerStatus) {
+      shieldCrawlerStatus.textContent = crawlerActive ? 'ON' : 'OFF';
+      shieldCrawlerStatus.className = 'shield-module-badge ' + (crawlerActive ? 'active' : 'inactive');
+      if (window.EnclaveUI) {
+        var crawlerCard = shieldCrawlerStatus.closest('.shield-card');
+        if (crawlerCard) window.EnclaveUI.animateShieldToggle(crawlerCard, crawlerActive);
+      }
+    }
+    if (shieldMlStatus) {
+      shieldMlStatus.textContent = mlActive ? 'LOADED' : 'OFF';
+      shieldMlStatus.className = 'shield-module-badge ' + (mlActive ? 'partial' : 'inactive');
+    }
+    updateMlEngineStatus();
+  }
+
+  /* ─── Monitoring Sources (Phase 2) ─── */
+  var monitoringSourcesEl = document.getElementById('monitoring-sources');
+  var monitoringScheduleLabel = document.getElementById('monitoring-schedule-label');
+  var monitoringToggleBtn = document.getElementById('btn-monitoring-toggle');
+  var monitoringLastScan = document.getElementById('monitoring-last-scan');
+  var monitoringNextRun = document.getElementById('monitoring-next-run');
+  var monitoringFindings = document.getElementById('monitoring-total-findings');
+  var monitoringStatusMsg = document.getElementById('monitoring-status-msg');
+  var monitoringActive = false;
+  var monitoringLastScanAt = null;
+
+  function timeAgo(iso) {
+    if (!iso) return '—';
+    var diff = Date.now() - new Date(iso).getTime();
+    if (diff < 0) diff = 0;
+    var m = Math.floor(diff / 60000);
+    if (m < 1) return 'just now';
+    if (m < 60) return m + 'm ago';
+    var h = Math.floor(m / 60);
+    if (h < 24) return h + 'h ago';
+    return Math.floor(h / 24) + 'd ago';
+  }
+
+  function timeUntil(iso) {
+    if (!iso) return '—';
+    var diff = new Date(iso).getTime() - Date.now();
+    if (diff <= 0) return 'soon';
+    var m = Math.floor(diff / 60000);
+    if (m < 60) return m + 'm';
+    var h = Math.floor(m / 60);
+    return h + 'h ' + (m % 60) + 'm';
+  }
+
+  function renderMonitoringSources(sources) {
+    if (!monitoringSourcesEl) return;
+    monitoringSourcesEl.innerHTML = '';
+    sources.forEach(function (s) {
+      var row = document.createElement('div');
+      row.className = 'shield-module';
+
+      var name = document.createElement('span');
+      name.className = 'shield-module-name';
+      name.textContent = s.label + (s.fragile ? ' ⚠' : '');
+      if (s.fragile) name.title = 'Best-effort source — availability depends on third-party mirrors';
+
+      var badge = document.createElement('span');
+      var cls = 'shield-module-badge inactive';
+      var text = 'IDLE';
+      switch (s.status) {
+        case 'ok': cls = 'shield-module-badge active'; text = 'LIVE'; break;
+        case 'degraded': cls = 'shield-module-badge partial'; text = 'SLOW'; break;
+        case 'down': cls = 'shield-module-badge inactive'; text = 'DOWN'; break;
+        case 'cooldown':
+          cls = 'shield-module-badge partial';
+          text = 'WAIT ' + (s.cooldownRemainingMin || 0) + 'M';
+          break;
+        case 'locked':
+          cls = 'shield-module-badge inactive';
+          text = (s.requiredTier || 'PRO').toUpperCase();
+          break;
+      }
+      badge.className = cls;
+      badge.textContent = text;
+
+      row.appendChild(name);
+      row.appendChild(badge);
+      monitoringSourcesEl.appendChild(row);
+    });
+  }
+
+  function loadMonitoring() {
+    if (!window.EnclaveAPI || !window.EnclaveAPI.isLoggedIn()) return;
+
+    window.EnclaveAPI.getMonitoringStatus().then(function (data) {
+      if (!data) return;
+      monitoringActive = !!data.active;
+      if (monitoringScheduleLabel) {
+        monitoringScheduleLabel.textContent = data.schedule.charAt(0).toUpperCase() + data.schedule.slice(1);
+      }
+      if (monitoringToggleBtn) {
+        monitoringToggleBtn.textContent = monitoringActive ? 'Stop' : 'Start';
+        monitoringToggleBtn.className = 'btn ' + (monitoringActive ? 'btn-danger' : 'btn-safe');
+      }
+
+      // Track most recent successful scan across sources
+      var lastSuccess = null;
+      (data.sources || []).forEach(function (s) {
+        if (s.lastSuccessAt && (!lastSuccess || s.lastSuccessAt > lastSuccess)) lastSuccess = s.lastSuccessAt;
+      });
+      monitoringLastScanAt = lastSuccess;
+      if (monitoringLastScan) monitoringLastScan.textContent = timeAgo(lastSuccess);
+      if (monitoringNextRun) {
+        monitoringNextRun.textContent = data.active ? timeUntil(data.nextRunAt) : '—';
+      }
+      var totalFindings = 0;
+      (data.sources || []).forEach(function (s) { totalFindings += s.totalFindings || 0; });
+      if (monitoringFindings) monitoringFindings.textContent = totalFindings;
+
+      renderMonitoringSources(data.sources || []);
+
+      if (monitoringStatusMsg) {
+        var locked = (data.sources || []).filter(function (s) { return !s.enabled; }).length;
+        monitoringStatusMsg.textContent = monitoringActive
+          ? 'Scheduled monitoring active — ' + data.cyclesCompleted + ' cycle(s) completed.'
+          : (locked > 0
+            ? 'Manual scans available. Start monitoring or upgrade to unlock ' + locked + ' more source(s).'
+            : 'Start scheduled monitoring to scan automatically.');
+      }
+
+      // Header badge: show scanning state vs last-scan age
+      var headerBadge = document.getElementById('crawler-status');
+      if (headerBadge) {
+        if (monitoringActive) {
+          headerBadge.innerHTML = '<svg viewBox="0 0 12 12" width="10" height="10"><use href="#icon-radar-dot"/></svg> SCANNING';
+        } else if (lastSuccess) {
+          headerBadge.textContent = 'LAST SCAN ' + timeAgo(lastSuccess).toUpperCase();
+        } else {
+          headerBadge.textContent = 'IDLE';
+        }
+      }
+    }).catch(function () {});
+  }
+
+  if (monitoringToggleBtn) {
+    monitoringToggleBtn.addEventListener('click', async function () {
+      if (!window.EnclaveAPI || !window.EnclaveAPI.isLoggedIn()) return;
+      monitoringToggleBtn.disabled = true;
+      try {
+        if (monitoringActive) await window.EnclaveAPI.stopMonitoring();
+        else await window.EnclaveAPI.startMonitoring();
+      } catch (_) {}
+      monitoringToggleBtn.disabled = false;
+      loadMonitoring();
+    });
+  }
+
+  /* ─── Billing & Usage ─── */
+  var billingPlanLabel = document.getElementById('billing-plan-label');
+  var usageScansBar = document.getElementById('usage-scans-bar');
+  var usageScansText = document.getElementById('usage-scans-text');
+  var usageTakedownsBar = document.getElementById('usage-takedowns-bar');
+  var usageTakedownsText = document.getElementById('usage-takedowns-text');
+  var usageApiBar = document.getElementById('usage-api-bar');
+  var usageApiText = document.getElementById('usage-api-text');
+  var billingNextReset = document.getElementById('billing-next-reset');
+  var btnUpgradePro = document.getElementById('btn-upgrade-pro');
+  var btnUpgradeShield = document.getElementById('btn-upgrade-shield');
+  var btnBillingManage = document.getElementById('btn-billing-manage');
+
+  function updateBilling(data) {
+    if (!data) return;
+    var sub = data.subscription || {};
+    var usage = data.usage || {};
+    var tier = sub.tier || 'free';
+    var tierInfo = sub.tierInfo || {};
+
+    if (billingPlanLabel) {
+      billingPlanLabel.textContent = (tierInfo.name || 'Free') + ' Plan';
+    }
+
+    // Scans
+    var scanLimit = tierInfo.limits ? tierInfo.limits.scansPerMonth : 5;
+    var scanUsed = usage.scans ? usage.scans.used || 0 : 0;
+    var scanPct = scanLimit > 0 ? Math.min(100, (scanUsed / scanLimit) * 100) : 0;
+    if (usageScansBar) {
+      usageScansBar.style.width = scanPct + '%';
+      usageScansBar.className = 'usage-bar-fill' + (scanPct > 80 ? ' warning' : '') + (scanPct >= 100 ? ' danger' : '');
+    }
+    if (usageScansText) usageScansText.textContent = scanUsed + ' / ' + scanLimit;
+
+    // Takedowns
+    var tdLimit = tierInfo.limits ? tierInfo.limits.takedownsPerMonth : 2;
+    var tdUsed = usage.takedowns ? usage.takedowns.used || 0 : 0;
+    var tdPct = tdLimit > 0 ? Math.min(100, (tdUsed / tdLimit) * 100) : 0;
+    if (usageTakedownsBar) {
+      usageTakedownsBar.style.width = tdPct + '%';
+      usageTakedownsBar.className = 'usage-bar-fill' + (tdPct > 80 ? ' warning' : '') + (tdPct >= 100 ? ' danger' : '');
+    }
+    if (usageTakedownsText) usageTakedownsText.textContent = tdUsed + ' / ' + tdLimit;
+
+    // API calls
+    var apiLimit = tierInfo.limits ? tierInfo.limits.apiCallsPerMonth : 100;
+    var apiUsed = usage.apiCalls ? usage.apiCalls.used || 0 : 0;
+    var apiPct = apiLimit > 0 ? Math.min(100, (apiUsed / apiLimit) * 100) : 0;
+    if (usageApiBar) {
+      usageApiBar.style.width = apiPct + '%';
+      usageApiBar.className = 'usage-bar-fill' + (apiPct > 80 ? ' warning' : '') + (apiPct >= 100 ? ' danger' : '');
+    }
+    if (usageApiText) usageApiText.textContent = apiUsed + ' / ' + apiLimit;
+
+    // Reset date
+    if (billingNextReset && sub.currentPeriodEnd) {
+      var resetDate = new Date(sub.currentPeriodEnd);
+      billingNextReset.textContent = 'Resets ' + resetDate.toLocaleDateString();
+    }
+  }
+
+  function loadBilling() {
+    if (!window.EnclaveAPI || !window.EnclaveAPI.isLoggedIn()) return;
+    window.EnclaveAPI.getSubscription().then(updateBilling).catch(function () {});
+  }
+
+  if (btnUpgradePro) {
+    btnUpgradePro.addEventListener('click', function () {
+      openPlansModal();
+    });
+  }
+
+  if (btnUpgradeShield) {
+    btnUpgradeShield.addEventListener('click', function () {
+      openPlansModal();
+    });
+  }
+
+  /* ─── Choose Plan Modal (Phase 4) ─── */
+  var plansModal = document.getElementById('plans-modal');
+  var plansComparison = document.getElementById('plans-comparison');
+  var btnPlansClose = document.getElementById('btn-plans-close');
+  var plansStatus = document.getElementById('plans-status');
+  var _currentTier = 'free';
+  var PLAN_ORDER = ['free', 'detection_only', 'pro', 'shield', 'business'];
+  var POPULAR_TIER = 'pro';
+
+  function closePlansModal() { if (plansModal) plansModal.classList.add('hidden'); }
+  if (btnPlansClose) btnPlansClose.addEventListener('click', closePlansModal);
+  if (plansModal) plansModal.addEventListener('click', function (e) {
+    if (e.target === plansModal) closePlansModal();
+  });
+
+  function fmtPrice(cents) {
+    if (!cents) return '$0';
+    return '$' + (cents / 100).toFixed(2).replace(/\.00$/, '');
+  }
+
+  function openPlansModal() {
+    if (!plansModal || !window.EnclaveAPI) return;
+    plansModal.classList.remove('hidden');
+    plansComparison.innerHTML = '<p style="color:var(--text-muted);font-size:0.8rem;">Loading plans…</p>';
+    if (plansStatus) plansStatus.textContent = '';
+
+    window.EnclaveAPI.getSubscription().then(function (data) {
+      _currentTier = (data && data.subscription && data.subscription.tier) || 'free';
+      return window.EnclaveAPI.getTiers();
+    }).then(function (data) {
+      renderPlans((data && data.tiers) || []);
+    }).catch(function () {
+      plansComparison.innerHTML = '<p style="color:var(--red);font-size:0.8rem;">Failed to load plans.</p>';
+    });
+  }
+
+  function renderPlans(tiers) {
+    if (!plansComparison) return;
+    plansComparison.innerHTML = '';
+    var ordered = PLAN_ORDER.map(function (id) { return tiers[id]; }).filter(Boolean);
+
+    ordered.forEach(function (t) {
+      var isCurrent = t.id === _currentTier;
+      var card = document.createElement('div');
+      card.className = 'plan-card' + (isCurrent ? ' current' : (t.id === POPULAR_TIER ? ' popular' : ''));
+
+      var head = document.createElement('div');
+      head.className = 'plan-head';
+      head.innerHTML = '<span class="plan-name">' + t.name + '</span>'
+        + '<span class="plan-price">' + fmtPrice(t.price) + '/mo</span>'
+        + (isCurrent ? '<span class="plan-badge current">Current</span>'
+          : (t.id === POPULAR_TIER ? '<span class="plan-badge popular">Most Popular</span>' : ''));
+
+      var feats = document.createElement('ul');
+      feats.className = 'plan-features';
+      (t.features || []).forEach(function (f) {
+        var li = document.createElement('li');
+        li.textContent = f;
+        feats.appendChild(li);
+      });
+
+      var actions = document.createElement('div');
+      actions.className = 'plan-actions';
+      var btn = document.createElement('button');
+      btn.className = 'btn ' + (isCurrent ? 'btn-ghost' : (t.id === POPULAR_TIER ? 'btn-dispatch' : 'btn-safe'));
+      btn.textContent = isCurrent ? 'Current Plan'
+        : (t.id === 'free' ? 'Downgrade to Free' : 'Choose ' + t.name);
+      btn.disabled = isCurrent;
+      btn.addEventListener('click', function () { selectPlan(t.id, btn); });
+      actions.appendChild(btn);
+
+      card.appendChild(head);
+      card.appendChild(feats);
+      card.appendChild(actions);
+      plansComparison.appendChild(card);
+    });
+  }
+
+  function selectPlan(tierId, btn) {
+    if (!window.EnclaveAPI) return;
+    btn.disabled = true;
+    btn.textContent = 'Processing…';
+    if (tierId === 'free') {
+      // Downgrade goes through billing portal when live; mock just notes it
+      showToastAlert('To cancel, use Manage → billing portal.');
+      btn.disabled = false;
+      btn.textContent = 'Downgrade to Free';
+      return;
+    }
+    window.EnclaveAPI.startCheckout(tierId, window.location.href, window.location.href)
+      .then(function (session) {
+        if (session && session.url && session.url.indexOf('#mock') !== 0 && session.url !== '#mock-checkout') {
+          window.location.href = session.url;
+        } else if (session && session.mock) {
+          showToastAlert('Mock checkout: ' + tierId + ' activated (no Stripe key configured).');
+          closePlansModal();
+          loadBilling();
+        } else if (session && session.url) {
+          window.location.href = session.url;
+        }
+        btn.disabled = false;
+      })
+      .catch(function (e) {
+        if (plansStatus) plansStatus.textContent = 'Checkout failed: ' + (e.message || 'unknown');
+        btn.disabled = false;
+      });
+  }
+
+  if (btnBillingManage) {
+    btnBillingManage.addEventListener('click', function () {
+      if (!window.EnclaveAPI) return;
+      window.EnclaveAPI.createPortal(window.location.href)
+        .then(function (session) {
+          if (session && session.url) window.location.href = session.url;
+          else showToastAlert('Portal session created.');
+        }).catch(function (e) {
+          showToastAlert('Portal unavailable: ' + (e.message || 'Unknown error'));
+        });
+    });
+  }
+
+  /* ─── Community & Threat Intel ─── */
+  var communityIocCount = document.getElementById('community-ioc-count');
+  var communityPosts = document.getElementById('community-posts');
+  var btnCommunityOpen = document.getElementById('btn-community-open');
+
+  function loadCommunity() {
+    if (!window.EnclaveAPI || !window.EnclaveAPI.isLoggedIn()) return;
+    window.EnclaveAPI.getThreatStats().then(function (data) {
+      if (!data) return;
+      if (communityIocCount) communityIocCount.textContent = data.totalIndicators || 0;
+    }).catch(function () {});
+    window.EnclaveAPI.getCommunityStats().then(function (data) {
+      if (!data) return;
+      if (communityPosts) communityPosts.textContent = data.totalPosts || 0;
+    }).catch(function () {});
+  }
+
+  /* ─── Takedowns ─── */
+  var takedownList = document.getElementById('takedown-list');
+  var takedownActive = document.getElementById('takedown-active');
+  var takedownRemoved = document.getElementById('takedown-removed');
+  var takedownEscalated = document.getElementById('takedown-escalated');
+  var btnTakedownsOpen = document.getElementById('btn-takedowns-open');
+
+  function loadTakedowns() {
+    if (!window.EnclaveAPI || !window.EnclaveAPI.isLoggedIn()) return;
+    window.EnclaveAPI.getTakedownStats().then(function (data) {
+      if (!data) return;
+      if (takedownActive) takedownActive.textContent = (data.sent || 0) + (data.pending || 0);
+      if (takedownRemoved) takedownRemoved.textContent = data.removed || 0;
+      if (takedownEscalated) takedownEscalated.textContent = data.escalated || 0;
+    }).catch(function () {});
+
+    window.EnclaveAPI.getTakedowns().then(function (rows) {
+      if (!takedownList) return;
+      takedownList.innerHTML = '';
+      if (!rows || rows.length === 0) {
+        takedownList.innerHTML = '<p style="color:var(--text-muted);font-size:0.8rem;">No active takedowns</p>';
+        return;
+      }
+      var recent = rows.slice(0, 5);
+      recent.forEach(function (td) {
+        var item = document.createElement('div');
+        item.className = 'takedown-item';
+        item.style.cursor = 'pointer';
+        item.title = 'View evidence package';
+        var platform = document.createElement('span');
+        platform.className = 'takedown-item-platform';
+        platform.textContent = td.platform || td.type || 'Unknown';
+        var status = document.createElement('span');
+        var st = td.status || 'pending';
+        status.className = 'takedown-item-status '
+          + (st === 'removed' ? 'removed'
+            : (st === 'escalated' || st === 'escalated_no_removal') ? 'escalated'
+            : st === 'counter_notice' ? 'counter'
+            : st === 'counter_notice_expired' ? 'closed'
+            : st === 'follow_up_sent' ? 'sent'
+            : 'sent');
+        status.textContent = (st === 'escalated_no_removal') ? 'closed'
+          : (st === 'counter_notice_expired') ? 'cn-expired'
+          : (st === 'counter_notice') ? 'counter-notice'
+          : st;
+        item.appendChild(platform);
+        item.appendChild(status);
+        item.addEventListener('click', function () { openEvidenceModal(td.id); });
+        takedownList.appendChild(item);
+      });
+    }).catch(function () {
+      if (takedownList) takedownList.innerHTML = '<p style="color:var(--text-muted);font-size:0.8rem;">No active takedowns</p>';
+    });
+  }
+
+  /* ─── Evidence Package Modal (Phase 3) ─── */
+  var evidenceModal = document.getElementById('evidence-modal');
+  var evidenceIntegrity = document.getElementById('evidence-integrity');
+  var evidenceBody = document.getElementById('evidence-body');
+  var btnEvidenceClose = document.getElementById('btn-evidence-close');
+
+  function closeEvidenceModal() { if (evidenceModal) evidenceModal.classList.add('hidden'); }
+  if (btnEvidenceClose) btnEvidenceClose.addEventListener('click', closeEvidenceModal);
+  if (evidenceModal) evidenceModal.addEventListener('click', function (e) {
+    if (e.target === evidenceModal) closeEvidenceModal();
+  });
+
+  function openEvidenceModal(takedownId) {
+    if (!evidenceModal || !window.EnclaveAPI) return;
+    evidenceModal.classList.remove('hidden');
+    evidenceBody.innerHTML = '<p style="color:var(--text-muted);font-size:0.8rem;">Loading evidence…</p>';
+    if (evidenceIntegrity) evidenceIntegrity.style.display = 'none';
+
+    window.EnclaveAPI.getTakedownEvidence(takedownId).then(function (ev) {
+      // Integrity banner
+      if (evidenceIntegrity) {
+        evidenceIntegrity.style.display = 'flex';
+        var ok = ev.integrity && ev.integrity.valid;
+        evidenceIntegrity.className = 'settings-section evidence-integrity ' + (ok ? 'valid' : 'invalid');
+        evidenceIntegrity.innerHTML = ok
+          ? '<svg viewBox="0 0 28 28" width="14" height="14"><use href="#icon-check"/></svg> Hash chain verified — '
+            + ev.integrity.artifacts + ' artifact(s), tamper-evident'
+          : '⚠ Chain verification failed' + (ev.integrity && ev.integrity.reason ? ' — ' + ev.integrity.reason : '');
+      }
+
+      var html = '';
+      html += '<div class="settings-section"><p class="settings-section-title">Source</p>'
+        + '<p class="settings-value" style="word-break:break-all;font-size:0.75rem;">' + (ev.sourceUrl || '—') + '</p></div>';
+      html += '<div class="settings-section"><p class="settings-section-title">Captured</p>'
+        + '<p class="settings-value">' + (ev.capturedAt ? new Date(ev.capturedAt).toLocaleString() : '—') + '</p></div>';
+      if (ev.metadata && ev.metadata.pageTitle) {
+        html += '<div class="settings-section"><p class="settings-section-title">Page Title</p>'
+          + '<p class="settings-value" style="font-size:0.78rem;">' + String(ev.metadata.pageTitle).slice(0, 140) + '</p></div>';
+      }
+      if (ev.phash) {
+        html += '<div class="settings-section"><p class="settings-section-title">Perceptual Hash (dHash)</p>'
+          + '<p class="settings-value" style="font-family:var(--font-mono);font-size:0.72rem;">' + ev.phash + '</p>'
+          + '<p class="card-desc">Tracks this content across URL changes</p></div>';
+      }
+      html += '<div class="settings-section"><p class="settings-section-title">SHA-256 Chain</p><div style="display:flex;flex-direction:column;gap:0.3rem;margin-top:0.35rem;">';
+      (ev.artifacts || []).forEach(function (a) {
+        html += '<div class="chain-row"><span class="chain-idx">#' + a.index + '</span>'
+          + '<span class="chain-file">' + a.file + ' (' + a.size + 'b)</span>'
+          + '<span class="chain-hash">' + a.hash + '</span></div>';
+      });
+      if (ev.chainHead) {
+        html += '<div class="chain-row"><span class="chain-idx">HEAD</span>'
+          + '<span class="chain-file">Chain head fingerprint</span>'
+          + '<span class="chain-hash">' + ev.chainHead + '</span></div>';
+      }
+      html += '</div></div>';
+
+      evidenceBody.innerHTML = html;
+    }).catch(function (e) {
+      evidenceBody.innerHTML = '<p style="color:var(--red);font-size:0.8rem;">Failed to load evidence: ' + (e.message || 'unknown') + '</p>';
+    });
+  }
+
+  /* ─── Manual Filing Helper Modal (Phase 3) ─── */
+  var filingModal = document.getElementById('filing-modal');
+  var filingSelect = document.getElementById('filing-platform-select');
+  var filingGuideBody = document.getElementById('filing-guide-body');
+  var btnFilingClose = document.getElementById('btn-filing-close');
+
+  function closeFilingModal() { if (filingModal) filingModal.classList.add('hidden'); }
+  if (btnFilingClose) btnFilingClose.addEventListener('click', closeFilingModal);
+  if (filingModal) filingModal.addEventListener('click', function (e) {
+    if (e.target === filingModal) closeFilingModal();
+  });
+
+  function openFilingModal() {
+    if (!filingModal || !window.EnclaveAPI) return;
+    filingModal.classList.remove('hidden');
+    filingGuideBody.innerHTML = '<p style="color:var(--text-muted);font-size:0.8rem;">Loading guides…</p>';
+    window.EnclaveAPI.getFilingGuides().then(function (guides) {
+      if (!filingSelect) return;
+      filingSelect.innerHTML = '';
+      (guides || []).forEach(function (g) {
+        var opt = document.createElement('option');
+        opt.value = g.id;
+        opt.textContent = g.platform + ' (' + g.stepCount + ' steps)';
+        filingSelect.appendChild(opt);
+      });
+      if ((guides || []).length) loadFilingGuide(guides[0].id);
+      else filingGuideBody.innerHTML = '<p style="color:var(--text-muted);font-size:0.8rem;">No guides available.</p>';
+    }).catch(function () {});
+  }
+
+  function loadFilingGuide(platformId) {
+    window.EnclaveAPI.getFilingGuide(platformId).then(function (g) {
+      var html = '';
+      (g.steps || []).forEach(function (step, i) {
+        html += '<div class="filing-step"><span class="filing-step-num">' + (i + 1) + '.</span><span>' + step + '</span></div>';
+      });
+      if (g.formUrl) {
+        html += '<a href="' + g.formUrl + '" target="_blank" rel="noopener" class="btn btn-safe" style="margin-top:0.5rem;width:100%;">Open ' + g.platform + ' Form ↗</a>';
+      }
+      filingGuideBody.innerHTML = html;
+    }).catch(function () {
+      filingGuideBody.innerHTML = '<p style="color:var(--text-muted);font-size:0.8rem;">Guide unavailable.</p>';
+    });
+  }
+
+  if (filingSelect) {
+    filingSelect.addEventListener('change', function () { loadFilingGuide(filingSelect.value); });
+  }
+  var btnTakedownsOpenEl = document.getElementById('btn-takedowns-open');
+  if (btnTakedownsOpenEl) {
+    btnTakedownsOpenEl.addEventListener('click', openFilingModal);
+  }
+
+  /* ─── Notifications ─── */
+  var notificationList = document.getElementById('notification-list');
+  var notificationUnreadBadge = document.getElementById('notification-unread-badge');
+  var btnNotificationsClear = document.getElementById('btn-notifications-clear');
+
+  function loadNotifications() {
+    if (!window.EnclaveAPI || !window.EnclaveAPI.isLoggedIn()) return;
+    window.EnclaveAPI.getUnreadCount().then(function (data) {
+      var count = data ? data.count || 0 : 0;
+      if (notificationUnreadBadge) {
+        notificationUnreadBadge.textContent = count;
+        notificationUnreadBadge.style.display = count > 0 ? 'inline-flex' : 'none';
+      }
+    }).catch(function () {});
+
+    window.EnclaveAPI.getNotifications({ limit: 10 }).then(function (items) {
+      if (!notificationList) return;
+      notificationList.innerHTML = '';
+      if (!items || items.length === 0) {
+        notificationList.innerHTML = '<p style="color:var(--text-muted);font-size:0.8rem;">No new notifications</p>';
+        return;
+      }
+      items.forEach(function (n) {
+        var item = document.createElement('div');
+        item.className = 'notification-item' + (n.read ? '' : ' unread');
+        var text = document.createElement('p');
+        text.className = 'notification-item-text';
+        text.textContent = n.message || n.type || 'Notification';
+        var time = document.createElement('p');
+        time.className = 'notification-item-time';
+        time.textContent = n.created_at ? new Date(n.created_at).toLocaleString() : '';
+        item.appendChild(text);
+        item.appendChild(time);
+        item.addEventListener('click', function () {
+          if (!n.read && window.EnclaveAPI) {
+            window.EnclaveAPI.markNotificationRead(n.id).then(function () {
+              loadNotifications();
+            }).catch(function () {});
+          }
+        });
+        notificationList.appendChild(item);
+      });
+    }).catch(function () {
+      if (notificationList) notificationList.innerHTML = '<p style="color:var(--text-muted);font-size:0.8rem;">No new notifications</p>';
+    });
+  }
+
+  if (btnNotificationsClear) {
+    btnNotificationsClear.addEventListener('click', function () {
+      if (!window.EnclaveAPI || !window.EnclaveAPI.isLoggedIn()) return;
+      window.EnclaveAPI.markAllNotificationsRead().then(function () {
+        loadNotifications();
+        showToastAlert('All notifications cleared.');
+      }).catch(function () {});
+    });
+  }
+
+  /* ─── Activity Stats ─── */
+  var statTotalScans = document.getElementById('stat-total-scans');
+  var statThreatsFound = document.getElementById('stat-threats-found');
+  var statTakedownsSent = document.getElementById('stat-takedowns-sent');
+  var statAccountAge = document.getElementById('stat-account-age');
+
+  function loadStats() {
+    if (!window.EnclaveAPI || !window.EnclaveAPI.isLoggedIn()) return;
+
+    updateLatencyStat();
+
+    window.EnclaveAPI.getShieldSummary().then(function (data) {
+      if (!data) return;
+      if (statTotalScans) statTotalScans.textContent = data.imagesScanned || 0;
+      if (statThreatsFound) statThreatsFound.textContent = data.deepfakesFound || 0;
+      if (statTakedownsSent) statTakedownsSent.textContent = data.takedownsCompleted || 0;
+      if (statAccountAge && data.firstActivatedAt) {
+        var days = Math.max(1, Math.floor((Date.now() - new Date(data.firstActivatedAt).getTime()) / 86400000));
+        statAccountAge.textContent = days;
+      }
+    }).catch(function () {});
+  }
+
+  /* ─── Wire up existing shields with recording ─── */
+  var origTriggerDeepScan = triggerDeepScan;
+  triggerDeepScan = function () {
+    origTriggerDeepScan();
+    if (window.EnclaveAPI && window.EnclaveAPI.isLoggedIn()) {
+      window.EnclaveAPI.recordShieldEvent('scan', 'deep scan triggered').catch(function () {});
+    }
+  };
+
+  /* ─── Refresh all new panels periodically ─── */
+  function refreshAllPanels() {
+    updateShieldStatus();
+    loadBilling();
+    loadCommunity();
+    loadTakedowns();
+    loadNotifications();
+    loadStats();
+    loadMonitoring();
+    loadReports();
+  }
+
+  // Initial load after login
+  var origAfterLogin = afterLogin;
+  // Wrap afterLogin to also load new panels
+  // Since afterLogin is defined in a closure, we hook into the unlock observer instead
+  var panelRefreshObserver = new MutationObserver(function () {
+    if (!appRoot.classList.contains('hidden')) {
+      setTimeout(refreshAllPanels, 1000);
+      // Refresh every 60s
+      setInterval(refreshAllPanels, 60000);
+      panelRefreshObserver.disconnect();
+    }
+  });
+  panelRefreshObserver.observe(appRoot, { attributes: true, attributeFilter: ['class'] });
+
+  // Also update shield status when service badges change
+  window.addEventListener('enclave-camera-status', updateShieldStatus);
+  window.addEventListener('enclave-voice-status', updateShieldStatus);
+
+  /* ═══════════════════════════════════════════════════════
+     UI LIBRARIES: Particles.js, Vanilla Tilt, Scroll Reveal
+     ═══════════════════════════════════════════════════════ */
+
+  /* ─── Cyber Canvas — Matrix rain + circuit grid + HUD rings ─── */
+  function initCyberCanvas() {
+    var canvas = document.getElementById('cyber-canvas');
+    if (!canvas) return;
+    var ctx = canvas.getContext('2d');
+    var W, H;
+
+    function resize() {
+      W = canvas.width = window.innerWidth;
+      H = canvas.height = window.innerHeight;
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    /* Matrix rain columns */
+    var chars = 'アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン0123456789ABCDEF<>{}[]|/\\';
+    var fontSize = 14;
+    var columns = Math.ceil(W / fontSize);
+    var drops = [];
+    var dropSpeeds = [];
+    var dropColors = [];
+    for (var i = 0; i < columns; i++) {
+      drops[i] = Math.random() * -100;
+      dropSpeeds[i] = 0.3 + Math.random() * 0.7;
+      dropColors[i] = Math.random() > 0.7 ? '#00FF88' : (Math.random() > 0.5 ? '#00BFFF' : '#FF3366');
+    }
+
+    /* Circuit nodes */
+    var nodes = [];
+    var nodeCount = 12;
+    for (var i = 0; i < nodeCount; i++) {
+      nodes.push({
+        x: Math.random() * W,
+        y: Math.random() * H,
+        vx: (Math.random() - 0.5) * 0.4,
+        vy: (Math.random() - 0.5) * 0.4,
+        r: 2 + Math.random() * 2,
+        pulse: Math.random() * Math.PI * 2
+      });
+    }
+
+    /* HUD rings */
+    var hudRings = [
+      { x: W * 0.15, y: H * 0.3, r: 60, angle: 0, speed: 0.003, color: '#00FF88' },
+      { x: W * 0.85, y: H * 0.6, r: 45, angle: 0, speed: -0.005, color: '#00BFFF' },
+      { x: W * 0.5, y: H * 0.15, r: 35, angle: 0, speed: 0.004, color: '#FF3366' }
+    ];
+
+    var frame = 0;
+
+    function draw() {
+      ctx.clearRect(0, 0, W, H);
+      frame++;
+
+      /* Matrix rain */
+      ctx.font = fontSize + 'px monospace';
+      for (var i = 0; i < columns; i++) {
+        var char = chars[Math.floor(Math.random() * chars.length)];
+        var x = i * fontSize;
+        var y = drops[i] * fontSize;
+        if (y > 0 && y < H) {
+          ctx.globalAlpha = 0.12 + Math.random() * 0.08;
+          ctx.fillStyle = dropColors[i];
+          ctx.fillText(char, x, y);
+        }
+        if (y > H && Math.random() > 0.98) {
+          drops[i] = 0;
+          dropColors[i] = Math.random() > 0.7 ? '#00FF88' : (Math.random() > 0.5 ? '#00BFFF' : '#FF3366');
+        }
+        drops[i] += dropSpeeds[i];
+      }
+
+      /* Circuit grid lines */
+      ctx.globalAlpha = 0.04;
+      ctx.strokeStyle = '#00FF88';
+      ctx.lineWidth = 0.5;
+      var gridSize = 80;
+      var offsetX = (frame * 0.2) % gridSize;
+      for (var gx = -gridSize + offsetX; gx < W + gridSize; gx += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(gx, 0);
+        ctx.lineTo(gx, H);
+        ctx.stroke();
+      }
+      var offsetY = (frame * 0.15) % gridSize;
+      for (var gy = -gridSize + offsetY; gy < H + gridSize; gy += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(0, gy);
+        ctx.lineTo(W, gy);
+        ctx.stroke();
+      }
+
+      /* Circuit nodes + connections */
+      ctx.globalAlpha = 1;
+      for (var i = 0; i < nodes.length; i++) {
+        var n = nodes[i];
+        n.x += n.vx;
+        n.y += n.vy;
+        n.pulse += 0.02;
+        if (n.x < 0 || n.x > W) n.vx *= -1;
+        if (n.y < 0 || n.y > H) n.vy *= -1;
+        var glow = 0.3 + 0.3 * Math.sin(n.pulse);
+        ctx.globalAlpha = glow;
+        ctx.fillStyle = '#00FF88';
+        ctx.beginPath();
+        ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2);
+        ctx.fill();
+        /* connect nearby nodes */
+        for (var j = i + 1; j < nodes.length; j++) {
+          var m = nodes[j];
+          var dx = n.x - m.x;
+          var dy = n.y - m.y;
+          var dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < 200) {
+            ctx.globalAlpha = (1 - dist / 200) * 0.15;
+            ctx.strokeStyle = '#00FF88';
+            ctx.lineWidth = 0.5;
+            ctx.beginPath();
+            ctx.moveTo(n.x, n.y);
+            ctx.lineTo(m.x, m.y);
+            ctx.stroke();
+          }
+        }
+      }
+
+      /* HUD rings */
+      for (var r = 0; r < hudRings.length; r++) {
+        var ring = hudRings[r];
+        ring.angle += ring.speed;
+        ctx.globalAlpha = 0.12;
+        ctx.strokeStyle = ring.color;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(ring.x, ring.y, ring.r, 0, Math.PI * 2);
+        ctx.stroke();
+        /* rotating arc segment */
+        ctx.globalAlpha = 0.25;
+        ctx.beginPath();
+        ctx.arc(ring.x, ring.y, ring.r, ring.angle, ring.angle + Math.PI * 0.6);
+        ctx.stroke();
+        /* center dot */
+        ctx.globalAlpha = 0.4;
+        ctx.fillStyle = ring.color;
+        ctx.beginPath();
+        ctx.arc(ring.x, ring.y, 2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      /* Horizontal scan line */
+      ctx.globalAlpha = 0.06;
+      ctx.fillStyle = '#00FF88';
+      var scanY = (frame * 1.5) % H;
+      ctx.fillRect(0, scanY, W, 2);
+
+      ctx.globalAlpha = 1;
+      requestAnimationFrame(draw);
+    }
+    draw();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initCyberCanvas);
+  } else {
+    setTimeout(initCyberCanvas, 100);
+  }
+
+  /* ─── Particles.js — Login overlay background ─── */
+  function initParticles() {
+    var canvas = document.getElementById('particles-canvas');
+    if (!canvas || !window.tsParticles) return;
+    window.tsParticles.load('particles-canvas', {
+      particles: {
+        number: { value: 60, density: { enable: true, width: 800, height: 600 } },
+        color: { value: ['#00FF88', '#00BFFF', '#FF3366', '#FFD700'] },
+        shape: { type: ['circle', 'polygon'], polygon: [{ sides: 6, rotation: false }] },
+        opacity: { value: { min: 0.15, max: 0.5 }, animation: { enable: true, speed: 0.6, minimumValue: 0.08 } },
+        size: { value: { min: 1.5, max: 4 }, animation: { enable: true, speed: 1.5, minimumValue: 0.8 } },
+        move: { enable: true, speed: 0.8, direction: 'none', random: true, straight: false, outModes: { default: 'out' } },
+        links: { enable: true, distance: 160, color: '#00FF88', opacity: 0.2, width: 0.8 }
+      },
+      interactivity: {
+        events: { onHover: { enable: true, mode: 'grab' }, resize: true },
+        modes: { grab: { distance: 180, links: { opacity: 0.5 } } }
+      },
+      detectRetina: true,
+      background: { color: 'transparent' }
+    }).then(function () {
+      canvas.style.pointerEvents = 'auto';
+    }).catch(function () {
+      canvas.style.display = 'none';
+    });
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initParticles);
+  } else {
+    setTimeout(initParticles, 500);
+  }
+
+  /* ─── Vanilla Tilt — 3D tilt on cards ─── */
+  function initTilt() {
+    if (!window.VanillaTilt) return;
+    var cards = document.querySelectorAll('.panel-card, .glass-card, .glass-card-glow');
+    cards.forEach(function (card) {
+      if (card.getAttribute('data-tilt')) return;
+      window.VanillaTilt.init(card, {
+        max: 6,
+        speed: 400,
+        glare: true,
+        'max-glare': 0.12,
+        perspective: 1000,
+        scale: 1.01
+      });
+      card.setAttribute('data-tilt', 'true');
+    });
+  }
+  // Re-init tilt after login when cards become visible
+  var tiltObserver = new MutationObserver(function () {
+    if (!appRoot.classList.contains('hidden')) {
+      setTimeout(initTilt, 800);
+      tiltObserver.disconnect();
+    }
+  });
+  tiltObserver.observe(appRoot, { attributes: true, attributeFilter: ['class'] });
+
+  /* ─── IntersectionObserver — Scroll reveal animations ─── */
+  function initScrollReveal() {
+    var revealEls = document.querySelectorAll('.card, .home-card, .shield-card');
+    revealEls.forEach(function (el) {
+      el.style.opacity = '0';
+      el.style.transform = 'translateY(24px)';
+      el.style.transition = 'opacity 0.6s cubic-bezier(0.16,1,0.3,1), transform 0.6s cubic-bezier(0.16,1,0.3,1)';
+    });
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) {
+          entry.target.style.opacity = '1';
+          entry.target.style.transform = 'translateY(0)';
+          io.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+    revealEls.forEach(function (el) { io.observe(el); });
+  }
+  // Re-init scroll reveal after login
+  var scrollObserver = new MutationObserver(function () {
+    if (!appRoot.classList.contains('hidden')) {
+      setTimeout(initScrollReveal, 600);
+      scrollObserver.disconnect();
+    }
+  });
+  scrollObserver.observe(appRoot, { attributes: true, attributeFilter: ['class'] });
+
+  /* ─── Threat preview counter animation ─── */
+  function animateCounters() {
+    var counters = document.querySelectorAll('[data-count]');
+    counters.forEach(function (el) {
+      var target = parseInt(el.getAttribute('data-count'), 10);
+      if (isNaN(target)) return;
+      el.textContent = '0';
+      var current = 0;
+      var step = Math.max(1, Math.floor(target / 30));
+      var iv = setInterval(function () {
+        current += step;
+        if (current >= target) {
+          el.textContent = target.toLocaleString();
+          clearInterval(iv);
+        } else {
+          el.textContent = current.toLocaleString();
+        }
+      }, 40);
+    });
+  }
+  // Run counter animation when login overlay appears
+  setTimeout(animateCounters, 800);
+
+  /* ═══════════════════════════════════════════════════════
+     PHASE 10 — VISUAL OVERHAUL JS
+     ═══════════════════════════════════════════════════════ */
+
+  /* ─── Hero Protection Ring ─── */
+  var heroRingFill = document.getElementById('hero-ring-fill');
+  var heroRingInner = document.getElementById('hero-ring-inner');
+  var heroShieldPct = document.getElementById('hero-shield-pct');
+  var heroStatusText = document.getElementById('hero-status-text');
+  var heroShieldsActive = document.getElementById('hero-shields-active');
+  var RING_CIRCUMFERENCE = 326.7; // 2 * PI * 52
+  var RING_INNER_CIRC = 263.9;   // 2 * PI * 42
+
+  function updateHeroRing(pct) {
+    pct = Math.max(0, Math.min(100, pct));
+    var offset = RING_CIRCUMFERENCE - (RING_CIRCUMFERENCE * pct / 100);
+    var innerOffset = RING_INNER_CIRC - (RING_INNER_CIRC * pct * 0.7 / 100);
+    if (heroRingFill) heroRingFill.setAttribute('stroke-dashoffset', offset);
+    if (heroRingInner) heroRingInner.setAttribute('stroke-dashoffset', innerOffset);
+    if (heroShieldPct) heroShieldPct.textContent = Math.round(pct) + '%';
+  }
+
+  function computeProtectionLevel() {
+    // Weighted 0-100 security score. Weights defined by PLAN.md §1.2.
+    var weights = [
+      { label: 'Face enrolled', max: 20, active: function () { return !!lsGet(LS_FACEPRINT, null); } },
+      { label: 'Voice enrolled', max: 10, active: function () { return !!lsGet(LS_VOICEPRINT, null); } },
+      { label: 'Signature enrolled', max: 5, active: function () { return !!lsGet(LS_SIGNATURE, ''); } },
+      { label: 'Camera shield', max: 15, active: function () { return isShieldActive('shield-camera-status'); } },
+      { label: 'Voice shield', max: 10, active: function () { return isShieldActive('shield-voice-status'); } },
+      { label: 'Crawler monitoring', max: 15, active: function () { return isShieldActive('shield-crawler-status'); } },
+      { label: 'ML engine loaded', max: 10, active: function () { return isShieldActive('shield-ml-engine-status'); } },
+      { label: 'Alerts resolved', max: 15, active: function () { return alertsResolvedRatio() >= 0.75; } },
+      { label: 'Takedowns completed', max: 10, active: function () { return (lsGet(LS_TAKEDOWNS_DONE, 0) || 0) > 0; } }
+    ];
+
+    var activeCount = 0;
+    var score = 0;
+    var rows = weights.map(function (w) {
+      var on = w.active() === true;
+      if (on) { score += w.max; activeCount++; }
+      return { label: w.label, max: w.max, earned: on ? w.max : 0, active: on };
+    });
+
+    return {
+      active: activeCount,
+      total: weights.length,
+      totalShields: 5,
+      score: Math.max(0, Math.min(100, Math.round(score))),
+      pct: Math.max(0, Math.min(100, Math.round(score))),
+      rows: rows
+    };
+  }
+
+  function isShieldActive(id) {
+    var s = document.getElementById(id);
+    return !!(s && (s.classList.contains('active') || s.textContent === 'LOADED'));
+  }
+
+  function alertsResolvedRatio() {
+    if (!alerts || !alerts.length) return 0;
+    var resolved = alerts.filter(function (a) {
+      return a.status === 'RESOLVED' || a.status === 'WHITELISTED' || a.confidence < 40;
+    }).length;
+    return resolved / alerts.length;
+  }
+
+  function renderScoreBreakdown(anchor) {
+    var el = document.getElementById('score-breakdown');
+    var list = document.getElementById('score-breakdown-list');
+    if (!el || !list || !anchor) return;
+    var level = computeProtectionLevel();
+    var html = '<div class="score-breakdown-title">Security Score Breakdown</div>';
+    var used = 0;
+    level.rows.forEach(function (r) {
+      html += '<div class="sb-row">'
+        + '<span class="sb-label">' + r.label + '</span>'
+        + '<span class="sb-track"><span class="sb-fill" style="width:' + (r.active ? 100 : 0) + '%"></span></span>'
+        + '<span class="sb-val">' + (r.active ? '+' + r.max : '0') + '</span>'
+        + '</div>';
+      used++;
+    });
+    html += '<div class="sb-total"><span>Overall protection</span><span>' + level.score + '/100</span></div>';
+    list.innerHTML = html;
+    el.classList.remove('hidden');
+
+    var rect = anchor.getBoundingClientRect();
+    el.style.position = 'fixed';
+    el.style.top = Math.min(window.innerHeight - 220, rect.bottom + 8) + 'px';
+    el.style.left = Math.max(8, Math.min(window.innerWidth - 280, rect.left)) + 'px';
+  }
+
+  function hideScoreBreakdown() {
+    var el = document.getElementById('score-breakdown');
+    if (el) el.classList.add('hidden');
+  }
+
+  function refreshHeroRing() {
+    var level = computeProtectionLevel();
+    updateHeroRing(level.score);
+    if (heroShieldsActive) heroShieldsActive.textContent = level.active + '/' + level.total + ' Defenses Active';
+    if (heroStatusText) {
+      if (level.score >= 90) {
+        heroStatusText.textContent = 'Maximum Protection';
+      } else if (level.score >= 60) {
+        heroStatusText.textContent = 'Strong Protection';
+      } else if (level.score >= 30) {
+        heroStatusText.textContent = 'Partial Protection — add defenses';
+      } else {
+        heroStatusText.textContent = 'Minimal Protection — take action';
+      }
+    }
+  }
+
+  // Hero ring — show score breakdown on hover / tap
+  var btnHeroShield = document.getElementById('btn-hero-shield');
+  if (btnHeroShield) {
+    var breakdownTimer = null;
+    btnHeroShield.addEventListener('mouseenter', function (e) {
+      clearTimeout(breakdownTimer);
+      renderScoreBreakdown(btnHeroShield);
+    });
+    btnHeroShield.addEventListener('mouseleave', function () {
+      breakdownTimer = setTimeout(hideScoreBreakdown, 250);
+    });
+    btnHeroShield.addEventListener('click', function () {
+      renderScoreBreakdown(btnHeroShield);
+      setTimeout(hideScoreBreakdown, 3000);
+    });
+  }
+  window.addEventListener('scroll', hideScoreBreakdown);
+
+  /* ─── Shield Module Indicator Dots ─── */
+  function refreshShieldIndicators() {
+    var pairs = [
+      ['indicator-camera', 'shield-camera-status'],
+      ['indicator-voice', 'shield-voice-status'],
+      ['indicator-crawler', 'shield-crawler-status'],
+      ['indicator-ml-engine', 'shield-ml-engine-status'],
+      ['indicator-ml-device', 'shield-ml-status']
+    ];
+    pairs.forEach(function (pair) {
+      var dot = document.getElementById(pair[0]);
+      var badge = document.getElementById(pair[1]);
+      if (!dot || !badge) return;
+      var isOn = badge.classList.contains('active') || badge.textContent === 'LOADED';
+      dot.className = 'shield-module-indicator' + (isOn ? ' active' : '');
+    });
+  }
+
+  /* ─── Camera/Voice Activity Panels ─── */
+  function refreshShieldActivities() {
+    var camAct = document.getElementById('camera-activity');
+    var voiceAct = document.getElementById('voice-activity');
+    var camLabel = document.getElementById('camera-shield-label');
+    var voiceLabel = document.getElementById('voice-shield-label');
+    var camActive = window.EnclaveNative && window.EnclaveNative.cameraImmunizer && window.EnclaveNative.cameraImmunizer.isActive();
+    var voiceActive = window.EnclaveNative && window.EnclaveNative.voiceShield && window.EnclaveNative.voiceShield.isActive();
+    if (camAct) camAct.className = 'shield-activity' + (camActive ? ' active' : '');
+    if (camLabel) camLabel.textContent = camActive ? 'Active — Shielding photos' : 'Inactive';
+    if (voiceAct) voiceAct.className = 'shield-activity' + (voiceActive ? ' active' : '');
+    if (voiceLabel) voiceLabel.textContent = voiceActive ? 'Active — Protecting voice' : 'Inactive';
+  }
+
+  /* ─── Scanner Radar Animation ─── */
+  var scannerRadar = document.getElementById('scanner-radar');
+  var scannerInputArea = document.getElementById('scanner-input-area');
+  var scannerResult = document.getElementById('scanner-result');
+  var scannerResultRing = document.getElementById('scanner-result-ring');
+  var scannerResultPct = document.getElementById('scanner-result-pct');
+  var scannerResultInfo = document.getElementById('scanner-result-info');
+  var SCANNER_RING_CIRC = 150.8;
+
+  var SCAN_STEPS = [
+    { label: 'Initializing ML pipeline…' },
+    { label: 'Extracting image features…' },
+    { label: 'Running deepfake detection…' },
+    { label: 'Checking face matches…' },
+    { label: 'Generating report…' }
+  ];
+  var scanStepTimers = [];
+
+  function clearScanStepTimers() {
+    scanStepTimers.forEach(clearTimeout);
+    scanStepTimers = [];
+  }
+
+  function renderScanSteps() {
+    var container = document.getElementById('scan-steps');
+    if (!container) return;
+    container.innerHTML = SCAN_STEPS.map(function (s, i) {
+      return '<div class="scan-step-row" id="scan-step-' + i + '" data-idx="' + i + '">'
+        + '<span class="scan-step-dot"></span>'
+        + '<span>' + s.label + '</span>'
+        + '<span class="scan-step-check">✓</span></div>';
+    }).join('');
+  }
+
+  function startScanProgress() {
+    clearScanStepTimers();
+    renderScanSteps();
+    var fill = document.getElementById('scan-progress-fill');
+    if (fill) fill.style.width = '0%';
+    SCAN_STEPS.forEach(function (s, i) {
+      var t = setTimeout(function () {
+        setScanStep(i);
+        if (fill) fill.style.width = Math.round(((i + 1) / SCAN_STEPS.length) * 100) + '%';
+      }, (i + 1) * 400);
+      scanStepTimers.push(t);
+    });
+  }
+
+  function setScanStep(idx) {
+    for (var i = 0; i < SCAN_STEPS.length; i++) {
+      var row = document.getElementById('scan-step-' + i);
+      if (!row) continue;
+      var cls = 'scan-step-row';
+      if (i < idx) cls += ' scan-step-done';
+      else if (i === idx) cls += ' scan-step-active';
+      row.className = cls;
+    }
+  }
+
+  function completeScanProgress() {
+    clearScanStepTimers();
+    for (var i = 0; i < SCAN_STEPS.length; i++) setScanStep(i + 1);
+    var fill = document.getElementById('scan-progress-fill');
+    if (fill) fill.style.width = '100%';
+  }
+
+  function showScannerRadar(text) {
+    if (scannerRadar) scannerRadar.style.display = 'flex';
+    if (scannerInputArea) scannerInputArea.style.display = 'none';
+    if (scannerResult) scannerResult.style.display = 'none';
+    var radarText = document.getElementById('scanner-radar-text');
+    if (radarText) radarText.textContent = text || 'Scanning...';
+    startScanProgress();
+  }
+
+  function hideScannerRadar(confidence, metaText, isSafe) {
+    clearScanStepTimers();
+    if (scannerRadar) scannerRadar.style.display = 'none';
+    if (scannerInputArea) scannerInputArea.style.display = 'block';
+    if (scannerResult && confidence !== undefined) {
+      scannerResult.style.display = 'flex';
+      var offset = SCANNER_RING_CIRC - (SCANNER_RING_CIRC * confidence / 100);
+      if (scannerResultRing) {
+        scannerResultRing.setAttribute('stroke-dashoffset', offset);
+        scannerResultRing.setAttribute('stroke', isSafe ? '#00FF88' : (confidence > 60 ? '#FF4444' : '#FF8800'));
+      }
+      if (scannerResultPct) {
+        scannerResultPct.textContent = confidence + '%';
+        scannerResultPct.style.color = isSafe ? '#00FF88' : (confidence > 60 ? '#FF4444' : '#FF8800');
+      }
+      if (scannerResultInfo) scannerResultInfo.textContent = metaText || '';
+    }
+  }
+
+  /* ─── Mini Chart Update ─── */
+  function updateMiniChart(chartId, value, maxVal) {
+    var container = document.getElementById(chartId);
+    if (!container) return;
+    var bars = container.querySelectorAll('.mini-bar');
+    if (!bars.length) return;
+    var ratio = Math.min(1, value / Math.max(1, maxVal));
+    // Simulate historical data distribution
+    var heights = [];
+    for (var i = 0; i < bars.length; i++) {
+      var h = Math.max(8, Math.round(ratio * 100 * (0.3 + Math.random() * 0.7)));
+      heights.push(h);
+    }
+    // Make the last bar the highest (current)
+    heights[heights.length - 1] = Math.max(15, Math.round(ratio * 100));
+    bars.forEach(function (bar, idx) {
+      bar.style.height = heights[idx] + '%';
+    });
+  }
+
+  /* ─── Trend Arrows ─── */
+  function updateTrendArrow(elemId, current, previous) {
+    var el = document.getElementById(elemId);
+    if (!el) return;
+    if (!previous || previous === 0) {
+      el.textContent = 'new';
+      el.className = 'stat-trend stat-trend-neutral';
+    } else if (current > previous) {
+      el.textContent = '↑ +' + Math.round(((current - previous) / previous) * 100) + '%';
+      el.className = 'stat-trend stat-trend-up';
+    } else if (current < previous) {
+      el.textContent = '↓ -' + Math.round(((previous - current) / previous) * 100) + '%';
+      el.className = 'stat-trend stat-trend-down';
+    } else {
+      el.textContent = '— same';
+      el.className = 'stat-trend stat-trend-neutral';
+    }
+  }
+
+  /* ─── Hook into existing refresh cycle ─── */
+  var origRefreshAllPanels = refreshAllPanels;
+  refreshAllPanels = function () {
+    origRefreshAllPanels();
+    refreshHeroRing();
+    refreshShieldIndicators();
+    refreshShieldActivities();
+    updateMiniChart('chart-scans', parseInt(statTotalScans ? statTotalScans.textContent : 0, 10), 50);
+    updateMiniChart('chart-threats', parseInt(statThreatsFound ? statThreatsFound.textContent : 0, 10), 10);
+    updateMiniChart('chart-takedowns', parseInt(statTakedownsSent ? statTakedownsSent.textContent : 0, 10), 10);
+  };
+
+  // Also refresh indicators when shield status badges change
+  var origUpdateShieldStatus = updateShieldStatus;
+  updateShieldStatus = function () {
+    origUpdateShieldStatus();
+    setTimeout(function () {
+      refreshShieldIndicators();
+      refreshShieldActivities();
+      refreshHeroRing();
+    }, 200);
+  };
+
+  // Initialize hero ring on load
+  setTimeout(function () {
+    refreshHeroRing();
+    refreshShieldIndicators();
+  }, 500);
+
+  /* ═══════════════════════════════════════════════════════
+     PSYCHOLOGY THEORY JS — Streaks, Social Proof, Badges,
+     Insights, Urgency, Timeline
+     ═══════════════════════════════════════════════════════ */
+
+  /* ─── LocalStorage Keys ─── */
+  var LS_STREAK = 'enclave_streak';
+  var LS_STREAK_DATE = 'enclave_streak_date';
+  var LS_BADGES = 'enclave_badges';
+  var LS_SCANS = 'enclave_scan_count';
+  var LS_THREATS_BLOCKED = 'enclave_threats_blocked';
+  var LS_TAKEDOWNS_DONE = 'enclave_takedowns_done';
+
+  /* ─── Daily Streak (COMMITMENT & CONSISTENCY + LOSS AVERSION) ─── */
+  var streakNumber = document.getElementById('streak-number');
+  var streakSub = document.getElementById('streak-sub');
+  var streakFire = document.getElementById('streak-fire');
+
+  function updateStreak() {
+    var today = new Date().toISOString().slice(0, 10);
+    var lastDate = lsGet(LS_STREAK_DATE, '');
+    var streak = lsGet(LS_STREAK, 1);
+
+    if (lastDate === today) {
+      // Already checked in today
+    } else {
+      var yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+      if (lastDate === yesterday) {
+        streak++;
+      } else if (lastDate !== today) {
+        streak = 1; // Streak broken
+      }
+      lsSet(LS_STREAK_DATE, today);
+      lsSet(LS_STREAK, streak);
+    }
+
+    if (streakNumber) streakNumber.textContent = streak;
+    if (streakSub) {
+      if (streak >= 7) streakSub.textContent = 'You\'re on fire!';
+      else if (streak >= 3) streakSub.textContent = 'Keep it going!';
+      else streakSub.textContent = 'Don\'t break it!';
+    }
+    if (streakFire && streak >= 7) {
+      streakFire.style.animationDuration = '0.8s';
+      streakFire.style.filter = 'drop-shadow(0 0 4px rgba(255,136,0,0.6))';
+    }
+  }
+
+  /* ─── Threat Avoidance Counter (ANCHORING + RECIPROCITY) ─── */
+  var threatAvoidanceNumber = document.getElementById('threat-avoidance-number');
+
+  function updateThreatAvoidance() {
+    var blocked = lsGet(LS_THREATS_BLOCKED, 0);
+    // Simulate some baseline threats blocked from monitoring
+    var baseBlocked = Math.floor(Math.random() * 5) + 2;
+    var total = Math.max(blocked, baseBlocked);
+    if (threatAvoidanceNumber) {
+      animateNumber(threatAvoidanceNumber, 0, total, 1200);
+    }
+  }
+
+  /* ─── Number Animation Helper ─── */
+  function animateNumber(el, from, to, duration) {
+    var start = performance.now();
+    var diff = to - from;
+    function step(ts) {
+      var progress = Math.min((ts - start) / duration, 1);
+      var eased = 1 - Math.pow(1 - progress, 3); // ease-out cubic
+      el.textContent = Math.round(from + diff * eased);
+      if (progress < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+
+  /* ─── Social Proof Feed (HERD MENTALITY) ─── */
+  var spFeed = document.getElementById('social-proof-feed');
+  var spOnlineCount = document.getElementById('sp-online-count');
+  var spBlockedToday = document.getElementById('sp-blocked-today');
+  var spCities = ['Tokyo', 'London', 'New York', 'Berlin', 'Sydney', 'Seoul', 'Toronto', 'Paris', 'Mumbai', 'São Paulo', 'Singapore', 'Dubai', 'Amsterdam', 'Stockholm', 'Hong Kong'];
+  var spActions = [
+    'just blocked a deepfake attempt',
+    'activated Camera Immunizer',
+    'completed a deep scan',
+    'reported a fake profile',
+    'enabled Voice Shield',
+    'generated a DMCA notice',
+    'joined Enclave',
+    'reached a 7-day streak'
+  ];
+
+  function randomSpEntry() {
+    var city = spCities[Math.floor(Math.random() * spCities.length)];
+    var action = spActions[Math.floor(Math.random() * spActions.length)];
+    var entry = document.createElement('div');
+    entry.className = 'sp-entry';
+    entry.style.opacity = '0';
+    entry.innerHTML = '<span class="sp-dot"></span><span class="sp-msg">Someone in ' + city + ' ' + action + '</span><span class="sp-time">just now</span>';
+    entry.style.animation = 'spSlideIn 0.4s ease forwards';
+    if (spFeed) {
+      spFeed.insertBefore(entry, spFeed.firstChild);
+      // Remove old entries
+      while (spFeed.children.length > 5) {
+        spFeed.removeChild(spFeed.lastChild);
+      }
+    }
+  }
+
+  function updateSocialProofNumbers() {
+    // Animate online count with slight fluctuation
+    var base = 2847 + Math.floor(Math.random() * 200 - 100);
+    if (spOnlineCount) spOnlineCount.textContent = base.toLocaleString();
+    var blocked = 1203 + Math.floor(Math.random() * 100);
+    if (spBlockedToday) spBlockedToday.textContent = blocked.toLocaleString();
+  }
+
+  // Add new social proof entries periodically
+  setInterval(randomSpEntry, 8000);
+  setInterval(updateSocialProofNumbers, 15000);
+
+  /* ─── Badges (COMPLETION DRIVE + STATUS) ─── */
+  var badges = lsGet(LS_BADGES, {});
+  var BADGE_DEFS = {
+    'first-scan': { icon: '🔍', name: 'First Scan', check: function () { return (lsGet(LS_SCANS, 0) || 0) > 0; } },
+    'shield-1': { icon: '🛡️', name: 'First Shield', check: function () { return computeProtectionLevel().active >= 1; } },
+    'shield-5': { icon: '🏰', name: 'Full Fortress', check: function () { return computeProtectionLevel().active >= 5; } },
+    'streak-7': { icon: '🔥', name: 'Week Warrior', check: function () { return lsGet(LS_STREAK, 0) >= 7; } },
+    'takedown-1': { icon: '⚖️', name: 'First Takedown', check: function () { return (lsGet(LS_TAKEDOWNS_DONE, 0) || 0) > 0; } },
+    'scanner-10': { icon: '🎯', name: 'Scan Master', check: function () { return (lsGet(LS_SCANS, 0) || 0) >= 10; } },
+    'threat-blocked': { icon: '🚫', name: 'Threat Blocker', check: function () { return (lsGet(LS_THREATS_BLOCKED, 0) || 0) > 0; } },
+    'pro-user': { icon: '⭐', name: 'Pro Member', check: function () { return false; } } // Set when upgraded
+  };
+
+  function checkAndUnlockBadges() {
+    var newlyUnlocked = [];
+    Object.keys(BADGE_DEFS).forEach(function (id) {
+      if (badges[id]) return; // Already unlocked
+      if (BADGE_DEFS[id].check()) {
+        badges[id] = new Date().toISOString();
+        newlyUnlocked.push(id);
+      }
+    });
+    if (newlyUnlocked.length > 0) {
+      lsSet(LS_BADGES, badges);
+      newlyUnlocked.forEach(function (id) {
+        showToastAlert('🏆 Badge unlocked: ' + BADGE_DEFS[id].name + '!');
+      });
+    }
+    renderBadges();
+  }
+
+  function renderBadges() {
+    var grid = document.getElementById('badges-grid');
+    var progressText = document.getElementById('badge-progress-text');
+    if (!grid) return;
+    var unlocked = 0;
+    var total = Object.keys(BADGE_DEFS).length;
+    Object.keys(BADGE_DEFS).forEach(function (id) {
+      var el = document.getElementById('badge-' + id);
+      if (!el) return;
+      if (badges[id]) {
+        el.className = 'badge-item badge-unlocked';
+        unlocked++;
+      } else {
+        el.className = 'badge-item badge-locked';
+      }
+    });
+    if (progressText) progressText.textContent = unlocked + ' of ' + total + ' unlocked';
+  }
+
+  // Hook into scan count increment
+  var origLocalImageScan = localImageScan;
+  if (typeof origLocalImageScan === 'function') {
+    localImageScan = async function (file) {
+      var scans = lsGet(LS_SCANS, 0) + 1;
+      lsSet(LS_SCANS, scans);
+      return origLocalImageScan.call(this, file);
+    };
+  }
+
+  // Hook into scanner button click to track scans
+  if (btnScanner) {
+    var origBtnScannerClick = btnScanner.onclick;
+    btnScanner.addEventListener('click', function () {
+      setTimeout(function () {
+        var scans = lsGet(LS_SCANS, 0) + 1;
+        lsSet(LS_SCANS, scans);
+        checkAndUnlockBadges();
+      }, 500);
+    });
+  }
+
+  /* ─── Personalized Insights (IKEA EFFECT + ENDOWMENT) ─── */
+  function generateInsights() {
+    var insightsList = document.getElementById('insights-list');
+    if (!insightsList) return;
+
+    var level = computeProtectionLevel();
+    var streak = lsGet(LS_STREAK, 1);
+    var scans = lsGet(LS_SCANS, 0) || 0;
+
+    var insights = [];
+
+    // Dynamic insights based on user state
+    if (level.active < 3) {
+      insights.push({
+        type: 'warning',
+        icon: '⚠️',
+        title: 'Your protection is below recommended level',
+        desc: 'Only ' + level.active + ' of 5 shields active. Users with 3+ shields are 73% less likely to fall victim to identity theft.'
+      });
+    }
+
+    if (streak >= 3) {
+      insights.push({
+        type: 'success',
+        icon: '🔥',
+        title: 'Your ' + streak + '-day streak is above average',
+        desc: 'Consistent users catch 4x more threats. You\'re in the top 15% of active protectors.'
+      });
+    }
+
+    if (scans === 0) {
+      insights.push({
+        type: 'info',
+        icon: '🔍',
+        title: 'You haven\'t run your first scan yet',
+        desc: 'The average user finds 2.3 potential threats in their first scan. Try scanning a social media profile picture.'
+      });
+    } else if (scans >= 10) {
+      insights.push({
+        type: 'success',
+        icon: '🎯',
+        title: 'You\'ve scanned ' + scans + ' items',
+        desc: 'Power users like you are 5x more likely to catch deepfakes early. Keep it up!'
+      });
+    }
+
+    // Always show a contextual tip
+    var tips = [
+      { type: 'info', icon: '💡', title: 'Pro tip: Enable Camera Immunizer', desc: 'It automatically protects every photo you take — no manual scanning needed.' },
+      { type: 'info', icon: '💡', title: 'Pro tip: Schedule deep scans', desc: 'Weekly deep scans catch 89% more threats than manual scans alone.' },
+      { type: 'info', icon: '💡', title: 'Pro tip: Voice Shield protects calls', desc: 'Real-time audio scrambling prevents voice cloning attacks during phone calls.' }
+    ];
+    insights.push(tips[Math.floor(Math.random() * tips.length)]);
+
+    // Render
+    insightsList.innerHTML = '';
+    insights.forEach(function (ins) {
+      var card = document.createElement('div');
+      card.className = 'insight-card insight-card-' + ins.type;
+      card.innerHTML = '<span class="insight-icon">' + ins.icon + '</span><div class="insight-content"><p class="insight-title">' + ins.title + '</p><p class="insight-desc">' + ins.desc + '</p></div>';
+      insightsList.appendChild(card);
+    });
+  }
+
+  /* ─── Urgency Countdown (FOMO + SCARCITY) ─── */
+  var urgencyCountdown = document.getElementById('urgency-countdown');
+  var urgencyBlock = document.getElementById('urgency-block');
+
+  function updateUrgency() {
+    if (!urgencyCountdown) return;
+    // Simulate a 48-hour window from "last exposure"
+    var baseHours = 36 + Math.floor(Math.random() * 6);
+    var baseMins = Math.floor(Math.random() * 60);
+    var hours = baseHours;
+    var mins = baseMins;
+
+    function tick() {
+      if (hours <= 0 && mins <= 0) {
+        urgencyCountdown.textContent = 'EXPIRED';
+        urgencyCountdown.style.color = 'var(--text-muted)';
+        return;
+      }
+      if (mins <= 0) { hours--; mins = 59; }
+      else { mins--; }
+      urgencyCountdown.textContent = hours + 'h ' + String(mins).padStart(2, '0') + 'm';
+      setTimeout(tick, 60000);
+    }
+    tick();
+  }
+
+  /* ─── Protection Timeline (ENDOWMENT + SUNK COST) ─── */
+  function updateTimeline() {
+    var startDate = document.getElementById('timeline-start-date');
+    var timelineDays = document.getElementById('timeline-days');
+    var timelineHours = document.getElementById('timeline-hours');
+
+    // Get account creation date from user data or default to today
+    var createdAt = null;
+    try {
+      createdAt = lsGet('enclave_created_at', null);
+    } catch (e) {}
+
+    if (!createdAt) {
+      createdAt = new Date().toISOString();
+      lsSet('enclave_created_at', createdAt);
+    }
+
+    var diff = Date.now() - new Date(createdAt).getTime();
+    var days = Math.max(1, Math.floor(diff / 86400000));
+    var hours = Math.floor((diff % 86400000) / 3600000);
+
+    if (startDate) {
+      var d = new Date(createdAt);
+      startDate.textContent = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+    if (timelineDays) timelineDays.textContent = days;
+    if (timelineHours) timelineHours.textContent = (days * 24) + hours;
+
+    // ── Phase 3.1: inject scan-history entries into the protection timeline ──
+    var timeline = document.getElementById('protection-timeline');
+    if (!timeline) return;
+
+    // Remove previously injected scan rows (mark them with data-injected)
+    var injected = timeline.querySelectorAll('[data-injected]');
+    injected.forEach(function (n) { n.remove(); });
+
+    if (alerts && alerts.length) {
+      var recent = alerts.slice(0, 5);
+      var beforeNext = document.getElementById('timeline-next-scan');
+      recent.forEach(function (a) {
+        var isThreat = (a.confidence || 0) >= 60;
+        var isSusp = (a.confidence || 0) >= 40 && (a.confidence || 0) < 60;
+        var dotClass = isThreat ? 'tl-dot' : (isSusp ? 'tl-dot tl-dot-blue' : 'tl-dot tl-dot-green');
+        var label = isThreat ? 'Threat detected' : (isSusp ? 'Suspicious scan' : 'Scan — no threat');
+        var date = a.timestamp ? new Date(a.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'Today';
+        var src = (a.source || a.sourceUrl || 'scan').length > 28
+          ? (a.source || a.sourceUrl || 'scan').slice(0, 28) + '…'
+          : (a.source || a.sourceUrl || 'scan');
+        var row = document.createElement('div');
+        row.className = 'tl-entry';
+        row.setAttribute('data-injected', '1');
+        row.innerHTML = '<div class="' + dotClass + '" style="' + (isThreat ? 'background:var(--red);box-shadow:0 0 5px rgba(244,63,94,0.4);' : '') + '"></div>'
+          + '<div class="tl-content"><span class="tl-event">' + label + ' (' + Math.round(a.confidence || 0) + '%) — ' + src + '</span>'
+          + '<span class="tl-date">' + date + '</span></div>';
+        if (beforeNext) timeline.insertBefore(row, beforeNext);
+        else timeline.appendChild(row);
+      });
+    }
+  }
+
+  /* ─── Master Refresh for Psychology Elements ─── */
+  function refreshPsychologyElements() {
+    updateStreak();
+    updateThreatAvoidance();
+    updateSocialProofNumbers();
+    checkAndUnlockBadges();
+    generateInsights();
+    updateUrgency();
+    updateTimeline();
+  }
+
+  // Hook into existing refresh cycle
+  var origRefreshAll = refreshAllPanels;
+  refreshAllPanels = function () {
+    origRefreshAll();
+    refreshPsychologyElements();
+  };
+
+  // Initial load
+  setTimeout(refreshPsychologyElements, 800);
+
+  /* ─── Tab Switching ─── */
+  var navItems = document.querySelectorAll('.nav-item[data-tab]');
+  var tabContents = document.querySelectorAll('.tab-content');
+  var mobileSidebar = document.getElementById('sidebar');
+  var sidebarOverlay = document.getElementById('sidebar-overlay');
+
+  function switchTab(tabName) {
+    navItems.forEach(function (n) { n.classList.toggle('active', n.dataset.tab === tabName); });
+    tabContents.forEach(function (t) {
+      var isActive = t.id === 'tab-' + tabName;
+      t.classList.toggle('active', isActive);
+      if (isActive && window.EnclaveUI) window.EnclaveUI.animateTabIn(t);
+    });
+    // Close mobile sidebar after switch
+    if (mobileSidebar) mobileSidebar.classList.remove('open');
+    if (sidebarOverlay) sidebarOverlay.classList.remove('active');
+  }
+
+  navItems.forEach(function (item) {
+    item.addEventListener('click', function () { switchTab(item.dataset.tab); });
+  });
+
+  // Sidebar lock button — uses the same btnLock ref from top
+
+  // Mobile sidebar toggle
+  var btnToggle = document.getElementById('btn-sidebar-toggle');
+  if (btnToggle) {
+    btnToggle.addEventListener('click', function () {
+      mobileSidebar.classList.toggle('open');
+      sidebarOverlay.classList.toggle('active');
+    });
+  }
+  if (sidebarOverlay) {
+    sidebarOverlay.addEventListener('click', function () {
+      mobileSidebar.classList.remove('open');
+      sidebarOverlay.classList.remove('active');
+    });
+  }
+
+  // Quick action cards — route to tabs
+  document.querySelectorAll('.action-card[data-tab]').forEach(function (card) {
+    card.addEventListener('click', function () {
+      switchTab(card.dataset.tab);
+      // Deep scan action card: trigger scan after switching to scan tab
+      if (card.id === 'btn-deep-scan-action') {
+        setTimeout(function () { triggerDeepScan(); }, 300);
+      }
+    });
+  });
+
+  // Shield toggle buttons — animate on click
+  document.querySelectorAll('.shield-toggle').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var card = btn.closest('.shield-card');
+      if (card && window.EnclaveUI) {
+        var badge = card.querySelector('.shield-module-badge');
+        var willActivate = badge && badge.classList.contains('inactive');
+        window.EnclaveUI.animateShieldToggle(card, willActivate);
+      }
+    });
+  });
+
+  // Toast enter animation observer
+  var toastContainer = document.getElementById('toast-container');
+  if (toastContainer) {
+    var toastObs = new MutationObserver(function (mutations) {
+      mutations.forEach(function (m) {
+        m.addedNodes.forEach(function (node) {
+          if (node.nodeType === 1 && window.EnclaveUI) window.EnclaveUI.animateToast(node);
+        });
+      });
+    });
+    toastObs.observe(toastContainer, { childList: true });
+  }
+
+  // Re-init ripples on nav switch
+  var origSwitchTab = switchTab;
+  switchTab = function (tabName) {
+    origSwitchTab(tabName);
+    setTimeout(function () {
+      if (window.EnclaveUI) { window.EnclaveUI.initRipples(); window.EnclaveUI.initCardPress(); }
+    }, 50);
+  };
+
+  /* ─── Reports (Phase 3) ─── */
+  function loadReports() {
+    var section = document.getElementById('reports-section');
+    var reportsSection = document.querySelector('.reports-section');
+    if (!section && !reportsSection) return;
+    if (reportsSection) reportsSection.style.display = '';
+    if (!window.EnclaveAPI || !window.EnclaveAPI.getReports) return;
+    window.EnclaveAPI.getReports(8).then(function (list) {
+      var container = document.getElementById('reports-list');
+      var empty = document.getElementById('reports-empty');
+      if (!container) return;
+      container.innerHTML = '';
+      if (!list || !list.length) {
+        if (empty) empty.style.display = '';
+        return;
+      }
+      if (empty) empty.style.display = 'none';
+      list.forEach(function (r) {
+        var item = document.createElement('div');
+        item.className = 'report-item';
+        var fileName = 'enclave-' + r.reportType + '-' + r.id + '.' + (r.format === 'csv' ? 'csv' : 'json');
+        var link = window.EnclaveAPI.getReportDownloadUrl(r.id);
+        item.innerHTML = '<div class="report-item-main"><span class="report-item-name">' + r.reportType.replace(/_/g, ' ').replace(/\b\w/g, function (c) { return c.toUpperCase(); }) + '</span>'
+          + '<span class="report-item-date">' + new Date(r.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + ' · ' + (r.format || 'pdf').toUpperCase() + '</span></div>'
+          + '<a class="report-item-dl" href="' + link + '" download="' + fileName + '">⬇</a>';
+        container.appendChild(item);
+      });
+    }).catch(function () {});
+  }
+
+  function setupReports() {
+    var genGo = document.getElementById('btn-generate-report-go');
+    var genBtn = document.getElementById('btn-generate-report');
+    var typeSel = document.getElementById('report-type-select');
+    var dailyToggle = document.getElementById('report-daily-toggle');
+
+    function generate(type) {
+      if (!window.EnclaveAPI || !window.EnclaveAPI.generateReport) return;
+      type = type || (typeSel ? typeSel.value : 'threat_summary');
+      window.EnclaveAPI.generateReport({ type: type }).then(function (res) {
+        if (window.EnclaveUI && window.EnclaveUI.toast) {
+          window.EnclaveUI.toast('Report generated (' + (res.format || 'json').toUpperCase() + ')', 'success');
+        }
+        loadReports();
+      }).catch(function (e) {
+        if (window.EnclaveUI && window.EnclaveUI.toast) window.EnclaveUI.toast(e.message || 'Failed to generate report', 'error');
+      });
+    }
+
+    if (genGo) genGo.addEventListener('click', function () { generate(); });
+    if (genBtn) genBtn.addEventListener('click', function () { generate(); });
+    if (dailyToggle) dailyToggle.addEventListener('change', function () {
+      var enabled = dailyToggle.checked;
+      if (!window.EnclaveAPI || !window.EnclaveAPI.scheduleReport) { dailyToggle.checked = !enabled; return; }
+      var p = enabled
+        ? window.EnclaveAPI.scheduleReport({ type: (typeSel ? typeSel.value : 'threat_summary'), frequency: 'daily', time: '09:00' })
+        : Promise.resolve();
+      p.then(function () {
+        if (window.EnclaveUI && window.EnclaveUI.toast) {
+          window.EnclaveUI.toast(enabled ? 'Daily report scheduled' : 'Daily report disabled', 'success');
+        }
+      }).catch(function (e) {
+        dailyToggle.checked = !enabled;
+        if (window.EnclaveUI && window.EnclaveUI.toast) window.EnclaveUI.toast(e.message || 'Failed', 'error');
+      });
+    });
+  }
+
+  setTimeout(function () { try { setupReports(); } catch (e) {} }, 1200);
+
+  /* ─── Phase 4: Advanced Detection Tools ─── */
+  function setupAdvancedTools() {
+    var API = window.EnclaveAPI;
+    if (!API || !API.reverseImageSearch) return;
+
+    function el(id) { return document.getElementById(id); }
+    function out(id, html) { var o = el(id); if (o) o.innerHTML = html; }
+    function status(html, cls) { return '<div class="adv-status ' + (cls || '') + '">' + html + '</div>'; }
+    function busy() { return '<div class="adv-status adv-busy">Processing…</div>'; }
+
+    // Reverse image search
+    var revFile = el('adv-reverse-file');
+    if (revFile) revFile.addEventListener('change', function () {
+      var f = revFile.files && revFile.files[0];
+      if (!f) return;
+      out('adv-reverse-out', busy());
+      API.reverseImageSearch(f).then(function (res) {
+        var html = '';
+        html += status('Scanned <strong>' + (res.checked || 0) + '</strong> of ' + (res.candidates || 0) + ' candidate images.', 'adv-info');
+        if (res.matches && res.matches.length) {
+          html += '<div class="adv-match">' + res.matches.length + ' match(es) found</div>';
+          res.matches.forEach(function (m) {
+            html += '<div class="adv-match-row"><span class="adv-match-url">' + (m.sourceUrl || '') + '</span><span class="adv-match-sim">' + Math.round((m.similarity || 0) * 100) + '%</span></div>';
+          });
+        } else {
+          html += status('No matches found — your likeness was not detected in monitored sources.', 'adv-safe');
+        }
+        out('adv-reverse-out', html);
+      }).catch(function (e) {
+        out('adv-reverse-out', status((e.message || 'Reverse search failed'), 'adv-err'));
+      });
+      revFile.value = '';
+    });
+
+    // Identity change check
+    var idFile = el('adv-identity-file');
+    if (idFile) idFile.addEventListener('change', function () {
+      var f = idFile.files && idFile.files[0];
+      if (!f) return;
+      out('adv-identity-out', busy());
+      API.checkIdentityChanges(f).then(function (res) {
+        var cls = res.status === 'normal' ? 'adv-safe' : (res.status === 'suspicious' ? 'adv-warn' : 'adv-err');
+        var label = res.status === 'normal' ? 'Identity match confirmed' : (res.status === 'suspicious' ? 'Suspicious identity variation' : 'Possible identity change detected');
+        out('adv-identity-out', status('<strong>' + label + '</strong> — ' + Math.round((res.similarity || 0) * 100) + '% similarity to enrolled face.', cls));
+      }).catch(function (e) {
+        out('adv-identity-out', status(e.message || 'Identity check failed', 'adv-err'));
+      });
+      idFile.value = '';
+    });
+
+    // Watermark embed
+    var wmFile = el('adv-wm-file');
+    if (wmFile) wmFile.addEventListener('change', function () {
+      var f = wmFile.files && wmFile.files[0];
+      if (!f) return;
+      out('adv-wm-out', busy());
+      API.embedWatermark(f, 'Enclave Vault').then(function (res) {
+        var url = res.url ? (API.getBaseUrl().replace(/\/api$/, '') + res.url) : null;
+        var html = status('Watermark embedded successfully. Payload: ' + (res.payload ? JSON.stringify(res.payload) : 'verified'), 'adv-safe');
+        if (url) html += '<a class="adv-download" href="' + url + '" download="watermarked.png">⬇ Download watermarked PNG</a>';
+        out('adv-wm-out', html);
+      }).catch(function (e) {
+        out('adv-wm-out', status(e.message || 'Watermark embedding failed', 'adv-err'));
+      });
+      wmFile.value = '';
+    });
+
+    // Watermark verify
+    var wmVFile = el('adv-wm-verify-file');
+    if (wmVFile) wmVFile.addEventListener('change', function () {
+      var f = wmVFile.files && wmVFile.files[0];
+      if (!f) return;
+      out('adv-wm-out', busy());
+      API.verifyWatermark(f).then(function (res) {
+        if (res.watermarked) {
+          out('adv-wm-out', status('Valid Enclave watermark detected. Payload: ' + JSON.stringify(res.payload), 'adv-safe'));
+        } else {
+          out('adv-wm-out', status('No Enclave watermark detected.', 'adv-warn'));
+        }
+      }).catch(function (e) {
+        out('adv-wm-out', status(e.message || 'Verification failed', 'adv-err'));
+      });
+      wmVFile.value = '';
+    });
+  }
+
+  setTimeout(function () { try { setupAdvancedTools(); } catch (e) {} }, 1500);
+
+  /* ─── Phase 5: Family Protection ─── */
+  function loadFamily() {
+    var API = window.EnclaveAPI;
+    var list = document.getElementById('family-list');
+    var count = document.getElementById('family-count');
+    if (!list || !API || !API.listFamilyMembers) return;
+    API.listFamilyMembers().then(function (res) {
+      var members = (res && res.members) || [];
+      if (count) count.textContent = members.length + '/' + (res.maxMembers || 5);
+      var empty = document.getElementById('family-empty');
+      list.innerHTML = '';
+      if (!members.length) { if (empty) empty.style.display = ''; return; }
+      if (empty) empty.style.display = 'none';
+      members.forEach(function (m) {
+        var row = document.createElement('div');
+        row.className = 'family-member';
+        row.innerHTML = '<div class="family-member-info"><span class="family-member-name">' + (m.name || m.email) + '</span>'
+          + '<span class="family-member-email">' + m.email + '</span></div>'
+          + '<span class="family-member-badge family-member-badge-' + (m.status === 'active' ? 'active' : 'pending') + '">' + m.status + '</span>'
+          + '<button class="family-member-remove" data-id="' + m.id + '" aria-label="Remove">✕</button>';
+        list.appendChild(row);
+        var rm = row.querySelector('.family-member-remove');
+        if (rm) rm.addEventListener('click', function () {
+          API.removeFamilyMember(m.id).then(loadFamily).catch(function (e) {
+            if (window.EnclaveUI && window.EnclaveUI.toast) window.EnclaveUI.toast(e.message || 'Failed to remove member', 'error');
+          });
+        });
+      });
+    }).catch(function () {});
+  }
+
+  function setupFamily() {
+    var btn = document.getElementById('btn-family-add');
+    var email = document.getElementById('family-email');
+    var name = document.getElementById('family-name');
+    if (!btn || !window.EnclaveAPI) return;
+    btn.addEventListener('click', function () {
+      if (!email.value) return;
+      window.EnclaveAPI.addFamilyMember({ email: email.value, name: name.value, profile: 'full' })
+        .then(function () {
+          if (window.EnclaveUI && window.EnclaveUI.toast) window.EnclaveUI.toast('Family member invited', 'success');
+          email.value = ''; name.value = '';
+          loadFamily();
+        })
+        .catch(function (e) {
+          if (window.EnclaveUI && window.EnclaveUI.toast) window.EnclaveUI.toast(e.message || 'Failed to add member', 'error');
+        });
+    });
+  }
+
+  /* ─── Phase 6: Referrals ─── */
+  function loadReferrals() {
+    var API = window.EnclaveAPI;
+    var codeInput = document.getElementById('referral-code-input');
+    var stats = document.getElementById('referral-stats');
+    if (!codeInput || !API || !API.getReferralStats) return;
+    Promise.all([API.getReferralCode(), API.getReferralStats()])
+      .then(function (res) {
+        var code = (res[0] && res[0].code) || '';
+        var s = res[1] || {};
+        codeInput.value = code;
+        if (stats) stats.textContent = (s.referralCount || 0) + ' referrals · ' + (s.rewardClaimed || 0) + ' rewards claimed' + ((s.pendingRewards || 0) > 0 ? ' · ' + s.pendingRewards + ' pending' : '');
+      })
+      .catch(function () {});
+  }
+
+  function setupReferrals() {
+    var copyBtn = document.getElementById('btn-referral-copy');
+    var claimBtn = document.getElementById('btn-referral-claim');
+    var codeInput = document.getElementById('referral-code-input');
+    if (!window.EnclaveAPI) return;
+    if (copyBtn && codeInput) copyBtn.addEventListener('click', function () {
+      if (navigator.clipboard) navigator.clipboard.writeText(codeInput.value);
+      if (window.EnclaveUI && window.EnclaveUI.toast) window.EnclaveUI.toast('Referral link copied', 'success');
+    });
+    if (claimBtn) claimBtn.addEventListener('click', function () {
+      window.EnclaveAPI.claimReferralReward().then(function () {
+        if (window.EnclaveUI && window.EnclaveUI.toast) window.EnclaveUI.toast('Reward claimed!', 'success');
+        loadReferrals();
+      }).catch(function (e) {
+        if (window.EnclaveUI && window.EnclaveUI.toast) window.EnclaveUI.toast(e.message || 'No rewards to claim', 'error');
+      });
+    });
+  }
+
+  setTimeout(function () {
+    try { setupFamily(); } catch (e) {}
+    try { setupReferrals(); } catch (e) {}
+    try { loadFamily(); } catch (e) {}
+    try { loadReferrals(); } catch (e) {}
+  }, 1800);
 
 })();

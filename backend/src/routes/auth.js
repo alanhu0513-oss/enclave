@@ -5,6 +5,7 @@ const { v4: uuidv4 } = require('uuid');
 const { table } = require('../db/query');
 const { generateToken } = require('../middleware/auth');
 const { success, error } = require('../utils/response');
+const notify = require('../services/notifications');
 
 let OAuth2Client = null;
 try {
@@ -83,7 +84,16 @@ router.post('/forgot-password', async (req, res) => {
     const expires = Date.now() + 15 * 60 * 1000;
     passwordResetCodes.set(email.toLowerCase(), { code, expires, userId: user.id });
 
-    console.log(`[AUTH] Password reset requested for ${email}`);
+    // Send reset code via email
+    const resetHtml = `
+      <div style="font-family:system-ui,sans-serif;max-width:600px;margin:0 auto;padding:24px;">
+        <h2 style="color:#050507;">Enclave — Password Reset</h2>
+        <p>You requested a password reset. Your verification code:</p>
+        <div style="background:#050507;color:#00ff88;font-family:monospace;font-size:32px;padding:16px;border-radius:8px;text-align:center;letter-spacing:4px;margin:16px 0;">${code}</div>
+        <p style="color:#666;font-size:14px;">This code expires in 15 minutes. If you didn't request this, please ignore.</p>
+      </div>
+    `;
+    await notify.sendEmail(email, 'Enclave Password Reset Code', resetHtml);
 
     return success(res, null, 'If that email is registered, a reset code has been sent.');
   } catch (e) {

@@ -26,15 +26,91 @@ router.post('/face', upload.single('face'), async (req, res) => {
     if (!req.file) return error(res, 'Face image required', 400);
     const id = uuidv4();
     const { width = 64, height = 48 } = req.body;
+
+    // Compute face embedding for matching
+    let embeddingJson = null;
+    try {
+      const mlClient = require('../services/ml-client');
+      const embeddingResult = await mlClient.getEmbedding(req.file.path);
+      if (embeddingResult && embeddingResult.embedding) {
+        embeddingJson = JSON.stringify(embeddingResult.embedding);
+      }
+    } catch (e) {
+      console.warn('[BIOMETRICS] Failed to compute face embedding:', e.message);
+    }
+
     const faceprints = await table('faceprints');
     await faceprints.insert({
       id, user_id: req.user.userId, file_path: req.file.path,
       width: parseInt(width), height: parseInt(height),
+      embedding_json: embeddingJson,
       created_at: new Date().toISOString()
     });
     return success(res, { id, filePath: req.file.path }, 'Faceprint saved');
   } catch (e) {
     return error(res, e.message);
+  }
+});
+
+/** Identity change detection (Phase 4.2): compare a new scan to enrolled faceprint. */
+router.post('/identity-changes', upload.single('image'), async (req, res) => {
+  let filePath = null;
+  try {
+    if (!req.file) return error(res, 'Image file required', 400);
+    filePath = req.file.path;
+
+    const faceprints = await table('faceprints');
+    const enrolledList = await faceprints.filter({ user_id: req.user.userId });
+    const enrolled = Array.isArray(enrolledList) ? enrolledList : enrolledList ? [enrolledList] : [];
+    if (!enrolled.length) {
+      return error(res, 'No enrolled faceprint found. Enroll your face first.', 404);
+    }
+
+    const mlClient = require('../services/ml-client');
+    let best = null;
+    for (const fp of enrolled) {
+      if (!fp.file_path) continue;
+      try {
+        const result = await mlClient.matchFaces(filePath, fp.file_path, 0.2); // low threshold to capture degraded matches
+        if (result.error) continue;
+        if (!best || (result.similarity || 0) > (best.similarity || 0)) {
+          best = { faceprintId: fp.id, similarity: result.similarity, distance: result.distance };
+        }
+      } catch (_) {}
+    }
+
+    if (!best) {
+      return error(res, 'Face matching engine unavailable', 503);
+    }
+
+    // Track on timeline via a notification record so the UI surfaces it
+    const similarity = best.similarity || 0;
+    const status = similarity >= 0.65 ? 'normal' : (similarity >= 0.4 ? 'suspicious' : 'identity_change');
+    try {
+      const notifications = await table('notifications');
+      await notifications.insert({
+        id: uuidv4(),
+        user_id: req.user.userId,
+        type: status === 'normal' ? 'info' : 'alert',
+        title: status === 'normal' ? 'Identity match confirmed' : (status === 'suspicious' ? 'Suspicious identity variation' : 'Possible identity change detected'),
+        body: `Face similarity to enrolled profile is ${Math.round(similarity * 100)}%.`,
+        data: JSON.stringify({ faceprintId: best.faceprintId, similarity }),
+        read: false,
+        created_at: new Date().toISOString()
+      });
+    } catch (_) {}
+
+    return success(res, {
+      status,
+      similarity,
+      distance: best.distance,
+      faceprintId: best.faceprintId,
+      enrolledAt: enrolled[0].created_at,
+    }, 'Identity comparison complete');
+  } catch (e) {
+    return error(res, e.message);
+  } finally {
+    try { if (filePath) fs.unlinkSync(filePath); } catch (_) {}
   }
 });
 

@@ -9,6 +9,7 @@ process.env.DATABASE_URL = '';
 process.env.DATABASE_PATH = path.join(__dirname, '..', 'data', 'test-enclave.json');
 process.env.JWT_SECRET = 'test-secret-for-ci';
 process.env.PORT = '0';
+process.env.STRIPE_SECRET_KEY = '';
 
 // Clean test DB
 const testDb = process.env.DATABASE_PATH;

@@ -80,6 +80,9 @@ const shieldsRoutes = require('./routes/shields');
 const billingRoutes = require('./routes/billing');
 const communityRoutes = require('./routes/community');
 const revenueRoutes = require('./routes/revenue');
+const reportsRoutes = require('./routes/reports');
+const familyRoutes = require('./routes/family');
+const referralsRoutes = require('./routes/referrals');
 
 app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/biometrics', biometricsRoutes);
@@ -94,6 +97,9 @@ app.use('/api/shields', shieldsRoutes);
 app.use('/api/billing', billingRoutes);
 app.use('/api/community', communityRoutes);
 app.use('/api/revenue', revenueRoutes);
+app.use('/api/reports', reportsRoutes);
+app.use('/api/family', familyRoutes);
+app.use('/api/referrals', referralsRoutes);
 app.use('/api/legal', legalRoutes);
 
 app.get('/api/health', (req, res) => {
@@ -140,6 +146,25 @@ async function start() {
     if (lifecycleTimer.unref) lifecycleTimer.unref();
   } catch (e) {
     console.warn('[TAKEDOWN] lifecycle init warning:', e.message);
+  }
+
+  // Weekly email digest — every Monday 09:00 UTC (Phase 2.2)
+  try {
+    const digest = require('./services/digest');
+    const DIGEST_CHECK_INTERVAL = 10 * 60 * 1000; // check every 10 min
+    const digestTimer = setInterval(() => {
+      const now = new Date();
+      // Monday = day 1
+      if (now.getUTCDay() === 1 && now.getUTCHours() === 9 && now.getUTCMinutes() < 10) {
+        console.log('[DIGEST] Sending weekly digests...');
+        digest.sendDigestToAllUsers('weekly')
+          .then((r) => console.log(`[DIGEST] Completed: ${r.sent} sent, ${r.failed} failed`))
+          .catch((e) => console.warn('[DIGEST] batch send failed:', e.message));
+      }
+    }, DIGEST_CHECK_INTERVAL);
+    if (digestTimer.unref) digestTimer.unref();
+  } catch (e) {
+    console.warn('[DIGEST] scheduler init warning:', e.message);
   }
   app.listen(PORT, () => {
     console.log(`Enclave API running on http://localhost:${PORT}`);

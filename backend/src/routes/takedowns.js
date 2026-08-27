@@ -4,6 +4,26 @@ const fs = require('fs');
 const { authenticate } = require('../middleware/auth');
 const { success, error } = require('../utils/response');
 const takedownService = require('../services/takedown');
+const usage = require('../services/usage');
+const billing = require('../services/billing');
+
+// Create an in-app notification row (handled gracefully if it fails)
+async function createNotification(userId, title, body, data) {
+  try {
+    const notifications = await require('../db/query').table('notifications');
+    await notifications.insert({
+      id: require('uuid').v4(),
+      user_id: userId,
+      type: 'takedown',
+      title, body,
+      data: JSON.stringify(data || {}),
+      read: false,
+      created_at: new Date().toISOString(),
+    });
+  } catch (e) {
+    console.warn('[Takedown] Notification insert failed:', e.message);
+  }
+}
 
 const router = express.Router();
 router.use(authenticate);
@@ -106,6 +126,13 @@ router.get('/:id/verification', async (req, res) => {
 
 router.post('/:alertId/initiate', async (req, res) => {
   try {
+    // Check tier limit for takedowns
+    const status = await billing.getSubscriptionStatus(req.user.userId);
+    const limitCheck = await usage.checkLimit(req.user.userId, 'takedown', status.tier);
+    if (!limitCheck.allowed) {
+      return error(res, `Monthly takedown limit reached (${limitCheck.limit}). Upgrade to continue.`, 429);
+    }
+
     const { type = 'dmca', sendEmail = true } = req.body;
     if (!['dmca', 'cease_and_desist', 'take_it_down'].includes(type)) {
       return error(res, 'Type must be dmca, cease_and_desist, or take_it_down', 400);
@@ -114,6 +141,13 @@ router.post('/:alertId/initiate', async (req, res) => {
       req.params.alertId,
       req.user.userId,
       { type, sendEmail }
+    );
+    await usage.incrementUsage(req.user.userId, 'takedown');
+    createNotification(
+      req.user.userId,
+      'Takedown initiated',
+      `Your ${(type || 'dmca').replace(/_/g, ' ')} request has been ${result.emailSent ? 'sent' : 'prepared'}.`,
+      { alertId: req.params.alertId, takedownId: result.id }
     );
     return success(res, result, `Takedown ${result.emailSent ? 'sent' : 'prepared'}`);
   } catch (e) {
@@ -133,6 +167,12 @@ router.patch('/:id/status', async (req, res) => {
       req.user.userId,
       status,
       notes
+    );
+    createNotification(
+      req.user.userId,
+      'Takedown status updated',
+      `Your takedown is now marked as '${status}'.`,
+      { takedownId: req.params.id, status }
     );
     return success(res, result, `Takedown ${status}`);
   } catch (e) {

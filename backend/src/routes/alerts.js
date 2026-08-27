@@ -9,6 +9,20 @@ const { authenticate } = require('../middleware/auth');
 const { success, error } = require('../utils/response');
 const crawler = require('../services/crawler');
 const mlClient = require('../services/ml-client');
+const usage = require('../services/usage');
+const billing = require('../services/billing');
+const notifications = require('../services/notifications');
+
+// Notify user when a manual scan surfaces a likely identity threat (Phase 2.1)
+async function notifyOnThreat(userId, alert, confidence) {
+  if (confidence < 50) return;
+  try {
+    const users = await table('users');
+    const user = await users.find({ id: userId });
+    if (!user) return;
+    notifications.notifyNewAlert(user, alert).catch(() => {});
+  } catch (_) {}
+}
 
 const UPLOAD_DIR = process.env.UPLOAD_DIR || './uploads';
 const upload = multer({ dest: path.join(UPLOAD_DIR, 'temp'), limits: { fileSize: 10 * 1024 * 1024 } });
@@ -39,6 +53,13 @@ router.post('/scan/url', async (req, res) => {
   try {
     const { url } = req.body;
     if (!url) return error(res, 'URL is required', 400);
+
+    // Check tier limit for scans
+    const status = await billing.getSubscriptionStatus(req.user.userId);
+    const limitCheck = await usage.checkLimit(req.user.userId, 'scan', status.tier);
+    if (!limitCheck.allowed) {
+      return error(res, `Monthly scan limit reached (${limitCheck.limit}). Upgrade to continue.`, 429);
+    }
 
     let confidence = 0;
     let matchedOn = 'url submitted for review';
@@ -99,6 +120,8 @@ router.post('/scan/url', async (req, res) => {
       timestamp: now, created_at: now
     });
     const alert = await alerts.find({ id });
+    await usage.incrementUsage(req.user.userId, 'scan');
+    notifyOnThreat(req.user.userId, alert, confidence);
     return success(res, { ...toJson(alert), detection }, 'URL scanned');
   } catch (e) {
     return error(res, e.message);
@@ -108,6 +131,13 @@ router.post('/scan/url', async (req, res) => {
 router.post('/scan/image', upload.single('image'), async (req, res) => {
   try {
     if (!req.file) return error(res, 'Image file required', 400);
+
+    // Check tier limit for scans
+    const status = await billing.getSubscriptionStatus(req.user.userId);
+    const limitCheck = await usage.checkLimit(req.user.userId, 'scan', status.tier);
+    if (!limitCheck.allowed) {
+      return error(res, `Monthly scan limit reached (${limitCheck.limit}). Upgrade to continue.`, 429);
+    }
 
     const filePath = req.file.path;
     const result = await mlClient.detectImage(filePath);
@@ -145,6 +175,8 @@ router.post('/scan/image', upload.single('image'), async (req, res) => {
       timestamp: now, created_at: now
     });
     const alert = await alerts.find({ id });
+    await usage.incrementUsage(req.user.userId, 'scan');
+    notifyOnThreat(req.user.userId, alert, confidence);
     return success(res, { ...toJson(alert), detection: result.error ? null : result }, 'Image analyzed');
   } catch (e) {
     return error(res, e.message);
@@ -153,10 +185,18 @@ router.post('/scan/image', upload.single('image'), async (req, res) => {
 
 router.post('/deep-scan', async (req, res) => {
   try {
+    // Check tier limit for deep scans
+    const status = await billing.getSubscriptionStatus(req.user.userId);
+    const limitCheck = await usage.checkLimit(req.user.userId, 'deep_scan', status.tier);
+    if (!limitCheck.allowed) {
+      return error(res, `Monthly deep scan limit reached (${limitCheck.limit}). Upgrade to continue.`, 429);
+    }
+
     const users = await table('users');
     const user = await users.find({ id: req.user.userId });
     const userName = user?.full_name || 'unknown';
     const results = await crawler.scanCycle(req.user.userId, userName);
+    await usage.incrementUsage(req.user.userId, 'deep_scan');
     return success(res, { count: results.length, alerts: results }, 'Deep scan completed');
   } catch (e) {
     return error(res, e.message);
@@ -257,6 +297,67 @@ router.delete('/:id', async (req, res) => {
     return success(res, null, 'Alert deleted');
   } catch (e) {
     return error(res, e.message);
+  }
+});
+
+// ─── Watermark (Phase 4.3) ───
+const watermark = require('../services/watermark');
+
+/** Embed invisible watermark into a PNG photo. */
+router.post('/watermark/embed', upload.single('image'), async (req, res) => {
+  let filePath = null;
+  try {
+    if (!req.file) return error(res, 'Image file required', 400);
+    filePath = req.file.path;
+    const payload = {
+      userId: req.user.userId,
+      ts: Date.now(),
+      copyright: req.body.copyright || 'Enclave Vault',
+    };
+    const input = fs.readFileSync(filePath);
+    let outBuffer;
+    try {
+      outBuffer = watermark.embedWatermark(input, payload);
+    } catch (we) {
+      return error(res, we.message, 400);
+    }
+    const outName = `wm-${uuidv4()}.png`;
+    const outPath = path.join(UPLOAD_DIR, 'temp', outName);
+    fs.writeFileSync(outPath, outBuffer);
+    const id = uuidv4();
+    const documents = await table('documents');
+    await documents.insert({
+      id, user_id: req.user.userId, alert_id: null,
+      document_type: 'watermark', file_path: outPath,
+      created_at: new Date().toISOString()
+    });
+    const verified = watermark.verifyWatermark(outBuffer);
+    return success(res, {
+      filePath: outPath,
+      url: `/uploads/temp/${outName}`,
+      payload: verified,
+      verified: !!verified,
+    }, 'Watermark embedded');
+  } catch (e) {
+    return error(res, e.message);
+  } finally {
+    try { if (filePath) fs.unlinkSync(filePath); } catch (_) {}
+  }
+});
+/** Verify an invisible watermark on an uploaded PNG photo. */
+router.post('/watermark/verify', upload.single('image'), async (req, res) => {
+  let filePath = null;
+  try {
+    if (!req.file) return error(res, 'Image file required', 400);
+    filePath = req.file.path;
+    const input = fs.readFileSync(filePath);
+    const payload = watermark.verifyWatermark(input);
+    if (!payload) return success(res, { watermarked: false, payload: null }, 'No watermark detected');
+    return success(res, { watermarked: true, payload }, 'Valid watermark detected');
+  } catch (e) {
+    return error(res, e.message);
+  } finally {
+    try { if (filePath) fs.unlinkSync(filePath); } catch (_) {}
   }
 });
 

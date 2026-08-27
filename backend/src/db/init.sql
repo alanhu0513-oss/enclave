@@ -10,6 +10,11 @@ CREATE TABLE IF NOT EXISTS users (
   avatar_url TEXT,
   email_notifications BOOLEAN DEFAULT TRUE,
   fcm_token TEXT,
+  subscription_tier TEXT DEFAULT 'free',
+  subscription_status TEXT DEFAULT 'none',
+  stripe_customer_id TEXT,
+  stripe_subscription_id TEXT,
+  subscription_current_period_end TIMESTAMP WITH TIME ZONE,
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
@@ -21,6 +26,7 @@ CREATE TABLE IF NOT EXISTS faceprints (
   width INTEGER DEFAULT 64,
   height INTEGER DEFAULT 48,
   sha256_hash TEXT,
+  embedding_json TEXT,
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 
@@ -139,7 +145,18 @@ CREATE TABLE IF NOT EXISTS referral_redemptions (
   id TEXT PRIMARY KEY,
   referrer_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   referred_user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  code TEXT NOT NULL,
+  code TEXT,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS family_members (
+  id TEXT PRIMARY KEY,
+  owner_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  member_email TEXT NOT NULL,
+  member_name TEXT NOT NULL DEFAULT '',
+  role TEXT NOT NULL DEFAULT 'member',
+  profile TEXT NOT NULL DEFAULT 'full',
+  status TEXT NOT NULL DEFAULT 'pending',
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 
@@ -395,3 +412,37 @@ CREATE TABLE IF NOT EXISTS monitoring_state (
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE
 );
+
+-- Migration: Add billing columns to users table
+DO $$ BEGIN
+  ALTER TABLE users ADD COLUMN subscription_tier TEXT DEFAULT 'free';
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE users ADD COLUMN subscription_status TEXT DEFAULT 'none';
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE users ADD COLUMN stripe_customer_id TEXT;
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE users ADD COLUMN stripe_subscription_id TEXT;
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE users ADD COLUMN subscription_current_period_end TIMESTAMP WITH TIME ZONE;
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
+
+-- Migration: Add embedding_json to faceprints
+DO $$ BEGIN
+  ALTER TABLE faceprints ADD COLUMN embedding_json TEXT;
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
+
+-- Migration: Add sources_health to monitoring_state
+DO $$ BEGIN
+  ALTER TABLE monitoring_state ADD COLUMN sources_health TEXT DEFAULT '{}';
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;

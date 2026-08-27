@@ -53,18 +53,6 @@ router.post('/portal', authenticate, async (req, res) => {
   }
 });
 
-// Webhook is mounted in index.js with express.raw() before express.json()
-// This is a fallback for mock mode
-router.post('/webhook-fallback', async (req, res) => {
-  try {
-    const event = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-    const result = await billing.handleWebhook(event);
-    return success(res, result);
-  } catch (e) {
-    return error(res, e.message);
-  }
-});
-
 // ─── Usage ───
 
 router.get('/usage', authenticate, async (req, res) => {

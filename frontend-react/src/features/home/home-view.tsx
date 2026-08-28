@@ -19,7 +19,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { StaggerContainer, StaggerItem } from "@/components/ui/motion";
+import { StaggerContainer, StaggerItem, Kinetic } from "@/components/ui/motion";
 import { confidenceColor, confidenceLabel, cn } from "@/lib/utils";
 import {
   StreakWidget,
@@ -351,20 +351,22 @@ function StatTile({
     cyan: "bg-cyan/15 text-cyan",
   };
   return (
-    <Card>
-      <CardContent className="p-4 md:p-5">
-        <div
-          className={cn(
-            "mb-3 flex h-9 w-9 items-center justify-center rounded-lg",
-            colors[color]
-          )}
-        >
-          <Icon className="h-4.5 w-4.5" />
-        </div>
-        <p className="font-display text-2xl font-bold text-ink">{value}</p>
-        <p className="mt-0.5 text-xs text-ink-muted">{label}</p>
-      </CardContent>
-    </Card>
+    <Kinetic className="h-full">
+      <Card className="h-full">
+        <CardContent className="p-4 md:p-5">
+          <div
+            className={cn(
+              "mb-3 flex h-9 w-9 items-center justify-center rounded-lg",
+              colors[color]
+            )}
+          >
+            <Icon className="h-4.5 w-4.5" />
+          </div>
+          <p className="font-display text-2xl font-bold text-ink">{value}</p>
+          <p className="mt-0.5 text-xs text-ink-muted">{label}</p>
+        </CardContent>
+      </Card>
+    </Kinetic>
   );
 }
 
@@ -387,9 +389,12 @@ function QuickAction({
     purple: "bg-purple/15 text-purple",
   };
   return (
-    <button
+    <motion.button
+      whileHover={{ y: -2, x: 3 }}
+      whileTap={{ scale: 0.98 }}
+      transition={{ type: "spring", stiffness: 400, damping: 26 }}
       onClick={onClick}
-      className="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] p-3 text-left transition-all duration-200 hover:border-white/15 hover:bg-white/[0.05]"
+      className="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] p-3 text-left transition-colors duration-200 hover:border-green/25 hover:bg-white/[0.05]"
     >
       <span
         className={cn(
@@ -403,7 +408,7 @@ function QuickAction({
         <span className="block text-sm font-medium text-ink">{label}</span>
         <span className="block truncate text-xs text-ink-muted">{sub}</span>
       </span>
-    </button>
+    </motion.button>
   );
 }
 

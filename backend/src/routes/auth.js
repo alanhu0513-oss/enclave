@@ -3,7 +3,7 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
 const { table } = require('../db/query');
-const { generateToken } = require('../middleware/auth');
+const { generateTokenForUser, authenticate } = require('../middleware/auth');
 const { success, error } = require('../utils/response');
 const notify = require('../services/notifications');
 
@@ -31,11 +31,11 @@ router.post('/register', async (req, res) => {
     const hash = await bcrypt.hash(password, 12);
     const id = uuidv4();
     const now = new Date().toISOString();
-    await users.insert({
+    const userRow = await users.insert({
       id, email: email.toLowerCase(), password_hash: hash,
-      full_name: fullName, created_at: now, updated_at: now
+      full_name: fullName, token_version: 0, created_at: now, updated_at: now
     });
-    const token = generateToken(id, email);
+    const token = await generateTokenForUser({ id, email });
     return success(res, { token, user: { id, email, fullName } }, 'Account created', 201);
   } catch (e) {
     console.error('[AUTH] Register error:', e);
@@ -60,7 +60,7 @@ router.post('/login', async (req, res) => {
       ip_address: req.ip, attempted_at: new Date().toISOString()
     });
 
-    const token = generateToken(user.id, user.email);
+    const token = await generateTokenForUser(user);
     return success(res, { token, user: { id: user.id, email: user.email, fullName: user.full_name } }, 'Login successful');
   } catch (e) {
     console.error('[AUTH] Login error:', e);
@@ -163,11 +163,75 @@ router.post('/google', async (req, res) => {
       });
     }
 
-    const token = generateToken(user.id, user.email);
+    const token = await generateTokenForUser(user);
     return success(res, { token, user: { id: user.id, email: user.email, fullName: user.full_name } }, 'Google sign-in successful');
   } catch (e) {
     console.error('[AUTH] Google sign-in error:', e.message);
     return error(res, 'Invalid Google credential', 401);
+  }
+});
+
+// ─── Vault lock: verify account password before unlocking the screen ───
+router.post('/verify-password', authenticate, async (req, res) => {
+  try {
+    const { password } = req.body;
+    if (!password) return error(res, 'Password is required', 400);
+
+    const users = await table('users');
+    const user = await users.find({ id: req.user.userId });
+    if (!user || !user.password_hash) {
+      return error(res, 'Account has no password set', 400);
+    }
+    if (!(await bcrypt.compare(password, user.password_hash))) {
+      return error(res, 'Incorrect password', 401);
+    }
+    return success(res, { verified: true }, 'Password verified');
+  } catch (e) {
+    return error(res, e.message || 'Verification failed');
+  }
+});
+
+// ─── Logout: revoke all outstanding tokens for this account ───
+router.post('/logout', authenticate, async (req, res) => {
+  try {
+    const users = await table('users');
+    const user = await users.find({ id: req.user.userId });
+    if (user) {
+      await users.update({ id: user.id }, {
+        token_version: (user.token_version ?? user.version ?? 0) + 1,
+        updated_at: new Date().toISOString()
+      });
+    }
+    return success(res, null, 'Logged out');
+  } catch (e) {
+    return error(res, e.message || 'Logout failed');
+  }
+});
+
+// ─── Change password (authenticated) with full session revocation ───
+router.post('/change-password', authenticate, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) return error(res, 'Current and new password required', 400);
+    if (newPassword.length < 8) return error(res, 'Password must be at least 8 characters', 400);
+
+    const users = await table('users');
+    const user = await users.find({ id: req.user.userId });
+    if (!user || !user.password_hash) return error(res, 'Account has no password set', 400);
+    if (!(await bcrypt.compare(currentPassword, user.password_hash))) {
+      return error(res, 'Current password is incorrect', 401);
+    }
+
+    const hash = await bcrypt.hash(newPassword, 12);
+    await users.update({ id: user.id }, {
+      password_hash: hash,
+      token_version: (user.token_version ?? user.version ?? 0) + 1,
+      updated_at: new Date().toISOString()
+    });
+    const token = await generateTokenForUser({ id: user.id, email: user.email });
+    return success(res, { token, user: { id: user.id, email: user.email, fullName: user.full_name } }, 'Password changed');
+  } catch (e) {
+    return error(res, e.message || 'Change password failed');
   }
 });
 

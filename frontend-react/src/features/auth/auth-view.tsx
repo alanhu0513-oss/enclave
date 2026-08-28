@@ -7,6 +7,7 @@ import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Brand } from "@/components/ui/logo";
+import { CyberBackground } from "@/components/psychology/cyber-background";
 
 type Mode = "login" | "register" | "forgot";
 
@@ -24,7 +25,7 @@ export function AuthView() {
     e.preventDefault();
     try {
       if (mode === "login") {
-        await login(email, password);
+        await login(email, password, rememberMe);
       } else if (mode === "register") {
         await register(email, password, fullName);
         toast({ title: "Account created", variant: "success" });
@@ -44,6 +45,7 @@ export function AuthView() {
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden p-4">
+      <CyberBackground />
       <div className="vault-bg" />
       <div className="vault-grid" />
 
@@ -51,7 +53,7 @@ export function AuthView() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-        className="glass-strong relative w-full max-w-md overflow-hidden rounded-2xl p-8 shadow-2xl"
+        className="glass-strong relative z-10 w-full max-w-md overflow-hidden rounded-2xl p-8 shadow-2xl"
       >
         <div className="mb-8 flex flex-col items-center text-center">
           <Brand className="mb-4" />

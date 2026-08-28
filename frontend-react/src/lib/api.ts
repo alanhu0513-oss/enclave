@@ -13,9 +13,14 @@ export function getToken(): string | null {
   }
 }
 
-export function setToken(token: string) {
-  localStorage.setItem(TOKEN_KEY, token);
-  sessionStorage.setItem(TOKEN_KEY, token);
+export function setToken(token: string, remember: boolean = false) {
+  // Remembered tokens persist across sessions (localStorage).
+  // Non-remembered tokens live only in sessionStorage and clear when the tab closes.
+  if (remember) {
+    localStorage.setItem(TOKEN_KEY, token);
+  } else {
+    sessionStorage.setItem(TOKEN_KEY, token);
+  }
 }
 
 export function clearToken() {
@@ -87,6 +92,11 @@ export const api = {
   resetPassword: (email: string, code: string, newPassword: string) =>
     post("/auth/reset-password", { email, code, newPassword }),
   googleAuth: (credential: string) => post("/auth/google", { credential }),
+  verifyPassword: (password: string) =>
+    post<{ verified: boolean }>("/auth/verify-password", { password }),
+  logout: () => post("/auth/logout"),
+  changePassword: (currentPassword: string, newPassword: string) =>
+    post("/auth/change-password", { currentPassword, newPassword }),
 
   // Biometrics
   uploadFace: (file: File, width?: number, height?: number) => {

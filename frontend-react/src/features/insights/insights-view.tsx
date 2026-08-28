@@ -30,7 +30,7 @@ import { api } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { StaggerContainer, StaggerItem } from "@/components/ui/motion";
+import { StaggerContainer, StaggerItem, Kinetic } from "@/components/ui/motion";
 import { cn } from "@/lib/utils";
 import { getShieldStates } from "@/features/shields/shields-view";
 
@@ -348,14 +348,16 @@ function Metric({
     amber: "bg-amber/15 text-amber",
   };
   return (
-    <Card>
-      <CardContent className="p-5">
-        <div className={cn("mb-3 flex h-9 w-9 items-center justify-center rounded-lg", colors[color])}>
-          <Icon className="h-4 w-4" />
-        </div>
-        <p className="font-display text-2xl font-bold text-ink">{value}</p>
-        <p className="mt-0.5 text-xs text-ink-muted">{label}</p>
-      </CardContent>
-    </Card>
+    <Kinetic className="h-full">
+      <Card className="h-full">
+        <CardContent className="p-5">
+          <div className={cn("mb-3 flex h-9 w-9 items-center justify-center rounded-lg", colors[color])}>
+            <Icon className="h-4 w-4" />
+          </div>
+          <p className="font-display text-2xl font-bold text-ink">{value}</p>
+          <p className="mt-0.5 text-xs text-ink-muted">{label}</p>
+        </CardContent>
+      </Card>
+    </Kinetic>
   );
 }

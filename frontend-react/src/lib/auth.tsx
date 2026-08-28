@@ -12,12 +12,13 @@ interface AuthState {
   user: any | null;
   loading: boolean;
   locked: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string, remember?: boolean) => Promise<void>;
   register: (email: string, password: string, fullName: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   lock: () => void;
-  unlock: () => void;
+  unlock: (password: string) => Promise<void>;
   setUser: (u: any) => void;
+  verifyPassword: (password: string) => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -53,11 +54,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [user]);
 
-  const login = useCallback(async (email: string, password: string) => {
+  const login = useCallback(async (email: string, password: string, remember = false) => {
     setLoading(true);
     try {
       const data = (await api.login(email, password)) as any;
-      if (data?.token) setToken(data.token);
+      if (data?.token) setToken(data.token, remember);
       const u = {
         email,
         ...(data.user ?? {}),
@@ -65,6 +66,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       };
       setUser(u);
       sessionStorage.setItem("enclave_user", JSON.stringify(u));
+      sessionStorage.setItem("enclave_remember", remember ? "1" : "0");
       setLocked(false);
       sessionStorage.removeItem("enclave_locked");
     } finally {
@@ -85,12 +87,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [login]
   );
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    try {
+      // Server-side token revocation: invalidates any other sessions too.
+      await api.logout();
+    } catch {
+      // Revocation best-effort; still clear the local session.
+    }
     clearToken();
     setUser(null);
     setLocked(false);
     sessionStorage.removeItem("enclave_user");
     sessionStorage.removeItem("enclave_locked");
+    sessionStorage.removeItem("enclave_remember");
   }, []);
 
   const lock = useCallback(() => {
@@ -98,14 +107,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     sessionStorage.setItem("enclave_locked", "1");
   }, []);
 
-  const unlock = useCallback(() => {
+  const unlock = useCallback(async (password: string) => {
+    // Real security: require the account password before unlocking the vault.
+    await api.verifyPassword(password);
     setLocked(false);
     sessionStorage.removeItem("enclave_locked");
   }, []);
 
+  const verifyPassword = useCallback(async (password: string) => {
+    try {
+      await api.verifyPassword(password);
+      return true;
+    } catch {
+      return false;
+    }
+  }, []);
+
   return (
     <AuthContext.Provider
-      value={{ user, loading, locked, login, register, logout, lock, unlock, setUser }}
+      value={{ user, loading, locked, login, register, logout, lock, unlock, setUser, verifyPassword }}
     >
       {children}
     </AuthContext.Provider>

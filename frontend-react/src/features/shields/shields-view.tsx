@@ -4,7 +4,7 @@ import { useApp } from "@/lib/app-context";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { StaggerContainer, StaggerItem } from "@/components/ui/motion";
+import { StaggerContainer, StaggerItem, Kinetic } from "@/components/ui/motion";
 import { cn } from "@/lib/utils";
 
 const SHIELDS = [
@@ -81,43 +81,45 @@ export function ShieldsView() {
           const on = toggles[shield.key];
           return (
             <StaggerItem key={shield.key}>
-              <Card
-                className={cn(
-                  "relative h-full overflow-hidden transition-all duration-300",
-                  on ? "border-white/[0.12]" : "opacity-60"
-                )}
-              >
-                {on && (
-                  <div className="pointer-events-none absolute -right-16 -top-16 h-40 w-40 rounded-full bg-green/[0.06] blur-2xl" />
-                )}
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div
-                      className={cn(
-                        "mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-white/[0.05]",
-                        on ? shield.color.split(" ")[0] : "text-ink-faint"
-                      )}
-                    >
-                      {on ? (
-                        <ShieldCheck className="h-5 w-5 text-green" />
-                      ) : (
-                        <Shield className="h-5 w-5" />
-                      )}
+              <Kinetic className="h-full">
+                <Card
+                  className={cn(
+                    "relative h-full overflow-hidden transition-all duration-300",
+                    on ? "border-white/[0.12]" : "opacity-70"
+                  )}
+                >
+                  {on && (
+                    <div className="pointer-events-none absolute -right-16 -top-16 h-40 w-40 rounded-full bg-green/[0.06] blur-2xl" />
+                  )}
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div
+                        className={cn(
+                          "mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-white/[0.05]",
+                          on ? shield.color.split(" ")[0] : "text-ink-faint"
+                        )}
+                      >
+                        {on ? (
+                          <ShieldCheck className="h-5 w-5 text-green" />
+                        ) : (
+                          <Shield className="h-5 w-5" />
+                        )}
+                      </div>
+                      <Switch
+                        checked={on}
+                        onCheckedChange={(v) => toggle(shield.key, v)}
+                      />
                     </div>
-                    <Switch
-                      checked={on}
-                      onCheckedChange={(v) => toggle(shield.key, v)}
-                    />
-                  </div>
-                  <CardTitle>{shield.name}</CardTitle>
-                  <CardDescription>{shield.desc}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Badge variant={on ? "green" : "muted"}>
-                    {on ? "Operational" : "Standby"}
-                  </Badge>
-                </CardContent>
-              </Card>
+                    <CardTitle>{shield.name}</CardTitle>
+                    <CardDescription>{shield.desc}</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Badge variant={on ? "green" : "muted"}>
+                      {on ? "Operational" : "Standby"}
+                    </Badge>
+                  </CardContent>
+                </Card>
+              </Kinetic>
             </StaggerItem>
           );
         })}

@@ -7,7 +7,8 @@ import {
   BarChart3,
   Settings,
   Lock,
-  ChevronLeft,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useApp, type TabId } from "@/lib/app-context";
@@ -29,9 +30,17 @@ interface SidebarProps {
   mobile?: boolean;
   open?: boolean;
   onClose?: () => void;
+  collapsed?: boolean;
+  onToggleCollapsed?: () => void;
 }
 
-export function Sidebar({ mobile = false, open, onClose }: SidebarProps) {
+export function Sidebar({
+  mobile = false,
+  open,
+  onClose,
+  collapsed = false,
+  onToggleCollapsed,
+}: SidebarProps) {
   const { tab, setTab, unread } = useApp();
   const { user, lock } = useAuth();
   const [planModalOpen, setPlanModalOpen] = useState(false);
@@ -39,6 +48,8 @@ export function Sidebar({ mobile = false, open, onClose }: SidebarProps) {
   const initials = (user?.fullName || user?.email || "U")
     .slice(0, 2)
     .toUpperCase();
+
+  const effectiveCollapsed = !mobile && collapsed;
 
   return (
     <>
@@ -55,27 +66,48 @@ export function Sidebar({ mobile = false, open, onClose }: SidebarProps) {
         animate={{
           x: !open && mobile ? "-100%" : 0,
           opacity: 1,
+          width: effectiveCollapsed ? 76 : 260,
         }}
-        transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+        transition={{
+          width: { duration: 0.28, ease: [0.22, 1, 0.36, 1] },
+          x: { duration: 0.25, ease: [0.22, 1, 0.36, 1] },
+        }}
         className={cn(
-          "fixed inset-y-0 left-0 z-40 flex w-[260px] flex-col border-r border-white/[0.07] bg-surface-1/95 backdrop-blur-xl md:sticky md:top-0 md:h-screen",
+          "fixed inset-y-0 left-0 z-40 flex flex-col overflow-hidden border-r border-white/[0.07] bg-surface-1/95 backdrop-blur-xl md:sticky md:top-0 md:h-screen",
           mobile ? "md:hidden" : "hidden md:flex"
         )}
       >
         {/* Brand */}
-        <div className="flex h-16 items-center justify-between px-5">
+        <div
+          className={cn(
+            "flex h-16 items-center justify-between px-5",
+            effectiveCollapsed && "justify-center px-2"
+          )}
+        >
           <div className="flex items-center gap-2.5">
             <ShieldMark size={28} />
-            <span className="font-display text-[15px] font-bold tracking-[0.26em] text-ink">
-              ENCLAVE
-            </span>
-          </div>
-          <ChevronLeft
-            className={cn(
-              "h-4 w-4 text-ink-faint transition-opacity",
-              mobile ? "opacity-0" : "md:hidden"
+            {!effectiveCollapsed && (
+              <span className="font-display text-[15px] font-bold tracking-[0.26em] text-ink">
+                ENCLAVE
+              </span>
             )}
-          />
+          </div>
+          {!mobile && (
+            <button
+              onClick={onToggleCollapsed}
+              title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+              className={cn(
+                "rounded-lg p-1.5 text-ink-faint transition-colors hover:bg-white/[0.07] hover:text-ink",
+                effectiveCollapsed ? "hidden" : ""
+              )}
+            >
+              {collapsed ? (
+                <PanelLeftOpen className="h-4 w-4" />
+              ) : (
+                <PanelLeftClose className="h-4 w-4" />
+              )}
+            </button>
+          )}
         </div>
 
         {/* Nav */}
@@ -90,11 +122,11 @@ export function Sidebar({ mobile = false, open, onClose }: SidebarProps) {
                   setTab(item.id);
                   onClose?.();
                 }}
+                title={effectiveCollapsed ? item.label : undefined}
                 className={cn(
                   "group relative flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium transition-all duration-200",
-                  active
-                    ? "text-ink"
-                    : "text-ink-muted hover:text-ink"
+                  effectiveCollapsed && "justify-center px-2",
+                  active ? "text-ink" : "text-ink-muted hover:text-ink"
                 )}
               >
                 {active && (
@@ -109,13 +141,15 @@ export function Sidebar({ mobile = false, open, onClose }: SidebarProps) {
                 )}
                 <Icon
                   className={cn(
-                    "relative z-10 h-[18px] w-[18px] transition-colors",
+                    "relative z-10 h-[18px] w-[18px] shrink-0 transition-colors",
                     active ? "text-green" : "text-ink-faint group-hover:text-ink-muted"
                   )}
                 />
-                <span className="relative z-10">{item.label}</span>
+                {!effectiveCollapsed && (
+                  <span className="relative z-10 whitespace-nowrap">{item.label}</span>
+                )}
                 {item.id === "alerts" && unread > 0 && (
-                  <span className="relative z-10 ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-red px-1.5 text-[11px] font-bold text-white">
+                  <span className="absolute right-2 top-1/2 z-10 flex h-4 min-w-4 -translate-y-1/2 items-center justify-center rounded-full bg-red px-1 text-[10px] font-bold text-white">
                     {unread > 99 ? "99+" : unread}
                   </span>
                 )}
@@ -126,29 +160,47 @@ export function Sidebar({ mobile = false, open, onClose }: SidebarProps) {
 
         {/* Bottom: user + lock */}
         <div className="border-t border-white/[0.07] p-3">
-          <div className="flex items-center gap-3 rounded-xl px-2 py-2">
-            <button
-              onClick={() => setPlanModalOpen(true)}
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-green to-cyan text-xs font-bold text-black transition-all hover:scale-105"
-            >
-              {initials}
-            </button>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium text-ink">
-                {user?.fullName || "User"}
-              </p>
-              <p className="text-xs text-ink-faint">
-                {(user?.plan || "free").toUpperCase()} PLAN
-              </p>
+          {effectiveCollapsed ? (
+            <div className="flex flex-col items-center gap-2">
+              <button
+                onClick={() => setPlanModalOpen(true)}
+                className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-green to-cyan text-xs font-bold text-black transition-all hover:scale-105"
+              >
+                {initials}
+              </button>
+              <button
+                onClick={lock}
+                title="Lock Vault"
+                className="rounded-lg p-2 text-ink-faint transition-colors hover:bg-white/[0.07] hover:text-ink"
+              >
+                <Lock className="h-4 w-4" />
+              </button>
             </div>
-            <button
-              onClick={lock}
-              title="Lock Vault"
-              className="rounded-lg p-2 text-ink-faint transition-colors hover:bg-white/[0.07] hover:text-ink"
-            >
-              <Lock className="h-4 w-4" />
-            </button>
-          </div>
+          ) : (
+            <div className="flex items-center gap-3 rounded-xl px-2 py-2">
+              <button
+                onClick={() => setPlanModalOpen(true)}
+                className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-green to-cyan text-xs font-bold text-black transition-all hover:scale-105"
+              >
+                {initials}
+              </button>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium text-ink">
+                  {user?.fullName || "User"}
+                </p>
+                <p className="text-xs text-ink-faint">
+                  {(user?.plan || "free").toUpperCase()} PLAN
+                </p>
+              </div>
+              <button
+                onClick={lock}
+                title="Lock Vault"
+                className="rounded-lg p-2 text-ink-faint transition-colors hover:bg-white/[0.07] hover:text-ink"
+              >
+                <Lock className="h-4 w-4" />
+              </button>
+            </div>
+          )}
         </div>
       </motion.aside>
 

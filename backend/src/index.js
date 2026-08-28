@@ -24,7 +24,7 @@ if (!process.env.JWT_SECRET || process.env.JWT_SECRET === 'change-me-in-producti
 // ─── Rate Limiters ───
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 20,
+  max: parseInt(process.env.AUTH_RATE_LIMIT_MAX, 10) || 20,
   message: { success: false, message: 'Too many authentication attempts. Please try again in 15 minutes.' },
   standardHeaders: true,
   legacyHeaders: false,
@@ -32,7 +32,7 @@ const authLimiter = rateLimit({
 
 const globalLimiter = rateLimit({
   windowMs: 1 * 60 * 1000,
-  max: 120,
+  max: parseInt(process.env.GLOBAL_RATE_LIMIT_MAX, 10) || 120,
   message: { success: false, message: 'Rate limit exceeded. Please slow down.' },
   standardHeaders: true,
   legacyHeaders: false,

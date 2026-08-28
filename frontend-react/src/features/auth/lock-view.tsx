@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "motion/react";
-import { Lock, Unlock, Loader2 } from "lucide-react";
+import { Lock, Unlock, Loader2, ShieldAlert } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,15 +10,19 @@ export function LockView() {
   const { unlock } = useAuth();
   const [password, setPassword] = useState("");
   const [checking, setChecking] = useState(false);
+  const [error, setError] = useState("");
 
-  function submit(e: React.FormEvent) {
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
     setChecking(true);
-    setTimeout(() => {
+    setError("");
+    try {
+      await unlock(password);
+    } catch (err: any) {
+      setError(err?.message || "Incorrect password. Please try again.");
+    } finally {
       setChecking(false);
-      // Simple client-side mock of unlocking for the vault lock screen
-      unlock();
-    }, 500);
+    }
   }
 
   return (
@@ -46,13 +50,22 @@ export function LockView() {
             <Input
               type="password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                setError("");
+              }}
               placeholder="Password"
               className="pl-10"
               required
               autoFocus
             />
           </div>
+          {error && (
+            <div className="flex items-center gap-2 rounded-lg border border-red/30 bg-red/10 px-3 py-2 text-left text-xs text-red">
+              <ShieldAlert className="h-3.5 w-3.5 shrink-0" />
+              {error}
+            </div>
+          )}
           <Button type="submit" className="w-full" disabled={checking}>
             {checking ? (
               <Loader2 className="h-4 w-4 animate-spin" />

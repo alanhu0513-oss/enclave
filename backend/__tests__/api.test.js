@@ -150,6 +150,77 @@ describe('Auth - Google', () => {
   });
 });
 
+describe('Security - Vault lock & token revocation', () => {
+  const SEC_EMAIL = 'seccheck@example.com';
+  const SEC_PASS = 'SecPass123!';
+  let token;
+
+  beforeAll(async () => {
+    // provision an isolated test account
+    await request(app)
+      .post('/api/auth/register')
+      .send({ email: SEC_EMAIL, password: SEC_PASS, fullName: 'Sec Check' });
+    const res = await request(app)
+      .post('/api/auth/login')
+      .send({ email: SEC_EMAIL, password: SEC_PASS });
+    token = res.body.data.token;
+    expect(token).toBeTruthy();
+  });
+
+  it('POST /api/auth/verify-password verifies correct password', async () => {
+    const res = await request(app)
+      .post('/api/auth/verify-password')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ password: SEC_PASS });
+    expect(res.status).toBe(200);
+    expect(res.body.data.verified).toBe(true);
+  });
+
+  it('POST /api/auth/verify-password rejects wrong password', async () => {
+    const res = await request(app)
+      .post('/api/auth/verify-password')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ password: 'WrongPass123!' });
+    expect(res.status).toBe(401);
+  });
+
+  it('POST /api/auth/logout revokes existing tokens server-side', async () => {
+    const res = await request(app)
+      .post('/api/auth/logout')
+      .set('Authorization', `Bearer ${token}`)
+      .send({});
+    expect(res.status).toBe(200);
+    const after = await request(app)
+      .get('/api/alerts')
+      .set('Authorization', `Bearer ${token}`);
+    expect(after.status).toBe(401);
+  });
+
+  it('POST /api/auth/change-password revokes old tokens and issues a new one', async () => {
+    let res = await request(app)
+      .post('/api/auth/login')
+      .send({ email: SEC_EMAIL, password: SEC_PASS });
+    const oldToken = res.body.data.token;
+
+    res = await request(app)
+      .post('/api/auth/change-password')
+      .set('Authorization', `Bearer ${oldToken}`)
+      .send({ currentPassword: SEC_PASS, newPassword: 'NewPass456!' });
+    expect(res.status).toBe(200);
+    const newToken = res.body.data.token;
+
+    const oldRejected = await request(app)
+      .get('/api/alerts')
+      .set('Authorization', `Bearer ${oldToken}`);
+    expect(oldRejected.status).toBe(401);
+
+    const works = await request(app)
+      .get('/api/alerts')
+      .set('Authorization', `Bearer ${newToken}`);
+    expect(works.status).toBe(200);
+  });
+});
+
 describe('Protected Routes', () => {
   let token;
 

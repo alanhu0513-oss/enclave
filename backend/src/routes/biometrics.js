@@ -6,7 +6,7 @@ const { table } = require('../db/query');
 const { authenticate } = require('../middleware/auth');
 const { success, error } = require('../utils/response');
 
-const UPLOAD_DIR = process.env.UPLOAD_DIR || './uploads';
+const { UPLOAD_DIR } = require('../utils/upload-dir');
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     const dirs = { face: 'faces', voice: 'voices', signature: 'signatures' };

@@ -12,7 +12,7 @@ const { table } = require('../db/query');
 const notifications = require('./notifications');
 const evidenceChain = require('./evidence-chain');
 
-const UPLOAD_DIR = process.env.UPLOAD_DIR || './uploads';
+const { UPLOAD_DIR } = require('../utils/upload-dir');
 const APP_URL = process.env.APP_URL || 'http://localhost:3000';
 
 /* Verification re-crawl schedule (hours after sent) */

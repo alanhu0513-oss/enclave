@@ -6,9 +6,7 @@ COPY backend/package*.json ./
 RUN npm ci --omit=dev
 COPY backend/src ./src
 
-RUN mkdir -p /data && chown node:node /data
-
-USER node
+RUN mkdir -p /data
 
 ENV NODE_ENV=production
 ENV PORT=3000

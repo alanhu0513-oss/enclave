@@ -15,7 +15,7 @@ const notifications = require('./notifications');
 const activeSessions = new Map();
 const scannedUrls = new Map();
 
-const UPLOAD_DIR = process.env.UPLOAD_DIR || './uploads';
+const { UPLOAD_DIR } = require('../utils/upload-dir');
 
 /* ─── Search Engines ─── */
 

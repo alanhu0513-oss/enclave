@@ -9,7 +9,7 @@ const usage = require('../services/usage');
 const billing = require('../services/billing');
 const { table } = require('../db/query');
 
-const UPLOAD_DIR = process.env.UPLOAD_DIR || './uploads';
+const { UPLOAD_DIR } = require('../utils/upload-dir');
 const upload = multer({
   dest: path.join(UPLOAD_DIR, 'temp'),
   limits: { fileSize: 10 * 1024 * 1024 },

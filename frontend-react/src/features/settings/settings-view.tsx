@@ -4,8 +4,6 @@ import {
   Save,
   Loader2,
   CreditCard,
-  Users,
-  Gift,
   Bell,
   LogOut,
 } from "lucide-react";
@@ -17,31 +15,24 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { StaggerContainer, StaggerItem } from "@/components/ui/motion";
+import { FamilyPanel } from "./family-panel";
+import { ReferralPanel } from "./referral-panel";
+import { PlanModal } from "@/components/shell/plan-modal";
 
 export function SettingsView() {
   const { toast } = useApp();
   const { user, setUser, logout } = useAuth();
   const [fullName, setFullName] = useState(user?.fullName || "");
   const [saving, setSaving] = useState(false);
-  const [family, setFamily] = useState<any[]>([]);
-  const [referral, setReferral] = useState<string>("");
+  const [planOpen, setPlanOpen] = useState(false);
   const [sub, setSub] = useState<any>(null);
 
   useEffect(() => {
     let active = true;
     (async () => {
       try {
-        const [fam, ref, subscription] = await Promise.all([
-          api.listFamilyMembers().catch(() => []),
-          api.getReferralCode().catch(() => ""),
-          api.getSubscription().catch(() => null),
-        ]);
-        if (active) {
-          setFamily(fam);
-          if (typeof ref === "string") setReferral(ref);
-          else if (ref?.code) setReferral(ref.code);
-          setSub(subscription);
-        }
+        const subscription = await api.getSubscription().catch(() => null);
+        if (active) setSub(subscription);
       } catch {
         /* ignore */
       }
@@ -139,7 +130,7 @@ export function SettingsView() {
                   </p>
                 </div>
               </div>
-              <Button variant="glass" onClick={() => toast({ title: "Upgrade flow coming soon", variant: "info" })}>
+              <Button variant="glass" onClick={() => setPlanOpen(true)}>
                 Upgrade
               </Button>
             </CardContent>
@@ -148,72 +139,12 @@ export function SettingsView() {
 
         {/* Family */}
         <StaggerItem>
-          <Card>
-            <CardHeader>
-              <CardTitle>Family Protection</CardTitle>
-              <CardDescription>Extend monitoring to loved ones</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {family.length === 0 ? (
-                <div className="flex items-center gap-3 py-2 text-ink-muted">
-                  <Users className="h-5 w-5 text-ink-faint" />
-                  <p className="text-sm">No family members yet</p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {family.map((m) => (
-                    <div
-                      key={m.id}
-                      className="flex items-center gap-3 rounded-lg border border-white/[0.06] p-3"
-                    >
-                      <Users className="h-4 w-4 text-green" />
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-ink">{m.name}</p>
-                        <p className="text-xs text-ink-muted">{m.relation}</p>
-                      </div>
-                      <Badge variant="cyan">Protected</Badge>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <FamilyPanel />
         </StaggerItem>
 
         {/* Referrals */}
         <StaggerItem>
-          <Card>
-            <CardHeader>
-              <CardTitle>Referral Program</CardTitle>
-              <CardDescription>Invite friends & earn rewards</CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple/15 text-purple">
-                  <Gift className="h-5 w-5" />
-                </div>
-                {referral ? (
-                  <div>
-                    <p className="font-mono text-sm font-semibold text-ink">{referral}</p>
-                    <p className="text-xs text-ink-muted">Your referral code</p>
-                  </div>
-                ) : (
-                  <p className="text-sm text-ink-muted">Share your code to earn perks</p>
-                )}
-              </div>
-              <Button
-                variant="glass"
-                onClick={() => {
-                  if (referral) {
-                    navigator.clipboard?.writeText(referral);
-                    toast({ title: "Referral code copied", variant: "success" });
-                  }
-                }}
-              >
-                Copy
-              </Button>
-            </CardContent>
-          </Card>
+          <ReferralPanel />
         </StaggerItem>
 
         {/* Notifications + Sign out */}
@@ -243,6 +174,8 @@ export function SettingsView() {
           </Card>
         </StaggerItem>
       </StaggerContainer>
+
+      <PlanModal open={planOpen} onClose={() => setPlanOpen(false)} />
     </div>
   );
 }

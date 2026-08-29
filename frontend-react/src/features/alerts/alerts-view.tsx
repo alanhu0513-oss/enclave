@@ -18,6 +18,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { StaggerContainer, StaggerItem } from "@/components/ui/motion";
 import { confidenceColor, confidenceLabel, timeAgo } from "@/lib/utils";
 
+const STATUS_META: Record<string, { label: string; color: string }> = {
+  PENDING_REVIEW: { label: "Review", color: "var(--amber)" },
+  UNRESOLVED: { label: "Open", color: "var(--red)" },
+  RESOLVED_SAFE: { label: "Safe", color: "var(--green)" },
+  NOTICE_GENERATED: { label: "Notice sent", color: "var(--cyan)" },
+  RESOLVED: { label: "Resolved", color: "var(--green)" },
+};
+
 export function AlertsView() {
   const { toast } = useApp();
   const psych = usePsychology();
@@ -164,9 +172,24 @@ export function AlertsView() {
                             {confidenceLabel(conf)}
                           </Badge>
                         </div>
-                        <p className="mt-0.5 text-xs text-ink-muted">
+                        <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink-muted">
                           {timeAgo(a.created_at)}
                           {a.type ? ` · ${a.type}` : ""}
+                          {a.status && STATUS_META[a.status] && (
+                            <span
+                              className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+                              style={{
+                                color: STATUS_META[a.status].color,
+                                background: STATUS_META[a.status].color + "1a",
+                              }}
+                            >
+                              <span
+                                className="h-1.5 w-1.5 rounded-full"
+                                style={{ background: STATUS_META[a.status].color }}
+                              />
+                              {STATUS_META[a.status].label}
+                            </span>
+                          )}
                         </p>
                       </div>
 

@@ -10,6 +10,7 @@ import { ShieldsView } from "@/features/shields/shields-view";
 import { ScanView } from "@/features/scan/scan-view";
 import { AlertsView } from "@/features/alerts/alerts-view";
 import { InsightsView } from "@/features/insights/insights-view";
+import { ReportsView } from "@/features/reports/reports-view";
 import { SettingsView } from "@/features/settings/settings-view";
 import { FadeIn } from "@/components/ui/motion";
 
@@ -64,7 +65,7 @@ export function AppShell() {
         <div className="flex flex-1">
           <Sidebar collapsed={collapsed} onToggleCollapsed={toggleCollapsed} />
           <main
-            className="relative flex-1 overflow-y-visible px-4 py-6 md:px-8 md:py-8"
+            className="relative z-10 flex-1 overflow-visible px-4 pb-24 pt-6 md:px-8 md:pt-8"
             role="main"
           >
             <FadeIn key={tab}>
@@ -73,6 +74,7 @@ export function AppShell() {
               {tab === "scan" && <ScanView />}
               {tab === "alerts" && <AlertsView />}
               {tab === "insights" && <InsightsView />}
+              {tab === "reports" && <ReportsView />}
               {tab === "settings" && <SettingsView />}
             </FadeIn>
           </main>

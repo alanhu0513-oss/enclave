@@ -5,6 +5,7 @@ import {
   ScanSearch,
   Bell,
   BarChart3,
+  FileText,
   Settings,
   Lock,
   PanelLeftClose,
@@ -23,6 +24,7 @@ const NAV: { id: TabId; label: string; icon: typeof Home }[] = [
   { id: "scan", label: "Scan", icon: ScanSearch },
   { id: "alerts", label: "Alerts", icon: Bell },
   { id: "insights", label: "Insights", icon: BarChart3 },
+  { id: "reports", label: "Reports", icon: FileText },
   { id: "settings", label: "Settings", icon: Settings },
 ];
 

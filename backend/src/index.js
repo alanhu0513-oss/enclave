@@ -54,10 +54,6 @@ app.use(cors({
   credentials: true
 }));
 app.use(morgan('dev'));
-app.use(express.json({ limit: '5mb' }));
-app.use(express.urlencoded({ extended: true, limit: '5mb' }));
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
-
 app.use('/api', globalLimiter);
 
 // Stripe webhook needs raw body — mount BEFORE express.json()
@@ -65,6 +61,10 @@ const stripeWebhookHandler = require('./routes/billing').webhookRaw;
 if (stripeWebhookHandler) {
   app.post('/api/billing/webhook', express.raw({ type: 'application/json' }), stripeWebhookHandler);
 }
+
+app.use(express.json({ limit: '5mb' }));
+app.use(express.urlencoded({ extended: true, limit: '5mb' }));
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 const authRoutes = require('./routes/auth');
 const biometricsRoutes = require('./routes/biometrics');

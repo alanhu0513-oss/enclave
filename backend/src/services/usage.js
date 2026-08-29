@@ -50,7 +50,10 @@ async function incrementUsage(userId, type, count) {
 
     if (existing) {
       const field = type === 'deep_scan' ? 'deep_scans' :
-                    type === 'api_call' ? 'api_calls' : type;
+                    type === 'api_call' ? 'api_calls' :
+                    type === 'scan' ? 'scans' :
+                    type === 'alert' ? 'alerts' :
+                    type === 'takedown' ? 'takedowns' : type;
       const newVal = (existing[field] || 0) + count;
       await usage.update({ id: existing.id }, {
         [field]: newVal,
@@ -62,9 +65,9 @@ async function incrementUsage(userId, type, count) {
         id: require('uuid').v4(),
         user_id: userId,
         month: monthKey,
-        scans: type === 'scans' ? count : 0,
-        alerts: type === 'alerts' ? count : 0,
-        takedowns: type === 'takedowns' ? count : 0,
+        scans: type === 'scan' ? count : 0,
+        alerts: type === 'alert' ? count : 0,
+        takedowns: type === 'takedown' ? count : 0,
         deep_scans: type === 'deep_scan' ? count : 0,
         api_calls: type === 'api_call' ? count : 0,
         created_at: new Date().toISOString(),

@@ -3,8 +3,6 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "start": "node backend/src/index.js",
-    "postinstall": "ln -sf ../node_modules backend/node_modules"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

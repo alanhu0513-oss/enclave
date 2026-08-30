@@ -13,7 +13,6 @@ import {
   Sparkles,
   ArrowRight,
   ArrowLeft,
-  ChevronRight,
   FileImage,
   Mic,
   Film,
@@ -27,7 +26,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { StaggerContainer, StaggerItem } from "@/components/ui/motion";
+import { StaggerContainer, StaggerItem, Kinetic, FadeIn } from "@/components/ui/motion";
+import { SectionHeader } from "@/components/ui/dashboard";
 import { confidenceColor, confidenceLabel, cn } from "@/lib/utils";
 
 type Tool = "url" | "image" | "deep" | "reverse" | "watermark" | "audio" | "video" | "multi-face";
@@ -166,32 +166,37 @@ export function ScanView() {
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-cyan/15 text-cyan">
-          <ScanSearch className="h-5 w-5" />
-        </div>
-        <div>
-          <h2 className="font-display text-xl font-bold text-ink">Deep Scan</h2>
-          <p className="text-sm text-ink-muted">
-            Detect deepfakes & unauthorized use of your identity
-          </p>
-        </div>
-      </div>
+      <FadeIn>
+        <SectionHeader
+          icon={ScanSearch}
+          title="Deep Scan"
+          description="Detect deepfakes & unauthorized use of your identity"
+        />
+      </FadeIn>
 
       {/* Step indicator */}
       <div className="flex items-center gap-1.5">
         {STEP_LABELS.map((label, i) => (
           <div key={label} className="flex items-center gap-1.5">
-            <div
+            <motion.div
+              animate={i <= stepIdx ? { scale: [1, 1.2, 1] } : {}}
+              transition={{ duration: 0.4 }}
               className={cn(
-                "flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold transition-colors",
-                i <= stepIdx ? "bg-cyan/20 text-cyan" : "bg-white/[0.04] text-ink-faint"
+                "flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold transition-all duration-300",
+                i < stepIdx ? "bg-green/20 text-green" :
+                i === stepIdx ? "bg-cyan/20 text-cyan shadow-[0_0_12px_rgba(0,191,255,0.3)]" :
+                "bg-white/[0.04] text-ink-faint"
               )}
             >
-              {i < stepIdx ? <CheckCircle2 className="h-3.5 w-3.5" /> : i + 1}
-            </div>
-            <span className={cn("text-xs", i <= stepIdx ? "text-ink" : "text-ink-faint")}>{label}</span>
-            {i < STEP_LABELS.length - 1 && <ChevronRight className="h-3 w-3 text-ink-faint" />}
+              {i < stepIdx ? <CheckCircle2 className="h-4 w-4" /> : i + 1}
+            </motion.div>
+            <span className={cn("text-xs font-medium", i <= stepIdx ? "text-ink" : "text-ink-faint")}>{label}</span>
+            {i < STEP_LABELS.length - 1 && (
+              <div className={cn(
+                "h-px w-6 transition-colors duration-300",
+                i < stepIdx ? "bg-green/40" : "bg-white/[0.06]"
+              )} />
+            )}
           </div>
         ))}
       </div>
@@ -203,20 +208,32 @@ export function ScanView() {
             <StaggerContainer className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {TOOLS.map((t) => {
                 const Icon = t.icon;
+                const gradients: Record<string, string> = {
+                  cyan: "from-cyan/10 to-blue/10",
+                  green: "from-green/10 to-emerald/10",
+                  purple: "from-purple/10 to-pink/10",
+                  amber: "from-amber/10 to-orange/10",
+                };
                 return (
                   <StaggerItem key={t.id}>
-                    <Card
-                      className="cursor-pointer transition-all hover:border-cyan/40 hover:bg-cyan/[0.03]"
-                      onClick={() => chooseTool(t.id)}
-                    >
-                      <CardContent className="p-5">
-                        <div className={cn("mb-3 flex h-10 w-10 items-center justify-center rounded-xl", COLOR_MAP[t.color])}>
-                          <Icon className="h-5 w-5" />
-                        </div>
-                        <p className="text-sm font-semibold text-ink">{t.label}</p>
-                        <p className="mt-1 text-xs text-ink-muted">{t.desc}</p>
-                      </CardContent>
-                    </Card>
+                    <Kinetic>
+                      <Card
+                        className="group cursor-pointer relative overflow-hidden border-white/[0.06] transition-all duration-300 hover:border-cyan/40 hover:shadow-lg hover:shadow-cyan/5"
+                        onClick={() => chooseTool(t.id)}
+                      >
+                        <div className={cn("absolute inset-0 bg-gradient-to-br opacity-0 transition-opacity duration-300 group-hover:opacity-100", gradients[t.color])} />
+                        <CardContent className="relative p-5">
+                          <div className={cn("mb-3 flex h-11 w-11 items-center justify-center rounded-xl", COLOR_MAP[t.color])}>
+                            <Icon className="h-5 w-5" />
+                          </div>
+                          <p className="text-sm font-semibold text-ink">{t.label}</p>
+                          <p className="mt-1 text-xs leading-relaxed text-ink-muted">{t.desc}</p>
+                          <div className="mt-3 flex items-center gap-1 text-xs font-medium text-cyan opacity-0 transition-opacity group-hover:opacity-100">
+                            Get started <ArrowRight className="h-3 w-3" />
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </Kinetic>
                   </StaggerItem>
                 );
               })}

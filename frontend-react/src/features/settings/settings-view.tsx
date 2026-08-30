@@ -8,6 +8,7 @@ import {
   LogOut,
   CheckCircle2,
   Clock,
+  Settings,
 } from "lucide-react";
 import { useApp } from "@/lib/app-context";
 import { useAuth } from "@/lib/auth";
@@ -16,7 +17,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { StaggerContainer, StaggerItem } from "@/components/ui/motion";
+import { StaggerContainer, StaggerItem, Kinetic, FadeIn } from "@/components/ui/motion";
+import { SectionHeader } from "@/components/ui/dashboard";
 import { FamilyPanel } from "./family-panel";
 import { ReferralPanel } from "./referral-panel";
 import { PlanModal } from "@/components/shell/plan-modal";
@@ -87,75 +89,92 @@ export function SettingsView() {
 
   return (
     <div className="mx-auto w-full max-w-4xl space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-cyan/15 text-cyan">
-            <User className="h-5 w-5" />
-          </div>
-          <div>
-            <h2 className="font-display text-xl font-bold text-ink">Vault Settings</h2>
-            <p className="text-sm text-ink-muted">Manage your account & protection</p>
-          </div>
-        </div>
-        <Badge variant={plan === "free" ? "muted" : "cyan"}>
-          {String(plan).toUpperCase()}
-        </Badge>
-      </div>
+      <FadeIn>
+        <SectionHeader
+          icon={Settings}
+          title="Vault Settings"
+          description="Manage your account & protection"
+          action={
+            <Badge variant={plan === "free" ? "muted" : "cyan"} className="text-sm">
+              {String(plan).toUpperCase()}
+            </Badge>
+          }
+        />
+      </FadeIn>
 
       <StaggerContainer className="space-y-5">
         {/* Profile */}
         <StaggerItem>
-          <Card>
-            <CardHeader>
-              <CardTitle>Profile</CardTitle>
-              <CardDescription>Update your personal details</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div>
-                  <label className="mb-1.5 block text-xs font-medium text-ink-muted">
-                    Full name
-                  </label>
-                  <Input
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    placeholder="Your name"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1.5 block text-xs font-medium text-ink-muted">
-                    Email
-                  </label>
-                  <Input value={user?.email || ""} disabled />
-                </div>
+          <Kinetic>
+            <Card className="relative overflow-hidden border-white/[0.06]">
+              <div className="absolute inset-0 bg-gradient-to-br from-cyan/5 to-transparent" />
+              <div className="relative">
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan/15 text-cyan">
+                      <User className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <CardTitle>Profile</CardTitle>
+                      <CardDescription>Update your personal details</CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <label className="mb-1.5 block text-xs font-medium text-ink-muted">
+                        Full name
+                      </label>
+                      <Input
+                        value={fullName}
+                        onChange={(e) => setFullName(e.target.value)}
+                        placeholder="Your name"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1.5 block text-xs font-medium text-ink-muted">
+                        Email
+                      </label>
+                      <Input value={user?.email || ""} disabled />
+                    </div>
+                  </div>
+                  <Button onClick={saveProfile} disabled={saving}>
+                    {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                    Save changes
+                  </Button>
+                </CardContent>
               </div>
-              <Button onClick={saveProfile} disabled={saving}>
-                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                Save changes
-              </Button>
-            </CardContent>
-          </Card>
+            </Card>
+          </Kinetic>
         </StaggerItem>
 
         {/* Plan */}
         <StaggerItem>
-          <Card>
-            <CardHeader>
-              <CardTitle>Subscription</CardTitle>
-              <CardDescription>Your current protection tier</CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber/15 text-amber">
-                  <CreditCard className="h-5 w-5" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-ink capitalize">{plan} plan</p>
-                  <p className="text-xs text-ink-muted">{tierInfo.tagline}</p>
-                  <ul className="mt-1.5 space-y-0.5">
-                    {tierInfo.features.map((f) => (
-                      <li key={f} className="text-xs text-ink-faint">· {f}</li>
-                    ))}
+          <Kinetic>
+            <Card className="relative overflow-hidden border-white/[0.06]">
+              <div className="absolute inset-0 bg-gradient-to-br from-amber/5 to-transparent" />
+              <div className="relative">
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber/15 text-amber">
+                      <CreditCard className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <CardTitle>Subscription</CardTitle>
+                      <CardDescription>Your current protection tier</CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div>
+                      <p className="text-sm font-medium text-ink capitalize">{plan} plan</p>
+                      <p className="text-xs text-ink-muted">{tierInfo.tagline}</p>
+                      <ul className="mt-1.5 space-y-0.5">
+                        {tierInfo.features.map((f) => (
+                          <li key={f} className="text-xs text-ink-faint">· {f}</li>
+                        ))}
                   </ul>
                 </div>
               </div>
@@ -163,7 +182,9 @@ export function SettingsView() {
                 Upgrade
               </Button>
             </CardContent>
-          </Card>
+              </div>
+            </Card>
+          </Kinetic>
         </StaggerItem>
 
         {/* Family */}

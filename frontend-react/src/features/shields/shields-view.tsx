@@ -1,46 +1,31 @@
 import { useState, useEffect } from "react";
-import { Shield, ShieldCheck, ShieldAlert } from "lucide-react";
+import { Shield, ShieldCheck, ShieldX, Lock, Radar, FileText, Eye } from "lucide-react";
 import { useApp } from "@/lib/app-context";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { StaggerContainer, StaggerItem, Kinetic } from "@/components/ui/motion";
+import { StaggerContainer, StaggerItem, Kinetic, FadeIn } from "@/components/ui/motion";
 import { cn } from "@/lib/utils";
+import { SectionHeader, PulseDot } from "@/components/ui/dashboard";
 import { NativeShieldPanel } from "./native-shield-panel";
 
 const SHIELDS = [
-  { key: "crawler", name: "Proactive Crawler", desc: "Continuously searches the web for unauthorized copies of your identity.", color: "text-cyan accent-cyan" },
-  { key: "monitor", name: "Deep Web Monitor", desc: "Monitors dark web & forums for leaked credentials or impersonation.", color: "text-purple accent-purple" },
-  { key: "biometric", name: "Biometric Enrollment", desc: "Stores encrypted face/voice/signature profiles for matching.", color: "text-green accent-green" },
-  { key: "takedown", name: "Auto Takedown", desc: "Files DMCA / takedown requests against flagged content automatically.", color: "text-amber accent-amber" },
-  { key: "rights", name: "Rights Shield", desc: "Watermarks & legal documentation to assert ownership fast.", color: "text-cyan accent-cyan" },
+  { key: "crawler", name: "Proactive Crawler", desc: "Continuously searches the web for unauthorized copies of your identity.", icon: Eye, color: "cyan", gradient: "from-cyan/10 to-blue/10" },
+  { key: "monitor", name: "Deep Web Monitor", desc: "Monitors dark web & forums for leaked credentials or impersonation.", icon: Radar, color: "purple", gradient: "from-purple/10 to-pink/10" },
+  { key: "biometric", name: "Biometric Enrollment", desc: "Stores encrypted face/voice/signature profiles for matching.", icon: Lock, color: "green", gradient: "from-green/10 to-emerald/10" },
+  { key: "takedown", name: "Auto Takedown", desc: "Files DMCA / takedown requests against flagged content automatically.", icon: FileText, color: "amber", gradient: "from-amber/10 to-orange/10" },
+  { key: "rights", name: "Rights Shield", desc: "Watermarks & legal documentation to assert ownership fast.", icon: ShieldCheck, color: "cyan", gradient: "from-cyan/10 to-teal/10" },
 ] as const;
 
 const SHIELDS_STORAGE_KEY = "enclave_shields_state";
 
 export function getShieldStates(): Record<string, boolean> {
   if (typeof window === "undefined") return {
-    crawler: true,
-    monitor: true,
-    biometric: false,
-    takedown: false,
-    rights: true,
+    crawler: true, monitor: true, biometric: false, takedown: false, rights: true,
   };
   const stored = localStorage.getItem(SHIELDS_STORAGE_KEY);
-  if (stored) {
-    try {
-      return JSON.parse(stored);
-    } catch {
-      // ignore
-    }
-  }
-  return {
-    crawler: true,
-    monitor: true,
-    biometric: false,
-    takedown: false,
-    rights: true,
-  };
+  if (stored) { try { return JSON.parse(stored); } catch {} }
+  return { crawler: true, monitor: true, biometric: false, takedown: false, rights: true };
 }
 
 export function ShieldsView() {
@@ -64,100 +49,72 @@ export function ShieldsView() {
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h2 className="font-display text-xl font-bold text-ink">Active Shields</h2>
-          <p className="text-sm text-ink-muted">
-            {activeCount} of {SHIELDS.length} defense layers protecting you
-          </p>
-        </div>
-        <Badge variant="cyan">
-          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-cyan" />
-          {activeCount}/{SHIELDS.length} Online
-        </Badge>
-      </div>
+      <FadeIn>
+        <SectionHeader
+          icon={Shield}
+          title="Active Shields"
+          description={`${activeCount} of ${SHIELDS.length} defense layers protecting you`}
+          action={
+            <Badge variant="cyan" className="text-sm">
+              <PulseDot color="cyan" size="sm" />
+              {activeCount}/{SHIELDS.length} Online
+            </Badge>
+          }
+        />
+      </FadeIn>
 
       <StaggerContainer className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {SHIELDS.map((shield) => {
-          const on = toggles[shield.key];
+          const active = toggles[shield.key];
           return (
             <StaggerItem key={shield.key}>
-              <Kinetic className="h-full">
-                <Card
-                  className={cn(
-                    "relative h-full overflow-hidden transition-all duration-300",
-                    on ? "border-white/[0.12]" : "opacity-70"
-                  )}
-                >
-                  {on && (
-                    <div className="pointer-events-none absolute -right-16 -top-16 h-40 w-40 rounded-full bg-green/[0.06] blur-2xl" />
-                  )}
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div
-                        className={cn(
-                          "mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-white/[0.05]",
-                          on ? shield.color.split(" ")[0] : "text-ink-faint"
-                        )}
-                      >
-                        {on ? (
-                          <ShieldCheck className="h-5 w-5 text-green" />
+              <Kinetic>
+                <Card className={cn(
+                  "relative overflow-hidden transition-all duration-300",
+                  active ? "border-green/20 shadow-lg shadow-green/5" : "border-white/[0.06]"
+                )}>
+                  <div className={cn("absolute inset-0 bg-gradient-to-br opacity-40", shield.gradient)} />
+                  <div className="relative">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-start justify-between">
+                        <div className={cn(
+                          "flex h-11 w-11 items-center justify-center rounded-xl",
+                          `bg-${shield.color}/15 text-${shield.color}`
+                        )}>
+                          <shield.icon className="h-5 w-5" />
+                        </div>
+                        <Switch
+                          checked={active}
+                          onCheckedChange={(val) => toggle(shield.key, val)}
+                        />
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <h3 className="mb-1 text-sm font-semibold text-ink">{shield.name}</h3>
+                      <p className="text-xs leading-relaxed text-ink-muted">{shield.desc}</p>
+                      <div className="mt-3 flex items-center gap-2">
+                        {active ? (
+                          <Badge variant="green" className="text-[10px]">
+                            <ShieldCheck className="h-3 w-3 mr-1" /> Active
+                          </Badge>
                         ) : (
-                          <Shield className="h-5 w-5" />
+                          <Badge variant="muted" className="text-[10px]">
+                            <ShieldX className="h-3 w-3 mr-1" /> Inactive
+                          </Badge>
                         )}
                       </div>
-                      <Switch
-                        checked={on}
-                        onCheckedChange={(v) => toggle(shield.key, v)}
-                      />
-                    </div>
-                    <CardTitle>{shield.name}</CardTitle>
-                    <CardDescription>{shield.desc}</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <Badge variant={on ? "green" : "muted"}>
-                      {on ? "Operational" : "Standby"}
-                    </Badge>
-                  </CardContent>
+                    </CardContent>
+                  </div>
                 </Card>
               </Kinetic>
             </StaggerItem>
           );
         })}
-
-        {/* Shield status footer card */}
-        <StaggerItem className="sm:col-span-2 lg:col-span-3">
-          <Card className="overflow-hidden">
-            <CardContent className="p-5">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <ShieldAlert className="h-5 w-5 text-amber" />
-                  <div>
-                    <p className="text-sm font-medium text-ink">Pending action required</p>
-                    <p className="text-xs text-ink-muted">
-                      Review flagged detections to keep your score high
-                    </p>
-                  </div>
-                </div>
-                <a
-                  href="#alerts"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    window.location.hash = "alerts";
-                  }}
-                  className="text-sm font-medium text-cyan hover:text-green"
-                >
-                  Review →
-                </a>
-              </div>
-            </CardContent>
-          </Card>
-        </StaggerItem>
       </StaggerContainer>
 
-      <div className="mt-6">
+      <FadeIn delay={0.3}>
         <NativeShieldPanel />
-      </div>
+      </FadeIn>
     </div>
   );
 }

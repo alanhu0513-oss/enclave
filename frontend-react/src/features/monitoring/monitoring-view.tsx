@@ -23,7 +23,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { StaggerContainer, StaggerItem } from "@/components/ui/motion";
+import { StaggerContainer, StaggerItem, FadeIn } from "@/components/ui/motion";
+import { SectionHeader, StatCard } from "@/components/ui/dashboard";
 import { cn } from "@/lib/utils";
 
 interface SourceHealth {
@@ -159,87 +160,61 @@ export function MonitoringView() {
   return (
     <div className="mx-auto w-full max-w-6xl space-y-5">
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-cyan/15 text-cyan">
-            <Radar className="h-5 w-5" />
-          </div>
-          <div>
-            <h2 className="font-display text-xl font-bold text-ink">Live Monitoring</h2>
-            <p className="text-sm text-ink-muted">
-              {status?.active
-                ? `Running · ${status.schedule} · Next: ${status.nextRunAt ? new Date(status.nextRunAt).toLocaleTimeString() : "—"}`
-                : "Start proactive monitoring to detect threats across the web"}
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="glass" onClick={load} disabled={loading}>
-            <RefreshCw className="h-4 w-4" />
-          </Button>
-          {status?.active ? (
-            <Button variant="destructive" onClick={stop} disabled={busy}>
-              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Square className="h-4 w-4" />}
-              Stop
-            </Button>
-          ) : (
-            <Button onClick={start} disabled={busy}>
-              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
-              Start Monitoring
-            </Button>
-          )}
-          <Button
-            variant="cyan"
-            onClick={runOnce}
-            disabled={runningOnce || busy}
-          >
-            {runningOnce ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
-            Run Now
-          </Button>
-        </div>
-      </div>
+      <FadeIn>
+        <SectionHeader
+          icon={Radar}
+          title="Live Monitoring"
+          description={
+            status?.active
+              ? `Running · ${status.schedule} · Next: ${status.nextRunAt ? new Date(status.nextRunAt).toLocaleTimeString() : "—"}`
+              : "Start proactive monitoring to detect threats across the web"
+          }
+          action={
+            <div className="flex items-center gap-2">
+              <Button variant="glass" onClick={load} disabled={loading}>
+                <RefreshCw className="h-4 w-4" />
+              </Button>
+              {status?.active ? (
+                <Button variant="destructive" onClick={stop} disabled={busy}>
+                  {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Square className="h-4 w-4" />}
+                  Stop
+                </Button>
+              ) : (
+                <Button onClick={start} disabled={busy}>
+                  {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
+                  Start Monitoring
+                </Button>
+              )}
+              <Button variant="cyan" onClick={runOnce} disabled={runningOnce || busy}>
+                {runningOnce ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
+                Run Now
+              </Button>
+            </div>
+          }
+        />
+      </FadeIn>
 
       {/* Stats strip */}
       <StaggerContainer className="grid gap-4 sm:grid-cols-3">
-        <StaggerItem>
-          <Card>
-            <CardContent className="flex items-center gap-3 p-4">
-              <div className={cn("flex h-9 w-9 items-center justify-center rounded-lg", status?.active ? "bg-green/15 text-green" : "bg-white/[0.05] text-ink-faint")}>
-                <Radar className="h-4.5 w-4.5" />
-              </div>
-              <div>
-                <p className="font-display text-lg font-bold text-ink">{status?.active ? "Active" : "Inactive"}</p>
-                <p className="text-xs text-ink-muted">{status?.schedule || "Manual only"}</p>
-              </div>
-            </CardContent>
-          </Card>
-        </StaggerItem>
-        <StaggerItem>
-          <Card>
-            <CardContent className="flex items-center gap-3 p-4">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-cyan/15 text-cyan">
-                <Eye className="h-4.5 w-4.5" />
-              </div>
-              <div>
-                <p className="font-display text-lg font-bold text-ink">{activeCount}/{sources.length}</p>
-                <p className="text-xs text-ink-muted">Sources active</p>
-              </div>
-            </CardContent>
-          </Card>
-        </StaggerItem>
-        <StaggerItem>
-          <Card>
-            <CardContent className="flex items-center gap-3 p-4">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber/15 text-amber">
-                <AlertTriangle className="h-4.5 w-4.5" />
-              </div>
-              <div>
-                <p className="font-display text-lg font-bold text-ink">{findingsCount}</p>
-                <p className="text-xs text-ink-muted">Total findings</p>
-              </div>
-            </CardContent>
-          </Card>
-        </StaggerItem>
+        <StatCard
+          icon={Radar}
+          label="Status"
+          value={status?.active ? 1 : 0}
+          color={status?.active ? "green" : "muted"}
+        />
+        <StatCard
+          icon={Eye}
+          label="Active Sources"
+          value={activeCount}
+          suffix={`/${sources.length}`}
+          color="cyan"
+        />
+        <StatCard
+          icon={AlertTriangle}
+          label="Total Findings"
+          value={findingsCount}
+          color="amber"
+        />
       </StaggerContainer>
 
       {/* Source grid */}

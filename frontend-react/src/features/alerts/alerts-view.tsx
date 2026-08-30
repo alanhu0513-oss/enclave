@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { AnimatePresence } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 import {
   Loader2,
   ShieldX,
@@ -20,7 +20,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { StaggerContainer, StaggerItem } from "@/components/ui/motion";
+import { StaggerContainer, StaggerItem, Kinetic, FadeIn } from "@/components/ui/motion";
+import { SectionHeader, EmptyState } from "@/components/ui/dashboard";
 import { confidenceColor, confidenceLabel, timeAgo } from "@/lib/utils";
 import { TakedownTimeline } from "./takedown-timeline";
 
@@ -110,42 +111,39 @@ export function AlertsView() {
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-red/15 text-red">
-            <ShieldX className="h-5 w-5" />
-          </div>
-          <div>
-            <h2 className="font-display text-xl font-bold text-ink">Alert Center</h2>
-            <p className="text-sm text-ink-muted">
-              Detected threats to your identity
-            </p>
-          </div>
-        </div>
-        <Button variant="glass" onClick={load} disabled={loading}>
-          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
-          Refresh
-        </Button>
-      </div>
+      <FadeIn>
+        <SectionHeader
+          icon={ShieldX}
+          title="Alert Center"
+          description="Detected threats to your identity"
+          action={
+            <Button variant="glass" onClick={load} disabled={loading}>
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
+              Refresh
+            </Button>
+          }
+        />
+      </FadeIn>
 
       {loading ? (
         <div className="space-y-3">
           {[0, 1, 2].map((i) => (
-            <Skeleton key={i} className="h-20" />
+            <motion.div
+              key={i}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: i * 0.1 }}
+            >
+              <Skeleton className="h-20 rounded-xl" />
+            </motion.div>
           ))}
         </div>
       ) : !alerts || alerts.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center gap-3 py-16 text-center">
-            <ShieldCheck className="h-12 w-12 text-green" />
-            <div>
-              <p className="text-sm font-semibold text-ink">All clear</p>
-              <p className="text-xs text-ink-muted">
-                No threats detected. Your identity is protected.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={ShieldCheck}
+          title="All clear"
+          description="No threats detected. Your identity is protected."
+        />
       ) : (
         <StaggerContainer className="space-y-3">
           <AnimatePresence>
@@ -161,12 +159,17 @@ export function AlertsView() {
               const isExpanded = expandedTd === td?.id;
               return (
                 <StaggerItem key={a.id}>
-                  <Card
-                    className={
-                      "transition-all duration-300 " + (isCritical ? "border-red/30" : "")
-                    }
-                  >
-                    <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
+                  <Kinetic>
+                    <Card
+                      className={
+                        "relative overflow-hidden transition-all duration-300 " +
+                        (isCritical ? "border-red/30 shadow-lg shadow-red/5" : "border-white/[0.06] hover:border-white/[0.12]")
+                      }
+                    >
+                      {isCritical && (
+                        <div className="absolute inset-0 bg-gradient-to-r from-red/5 to-transparent" />
+                      )}
+                      <CardContent className="relative flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
                       <div
                         className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl"
                         style={{ background: confidenceColor(conf) + "18", color: confidenceColor(conf) }}
@@ -282,6 +285,7 @@ export function AlertsView() {
                       </div>
                     </CardContent>
                   </Card>
+                  </Kinetic>
                   <AnimatePresence>
                     {isExpanded && td && (
                       <TakedownTimeline

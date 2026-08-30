@@ -447,23 +447,29 @@ function QuickAction({
     green: "bg-green/15 text-green",
     purple: "bg-purple/15 text-purple",
   };
+  const gradients: Record<string, string> = {
+    cyan: "from-cyan/5 to-transparent",
+    green: "from-green/5 to-transparent",
+    purple: "from-purple/5 to-transparent",
+  };
   return (
     <motion.button
       whileHover={{ y: -2, x: 3 }}
       whileTap={{ scale: 0.98 }}
       transition={{ type: "spring", stiffness: 400, damping: 26 }}
       onClick={onClick}
-      className="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] p-3 text-left transition-colors duration-200 hover:border-green/25 hover:bg-white/[0.05]"
+      className="relative flex items-center gap-3 overflow-hidden rounded-xl border border-white/[0.06] bg-white/[0.02] p-3 text-left transition-colors duration-200 hover:border-green/25 hover:bg-white/[0.05]"
     >
+      <div className={cn("absolute inset-0 bg-gradient-to-br opacity-50", gradients[color])} />
       <span
         className={cn(
-          "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg",
+          "relative flex h-9 w-9 shrink-0 items-center justify-center rounded-lg",
           colors[color]
         )}
       >
         <Icon className="h-4 w-4" />
       </span>
-      <span className="min-w-0">
+      <span className="relative min-w-0">
         <span className="block text-sm font-medium text-ink">{label}</span>
         <span className="block truncate text-xs text-ink-muted">{sub}</span>
       </span>
@@ -474,7 +480,12 @@ function QuickAction({
 function EmptyState() {
   return (
     <div className="flex flex-col items-center justify-center gap-3 py-10 text-center">
-      <ScanSearch className="h-10 w-10 text-ink-faint" />
+      <motion.div
+        animate={{ y: [0, -6, 0] }}
+        transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+      >
+        <ScanSearch className="h-10 w-10 text-ink-faint" />
+      </motion.div>
       <div>
         <p className="text-sm font-medium text-ink">No detections yet</p>
         <p className="text-xs text-ink-muted">

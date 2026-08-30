@@ -14,8 +14,13 @@ const primaryAi = require('./openai-compat-client');
 
 const ML_SERVICE_URL = process.env.ML_SERVICE_URL || 'http://localhost:8001';
 const ML_TIMEOUT = 30000;
+const ML_CACHE_TTL = 60000; // Re-probe ML service every 60s
+const CIRCUIT_BREAKER_THRESHOLD = 5; // Open circuit after 5 consecutive failures
 
 let _mlAvailable = null;
+let _mlCheckedAt = 0;
+let _mlConsecutiveFailures = 0;
+let _circuitOpen = false;
 
 /* Sniff image/audio mimetype from magic bytes */
 function _sniffMime(buffer, fallback) {
@@ -31,44 +36,85 @@ function _sniffMime(buffer, fallback) {
 }
 
 async function isMlAvailable() {
-  if (_mlAvailable !== null) return _mlAvailable;
+  const now = Date.now();
+
+  // Circuit breaker: if too many consecutive failures, don't probe for 5 minutes
+  if (_circuitOpen) {
+    if (now - _mlCheckedAt < 300000) return false;
+    // Half-open: allow one probe after 5 minutes
+    _circuitOpen = false;
+  }
+
+  // Cache TTL: re-probe every ML_CACHE_TTL
+  if (_mlAvailable !== null && now - _mlCheckedAt < ML_CACHE_TTL) return _mlAvailable;
+
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 3000);
     const res = await fetch(`${ML_SERVICE_URL}/health`, { signal: controller.signal });
     clearTimeout(timeout);
     _mlAvailable = res.ok;
+    _mlCheckedAt = now;
+    if (res.ok) {
+      _mlConsecutiveFailures = 0;
+    } else {
+      _mlConsecutiveFailures++;
+      if (_mlConsecutiveFailures >= CIRCUIT_BREAKER_THRESHOLD) _circuitOpen = true;
+    }
   } catch {
     _mlAvailable = false;
+    _mlCheckedAt = now;
+    _mlConsecutiveFailures++;
+    if (_mlConsecutiveFailures >= CIRCUIT_BREAKER_THRESHOLD) _circuitOpen = true;
   }
   return _mlAvailable;
 }
 
 async function mlPostMultipart(endpoint, fieldName, fileBuffer, filename, extraFields = {}) {
-  const fd = new FormData();
-  for (const [key, val] of Object.entries(extraFields)) {
-    fd.append(key, String(val));
-  }
-  const blob = new Blob([fileBuffer], { type: 'application/octet-stream' });
-  fd.append(fieldName, blob, filename);
+  const MAX_RETRIES = 2;
+  const BASE_DELAY = 1000;
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), ML_TIMEOUT);
-  try {
-    const res = await fetch(`${ML_SERVICE_URL}${endpoint}`, {
-      method: 'POST',
-      body: fd,
-      signal: controller.signal,
-    });
-    clearTimeout(timeout);
-    if (!res.ok) {
-      const text = await res.text().catch(() => '');
-      throw new Error(`ML service ${endpoint} returned ${res.status}: ${text}`);
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    const fd = new FormData();
+    for (const [key, val] of Object.entries(extraFields)) {
+      fd.append(key, String(val));
     }
-    return await res.json();
-  } catch (e) {
-    clearTimeout(timeout);
-    throw e;
+    const blob = new Blob([fileBuffer], { type: 'application/octet-stream' });
+    fd.append(fieldName, blob, filename);
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), ML_TIMEOUT);
+    try {
+      const res = await fetch(`${ML_SERVICE_URL}${endpoint}`, {
+        method: 'POST',
+        body: fd,
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+      if (res.ok) return await res.json();
+      // Don't retry client errors (4xx) — only server errors (5xx) and timeouts
+      if (res.status < 500) {
+        const text = await res.text().catch(() => '');
+        throw new Error(`ML service ${endpoint} returned ${res.status}: ${text}`);
+      }
+      // Server error — retry
+      if (attempt < MAX_RETRIES) {
+        const delay = BASE_DELAY * Math.pow(2, attempt);
+        await new Promise((r) => setTimeout(r, delay));
+        continue;
+      }
+      const text = await res.text().catch(() => '');
+      throw new Error(`ML service ${endpoint} returned ${res.status} after ${MAX_RETRIES} retries: ${text}`);
+    } catch (e) {
+      clearTimeout(timeout);
+      // AbortError = timeout, retry
+      if (e.name === 'AbortError' && attempt < MAX_RETRIES) {
+        const delay = BASE_DELAY * Math.pow(2, attempt);
+        await new Promise((r) => setTimeout(r, delay));
+        continue;
+      }
+      throw e;
+    }
   }
 }
 

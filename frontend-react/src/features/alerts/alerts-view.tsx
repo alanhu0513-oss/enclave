@@ -7,6 +7,11 @@ import {
   FileText,
   Trash2,
   BellOff,
+  ChevronDown,
+  ChevronRight,
+  Clock,
+  CheckCircle2,
+  AlertTriangle,
 } from "lucide-react";
 import { useApp } from "@/lib/app-context";
 import { api, type Alert } from "@/lib/api";
@@ -17,6 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StaggerContainer, StaggerItem } from "@/components/ui/motion";
 import { confidenceColor, confidenceLabel, timeAgo } from "@/lib/utils";
+import { TakedownTimeline } from "./takedown-timeline";
 
 const STATUS_META: Record<string, { label: string; color: string }> = {
   PENDING_REVIEW: { label: "Review", color: "var(--amber)" },
@@ -32,12 +38,18 @@ export function AlertsView() {
   const [alerts, setAlerts] = useState<Alert[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [action, setAction] = useState<string | null>(null);
+  const [takedowns, setTakedowns] = useState<any[]>([]);
+  const [expandedTd, setExpandedTd] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
     try {
-      const data = await api.getAlerts();
-      setAlerts(data);
+      const [alertData, tdData] = await Promise.all([
+        api.getAlerts(),
+        api.getTakedowns().catch(() => []),
+      ]);
+      setAlerts(alertData);
+      setTakedowns(tdData || []);
     } catch (e: any) {
       toast({ title: "Could not load alerts", body: e.message, variant: "error" });
       setAlerts([]);
@@ -140,6 +152,13 @@ export function AlertsView() {
             {alerts.map((a) => {
               const conf = a.confidence ?? 0;
               const isCritical = conf >= 80;
+              const td = takedowns.find(
+                (t) => t.alertId === a.id || t.alert_id === a.id
+              );
+              const tdActive = td && ["sent", "follow_up_sent", "acknowledged", "pending"].includes(td.status);
+              const tdRemoved = td && td.status === "removed";
+              const tdEscalated = td && ["escalated", "escalated_no_removal"].includes(td.status);
+              const isExpanded = expandedTd === td?.id;
               return (
                 <StaggerItem key={a.id}>
                   <Card
@@ -190,6 +209,24 @@ export function AlertsView() {
                               {STATUS_META[a.status].label}
                             </span>
                           )}
+                          {tdActive && (
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-cyan/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-cyan">
+                              <Clock className="h-2.5 w-2.5" />
+                              Takedown active
+                            </span>
+                          )}
+                          {tdRemoved && (
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-green/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-green">
+                              <CheckCircle2 className="h-2.5 w-2.5" />
+                              Removed
+                            </span>
+                          )}
+                          {tdEscalated && (
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-red/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-red">
+                              <AlertTriangle className="h-2.5 w-2.5" />
+                              Escalated
+                            </span>
+                          )}
                         </p>
                       </div>
 
@@ -200,14 +237,31 @@ export function AlertsView() {
                         >
                           {Math.round(conf)}%
                         </span>
-                        <Button size="sm" onClick={() => takedown(a)} disabled={action === a.id}>
-                          {action === a.id ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          ) : (
-                            <FileText className="h-3.5 w-3.5" />
-                          )}
-                          Takedown
-                        </Button>
+                        {td && (
+                          <Button
+                            size="iconSm"
+                            variant="ghost"
+                            onClick={() => setExpandedTd(isExpanded ? null : td.id)}
+                            title="View takedown timeline"
+                            className="text-cyan hover:text-cyan"
+                          >
+                            {isExpanded ? (
+                              <ChevronDown className="h-4 w-4" />
+                            ) : (
+                              <ChevronRight className="h-4 w-4" />
+                            )}
+                          </Button>
+                        )}
+                        {!td && (
+                          <Button size="sm" onClick={() => takedown(a)} disabled={action === a.id}>
+                            {action === a.id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <FileText className="h-3.5 w-3.5" />
+                            )}
+                            Takedown
+                          </Button>
+                        )}
                         <Button
                           size="iconSm"
                           variant="ghost"
@@ -228,6 +282,14 @@ export function AlertsView() {
                       </div>
                     </CardContent>
                   </Card>
+                  <AnimatePresence>
+                    {isExpanded && td && (
+                      <TakedownTimeline
+                        takedownId={td.id}
+                        alertId={a.id}
+                      />
+                    )}
+                  </AnimatePresence>
                 </StaggerItem>
               );
             })}

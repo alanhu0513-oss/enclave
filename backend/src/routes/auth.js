@@ -18,11 +18,19 @@ try {
 const router = express.Router();
 const passwordResetCodes = new Map();
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 router.post('/register', async (req, res) => {
   try {
     const { email, password, fullName } = req.body;
     if (!email || !password || !fullName) return error(res, 'Email, password, and full name required', 400);
-    if (password.length < 8) return error(res, 'Password must be at least 8 characters', 400);
+    if (!EMAIL_RE.test(email)) return error(res, 'Invalid email format', 400);
+    if (typeof password !== 'string' || password.length < 8 || password.length > 128) {
+      return error(res, 'Password must be 8–128 characters', 400);
+    }
+    if (typeof fullName !== 'string' || fullName.trim().length < 1 || fullName.length > 100) {
+      return error(res, 'Full name must be 1–100 characters', 400);
+    }
 
     const users = await table('users');
     const existing = await users.find({ email: email.toLowerCase() });
@@ -47,6 +55,7 @@ router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
     if (!email || !password) return error(res, 'Email and password required', 400);
+    if (!EMAIL_RE.test(email)) return error(res, 'Invalid email format', 400);
 
     const users = await table('users');
     const user = await users.find({ email: email.toLowerCase() });

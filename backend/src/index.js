@@ -38,6 +38,14 @@ const globalLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+const scanLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000,
+  max: parseInt(process.env.SCAN_RATE_LIMIT_MAX, 10) || 30,
+  message: { success: false, message: 'Too many scans. Please wait before scanning again.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 const app = express();
 const PORT = process.env.PORT || 4000;
 
@@ -50,7 +58,7 @@ app.use(helmet({
 app.use(cors({
   origin: process.env.CORS_ORIGIN
     ? process.env.CORS_ORIGIN.split(',')
-    : ['http://localhost:3000', 'http://localhost:4000', 'https://frontend-one-gamma-83.vercel.app'],
+    : ['http://localhost:3000', 'http://localhost:4000', 'https://enclave-react.vercel.app'],
   credentials: true
 }));
 app.use(morgan('dev'));
@@ -86,24 +94,54 @@ const referralsRoutes = require('./routes/referrals');
 
 app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/biometrics', biometricsRoutes);
-app.use('/api/alerts', alertsRoutes);
+app.use('/api/alerts', scanLimiter, alertsRoutes);
 app.use('/api/crawler', crawlerRoutes);
 app.use('/api/monitoring', monitoringRoutes);
 app.use('/api/user', userRoutes);
-app.use('/api/detect', detectRoutes);
+app.use('/api/detect', scanLimiter, detectRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/takedowns', takedownsRoutes);
 app.use('/api/shields', shieldsRoutes);
 app.use('/api/billing', billingRoutes);
-app.use('/api/community', communityRoutes);
+app.use('/api/community', scanLimiter, communityRoutes);
 app.use('/api/revenue', revenueRoutes);
 app.use('/api/reports', reportsRoutes);
 app.use('/api/family', familyRoutes);
 app.use('/api/referrals', referralsRoutes);
 app.use('/api/legal', legalRoutes);
 
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString(), version: '1.0.0' });
+app.get('/api/health', async (req, res) => {
+  const health = {
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    version: '1.0.0',
+    uptime: Math.round(process.uptime()),
+    memory: {
+      heapUsed: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+      heapTotal: Math.round(process.memoryUsage().heapTotal / 1024 / 1024),
+      rss: Math.round(process.memoryUsage().rss / 1024 / 1024),
+    },
+  };
+  // DB health check
+  try {
+    const { getEngine } = require('./db/adapter');
+    const db = await getEngine();
+    health.db = { status: 'ok', engine: db.engine };
+  } catch (e) {
+    health.db = { status: 'error', message: e.message };
+    health.status = 'degraded';
+  }
+  // ML service health
+  try {
+    const mlClient = require('./services/ml-client');
+    const mlHealth = await mlClient.getHealth();
+    health.ml = { status: mlHealth.status || 'unknown', models: mlHealth.models || null };
+    if (mlHealth.status !== 'ok' && health.status === 'ok') health.status = 'degraded';
+  } catch {
+    health.ml = { status: 'unavailable' };
+  }
+  const statusCode = health.status === 'ok' ? 200 : 503;
+  res.status(statusCode).json(health);
 });
 
 // Serve frontend static files
@@ -114,6 +152,35 @@ app.get('*', (req, res, next) => {
   res.sendFile(path.join(frontendPath, 'index.html'), (err) => {
     if (err) next();
   });
+});
+
+// ─── Structured Error Logger ───
+const _errorCounts = { '4xx': 0, '5xx': 0, _windowStart: Date.now() };
+const ERROR_WINDOW_MS = 5 * 60 * 1000; // 5-minute windows
+
+app.use((req, res, next) => {
+  const start = Date.now();
+  const originalJson = res.json.bind(res);
+  res.json = function (body) {
+    const duration = Date.now() - start;
+    if (res.statusCode >= 400) {
+      const bucket = res.statusCode < 500 ? '4xx' : '5xx';
+      _errorCounts[bucket]++;
+      const now = Date.now();
+      if (now - _errorCounts._windowStart > ERROR_WINDOW_MS) {
+        const counts = { '4xx': _errorCounts['4xx'], '5xx': _errorCounts['5xx'] };
+        if (counts['4xx'] > 50 || counts['5xx'] > 10) {
+          console.error(`[ALERT] Error spike in last ${ERROR_WINDOW_MS / 1000}s:`, counts);
+        }
+        _errorCounts['4xx'] = 0;
+        _errorCounts['5xx'] = 0;
+        _errorCounts._windowStart = now;
+      }
+      console.warn(`[API] ${req.method} ${req.path} ${res.statusCode} ${duration}ms`);
+    }
+    return originalJson(body);
+  };
+  next();
 });
 
 app.use((err, req, res, next) => {

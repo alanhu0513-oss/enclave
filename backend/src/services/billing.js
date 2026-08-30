@@ -14,23 +14,24 @@ const TIERS = {
     deepScanLimit: 1, crawlerAccess: false, apiAccess: false,
     features: ['3 deepfake scans/month', 'On-demand web search', 'Email alerts', 'Local heuristic fallback']
   },
-  detection_only: {
-    id: 'detection_only', name: 'Detection Only', price: 499,
-    scanLimit: -1, alertLimit: 50, takedownLimit: 0,
-    deepScanLimit: 2, crawlerAccess: false, apiAccess: false,
-    features: ['Unlimited AI scans (image/audio/text)', 'Gemini + Mistral engine access', 'Result caching', 'Confidence breakdowns']
-  },
   pro: {
-    id: 'pro', name: 'Individual Pro', price: 999,
+    id: 'pro', name: 'Pro', price: 999,
     scanLimit: 50, alertLimit: 500, takedownLimit: 2,
     deepScanLimit: 20, crawlerAccess: true, apiAccess: false,
     features: ['50 scans/month', 'Hourly surface monitoring (web/Reddit/paste)', '2 takedowns/mo with evidence chain', '24h-30d verification re-crawls', 'Priority alerts']
   },
   shield: {
-    id: 'shield', name: 'Family', price: 1999,
+    id: 'shield', name: 'Shield', price: 1999,
     scanLimit: 200, alertLimit: -1, takedownLimit: 10,
     deepScanLimit: -1, crawlerAccess: true, apiAccess: false,
-    features: ['200 scans/month, up to 5 members', 'Dark web monitoring (Ahmia)', '10 takedowns/mo', 'Filing helper for all platforms', 'Voice authentication']
+    features: ['200 scans/month', 'Dark web monitoring (Ahmia)', '10 takedowns/mo', 'Filing helper for all platforms', 'Voice authentication']
+  },
+  family: {
+    id: 'family', name: 'Family', price: 2999,
+    scanLimit: 500, alertLimit: -1, takedownLimit: 20,
+    deepScanLimit: -1, crawlerAccess: true, apiAccess: false,
+    maxMembers: 5,
+    features: ['500 scans/month, up to 5 members', 'Dark web + forums + Telegram monitoring', '20 takedowns/mo', 'Per-member alerts', 'Family dashboard']
   },
   business: {
     id: 'business', name: 'Business', price: 4999,
@@ -44,6 +45,7 @@ const STRIPE_PRICES = {
   detection_only: process.env.STRIPE_PRICE_DETECTION_ONLY || 'price_detection_only_monthly',
   pro: process.env.STRIPE_PRICE_PRO || 'price_pro_monthly',
   shield: process.env.STRIPE_PRICE_SHIELD || 'price_shield_monthly',
+  family: process.env.STRIPE_PRICE_FAMILY || 'price_family_monthly',
   business: process.env.STRIPE_PRICE_BUSINESS || 'price_business_monthly'
 };
 

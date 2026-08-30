@@ -71,17 +71,26 @@ const TIERS = [
     price: "$9.99",
     period: "/month",
     desc: "Full protection for individuals",
-    features: ["50 scans/month", "Web + Reddit + Paste sites", "Hourly monitoring", "Auto takedown", "Priority support"],
+    features: ["50 scans/month", "Web + Reddit + Paste sites", "Hourly monitoring", "2 takedowns/mo", "Priority support"],
     cta: "Get Pro",
-    popular: true,
+    popular: false,
   },
   {
     name: "Shield",
     price: "$19.99",
     period: "/month",
     desc: "Maximum protection with dark web",
-    features: ["Unlimited scans", "All sources + Dark web", "Real-time alerts", "Evidence chain", "Watermarking", "API access"],
+    features: ["200 scans/month", "All sources + Dark web", "Real-time alerts", "10 takedowns/mo", "Evidence chain", "Voice auth"],
     cta: "Get Shield",
+    popular: true,
+  },
+  {
+    name: "Family",
+    price: "$29.99",
+    period: "/month",
+    desc: "Protect your whole household",
+    features: ["500 scans, up to 5 members", "Dark web + forums + Telegram", "20 takedowns/mo", "Per-member alerts", "Family dashboard"],
+    cta: "Get Family",
     popular: false,
   },
   {
@@ -89,7 +98,7 @@ const TIERS = [
     price: "$49.99",
     period: "/month",
     desc: "Enterprise team protection",
-    features: ["Everything in Shield", "15-minute cycles", "Social monitoring", "Team accounts", "Audit logs", "SSO", "Dedicated support"],
+    features: ["Unlimited scans, 10 seats", "15-min monitoring + social", "Unlimited takedowns", "API access", "Audit logs + SSO"],
     cta: "Contact Sales",
     popular: false,
   },
@@ -360,7 +369,7 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
             </p>
           </div>
 
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-5">
             {TIERS.map((tier, i) => (
               <motion.div
                 key={tier.name}

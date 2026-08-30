@@ -15,13 +15,14 @@ interface PlanModalProps {
 
 const FALLBACK_TIERS = [
   { id: "free", name: "Free", price: 0, tagline: "Get started with essential protection", features: ["3 deepfake scans/month", "On-demand web search", "Email alerts", "Local heuristic fallback"] },
-  { id: "pro", name: "Individual Pro", price: 999, tagline: "Round-the-clock identity monitoring", features: ["50 scans/month", "Hourly surface monitoring (web/Reddit/paste)", "2 takedowns/mo with evidence chain", "Priority alerts"] },
-  { id: "shield", name: "Family", price: 1999, tagline: "Protect your whole household", features: ["200 scans/month, up to 5 members", "Dark web monitoring (Ahmia)", "10 takedowns/mo", "Voice authentication"] },
-  { id: "business", name: "Business", price: 4999, tagline: "Enterprise-grade identity security", features: ["Unlimited scans, 10 seats", "15-min real-time monitoring incl. social", "Unlimited takedowns", "API access (10k calls/mo)"] },
+  { id: "pro", name: "Pro", price: 999, tagline: "Full protection for individuals", features: ["50 scans/month", "Hourly surface monitoring (web/Reddit/paste)", "2 takedowns/mo with evidence chain", "Priority alerts"] },
+  { id: "shield", name: "Shield", price: 1999, tagline: "Maximum protection with dark web", features: ["200 scans/month", "Dark web monitoring (Ahmia)", "10 takedowns/mo", "Evidence chain", "Voice authentication"] },
+  { id: "family", name: "Family", price: 2999, tagline: "Protect your whole household", features: ["500 scans/month, up to 5 members", "Dark web + forums + Telegram", "20 takedowns/mo", "Per-member alerts", "Family dashboard"] },
+  { id: "business", name: "Business", price: 4999, tagline: "Enterprise-grade identity security", features: ["Unlimited scans, 10 seats", "15-min real-time monitoring incl. social", "Unlimited takedowns", "API access (10k calls/mo)", "Audit logs + SSO"] },
 ];
 
-const ORDER = ["free", "detection_only", "pro", "shield", "business"];
-const POPULAR = new Set(["pro", "business"]);
+const ORDER = ["free", "pro", "shield", "family", "business"];
+const POPULAR = new Set(["shield"]);
 
 function fmtPrice(usd: number) {
   if (usd === 0) return "$0";
@@ -107,7 +108,7 @@ export function PlanModal({ open, onClose }: PlanModalProps) {
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
           {tiers.map((plan) => {
             const isCurrent = plan.id === currentPlan;
             const popular = POPULAR.has(plan.id) && plan.id !== "free";

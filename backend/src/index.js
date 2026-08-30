@@ -101,6 +101,10 @@ const referralsRoutes = require('./routes/referrals');
 const feedbackRoutes = require('./routes/feedback');
 const orgRoutes = require('./routes/organizations');
 const adminRoutes = require('./routes/admin');
+const insuranceRoutes = require('./routes/insurance');
+const bountyRoutes = require('./routes/bounty');
+const passportRoutes = require('./routes/passport');
+const watermarkRoutes = require('./routes/watermark');
 
 app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/biometrics', biometricsRoutes);
@@ -121,6 +125,10 @@ app.use('/api/referrals', referralsRoutes);
 app.use('/api/feedback', feedbackRoutes);
 app.use('/api/organizations', orgRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/insurance', insuranceRoutes);
+app.use('/api/bounty', bountyRoutes);
+app.use('/api/passport', passportRoutes);
+app.use('/api/watermark', watermarkRoutes);
 app.use('/api/legal', legalRoutes);
 
 app.get('/api/health', async (req, res) => {

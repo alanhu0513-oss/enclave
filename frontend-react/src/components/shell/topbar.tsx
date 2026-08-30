@@ -20,6 +20,7 @@ const TITLES: Record<TabId, string> = {
   admin: "Admin Dashboard",
   family: "Family Dashboard",
   "shield-dashboard": "Shield Hub",
+  insurance: "Deepfake Insurance",
   settings: "Vault Settings",
 };
 

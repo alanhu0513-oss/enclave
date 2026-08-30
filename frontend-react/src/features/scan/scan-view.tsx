@@ -121,7 +121,12 @@ export function ScanView() {
       } else if (tool === "reverse") {
         data = await api.reverseImageSearch(file);
       } else if (tool === "watermark") {
-        data = await api.embedWatermark(file, "© ENCLADE");
+        const reader = new FileReader();
+        const base64 = await new Promise<string>((resolve) => {
+          reader.onload = () => resolve(reader.result as string);
+          reader.readAsDataURL(file);
+        });
+        data = await api.embedWatermark(base64);
       } else if (tool === "audio") {
         data = await api.detectAudio(file);
       } else if (tool === "video") {

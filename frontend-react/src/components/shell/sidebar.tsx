@@ -14,6 +14,7 @@ import {
   Building2,
   LayoutDashboard,
   Users,
+  ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useApp, type TabId } from "@/lib/app-context";
@@ -32,6 +33,7 @@ const BASE_NAV: { id: TabId; label: string; icon: typeof Home; plans?: string[] 
   { id: "reports", label: "Reports", icon: FileText },
   { id: "family", label: "Family", icon: Users, plans: ["family"] },
   { id: "shield-dashboard", label: "Shield Hub", icon: Lock, plans: ["shield", "family", "business"] },
+  { id: "insurance", label: "Insurance", icon: ShieldCheck, plans: ["pro", "shield", "family", "business"] },
   { id: "enterprise", label: "Enterprise", icon: Building2, plans: ["business"] },
   { id: "admin", label: "Admin", icon: LayoutDashboard, plans: ["business"] },
   { id: "settings", label: "Settings", icon: Settings },

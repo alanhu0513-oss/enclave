@@ -1,93 +1,68 @@
-/* ─── Enclave Extension — Popup UI ─── */
+document.addEventListener("DOMContentLoaded", () => {
+  const toggle = document.getElementById("shieldToggle");
+  const statusDot = document.getElementById("statusDot");
+  const statusText = document.getElementById("statusText");
+  const scanCount = document.getElementById("scanCount");
+  const threatCount = document.getElementById("threatCount");
+  const blockCount = document.getElementById("blockCount");
+  const lastDetection = document.getElementById("lastDetection");
+  const sensBtns = document.querySelectorAll(".sens-btn");
 
-document.addEventListener('DOMContentLoaded', async () => {
-  const { user } = await chrome.runtime.sendMessage({ type: 'GET_USER' });
-  const { scanHistory = [] } = await chrome.storage.local.get('scanHistory');
+  chrome.runtime.sendMessage({ type: "GET_STATUS" }, (res) => {
+    if (!res) return;
+    updateUI(res.active, res.sensitivity, res.stats, res.lastDetection);
+  });
 
-  // Auth section
-  const authSection = document.getElementById('auth-section');
-  const mainSection = document.getElementById('main-section');
-  const loginForm = document.getElementById('login-form');
-  const logoutBtn = document.getElementById('logout-btn');
-  const userInfo = document.getElementById('user-info');
+  toggle.addEventListener("click", () => {
+    const isActive = toggle.classList.contains("on");
+    chrome.runtime.sendMessage({ type: "TOGGLE_SHIELD", active: !isActive }, (res) => {
+      if (res) updateUI(res.active);
+    });
+  });
 
-  if (user) {
-    authSection.style.display = 'none';
-    mainSection.style.display = 'block';
-    userInfo.textContent = user.email || user.fullName || 'Logged in';
-  } else {
-    authSection.style.display = 'block';
-    mainSection.style.display = 'none';
+  sensBtns.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      sensBtns.forEach((b) => b.classList.remove("active"));
+      btn.classList.add("active");
+      chrome.runtime.sendMessage({ type: "SET_SENSITIVITY", sensitivity: btn.dataset.level });
+    });
+  });
+
+  function updateUI(active, sensitivity, stats, lastDet) {
+    toggle.classList.toggle("on", active);
+    statusDot.classList.toggle("off", !active);
+    statusText.textContent = active ? "Active" : "Paused";
+    statusText.style.color = active ? "#00c896" : "#666";
+
+    if (stats) {
+      scanCount.textContent = stats.scans || 0;
+      threatCount.textContent = stats.threats || 0;
+      blockCount.textContent = stats.blocked || 0;
+    }
+
+    if (sensitivity) {
+      sensBtns.forEach((b) => {
+        b.classList.toggle("active", b.dataset.level === sensitivity);
+      });
+    }
+
+    if (lastDet && lastDet.time) {
+      const isDanger = lastDet.isDeepfake;
+      lastDetection.className = `last-detection ${isDanger ? "danger" : "safe"}`;
+      lastDetection.innerHTML = `
+        <div class="ld-header">
+          <span class="ld-icon">${isDanger ? "⚠️" : "🛡️"}</span>
+          <span class="ld-text">${isDanger ? "Threat detected" : "No threats detected"}</span>
+        </div>
+        <div class="ld-time">Confidence: ${(lastDet.confidence || 0).toFixed(1)}% · ${timeAgo(lastDet.time)}</div>
+      `;
+    }
   }
 
-  // Login
-  loginForm?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const email = document.getElementById('login-email').value;
-    const password = document.getElementById('login-password').value;
-    const errorEl = document.getElementById('login-error');
-    errorEl.textContent = '';
-
-    const result = await chrome.runtime.sendMessage({ type: 'LOGIN', email, password });
-    if (result.error) {
-      errorEl.textContent = result.error;
-    } else {
-      authSection.style.display = 'none';
-      mainSection.style.display = 'block';
-      userInfo.textContent = result.user?.email || email;
-    }
-  });
-
-  // Logout
-  logoutBtn?.addEventListener('click', async () => {
-    await chrome.runtime.sendMessage({ type: 'LOGOUT' });
-    authSection.style.display = 'block';
-    mainSection.style.display = 'none';
-  });
-
-  // Scan URL input
-  const scanBtn = document.getElementById('scan-btn');
-  const scanUrl = document.getElementById('scan-url');
-  const scanResult = document.getElementById('scan-result');
-
-  scanBtn?.addEventListener('click', async () => {
-    const url = scanUrl.value.trim();
-    if (!url) return;
-    scanResult.innerHTML = '<div class="loading">Scanning...</div>';
-    scanResult.style.display = 'block';
-
-    const result = await chrome.runtime.sendMessage({ type: 'SCAN_IMAGE_FROM_POPUP', imageUrl: url });
-    if (result.error) {
-      scanResult.innerHTML = `<div class="error">Error: ${result.error}</div>`;
-    } else {
-      const color = result.verdict === 'LIKELY_SYNTHETIC' ? '#e94560' :
-                    result.verdict === 'SUSPICIOUS' ? '#f0ad4e' : '#28a745';
-      scanResult.innerHTML = `
-        <div class="result" style="border-left: 3px solid ${color}; padding-left: 8px;">
-          <div class="verdict" style="color: ${color}; font-weight: bold;">${result.verdict?.replace('_', ' ') || 'UNKNOWN'}</div>
-          <div class="confidence">Confidence: ${result.confidence}%</div>
-          ${result.faceCount ? `<div class="faces">Faces: ${result.faceCount}</div>` : ''}
-        </div>
-      `;
-    }
-  });
-
-  // Scan history
-  const historyList = document.getElementById('scan-history');
-  if (historyList && scanHistory.length) {
-    historyList.innerHTML = scanHistory.slice(0, 20).map(h => {
-      const color = h.verdict === 'LIKELY_SYNTHETIC' ? '#e94560' :
-                    h.verdict === 'SUSPICIOUS' ? '#f0ad4e' : '#28a745';
-      const time = new Date(h.timestamp).toLocaleTimeString();
-      return `
-        <div class="history-item" style="border-left: 2px solid ${color}; padding-left: 6px; margin: 4px 0;">
-          <div class="history-verdict" style="color: ${color}; font-size: 12px; font-weight: bold;">${h.verdict?.replace('_', ' ') || '?'}</div>
-          <div class="history-url" style="font-size: 10px; color: #666; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 240px;">${h.url}</div>
-          <div class="history-meta" style="font-size: 10px; color: #999;">${h.confidence}% · ${time}</div>
-        </div>
-      `;
-    }).join('');
-  } else if (historyList) {
-    historyList.innerHTML = '<div class="empty" style="color: #999; font-size: 12px;">No scans yet</div>';
+  function timeAgo(ts) {
+    const diff = Math.floor((Date.now() - ts) / 1000);
+    if (diff < 60) return `${diff}s ago`;
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+    return `${Math.floor(diff / 3600)}h ago`;
   }
 });

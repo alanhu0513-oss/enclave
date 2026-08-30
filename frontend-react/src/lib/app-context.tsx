@@ -15,6 +15,7 @@ export type TabId =
   | "admin"
   | "family"
   | "shield-dashboard"
+  | "insurance"
   | "settings";
 
 interface Toast {

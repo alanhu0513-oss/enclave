@@ -1,106 +1,121 @@
-/**
- * Invisible Watermark Service (Phase 4.3)
- * - embedWatermark: LSB steganography on PNG (payload = user_id|timestamp|copyright)
- * - verifyWatermark: extract + validate payload
- * Uses pngjs for pixel-level LSB manipulation. PNGs are lossless so the
- * watermark survives typical re-saves; JPEG re-encoding is NOT supported
- * for recovery (lossy), so verification returns best-effort.
- */
+const sharp = require("sharp");
+const crypto = require("crypto");
 
-const { PNG } = require('pngjs');
-const fs = require('fs');
+const WATERMARK_STRENGTH = 3;
+const BITS_PER_CHANNEL = 2;
 
-function toBytes(str) {
-  return Buffer.from(str, 'utf8');
+function generateWatermark(userId) {
+  return {
+    id: crypto.randomBytes(16).toString("hex"),
+    userId,
+    timestamp: Date.now(),
+    hash: crypto.createHash("sha256").update(`${userId}:${Date.now()}`).digest("hex")
+  };
 }
 
-// Encode a payload as a bit stream terminated by a 16-bit trailing marker.
-function buildPayloadMessage(payload) {
-  const data = Buffer.from(JSON.stringify(payload), 'utf8');
-  const lenBuf = Buffer.alloc(4);
-  lenBuf.writeUInt32BE(data.length, 0);
-  return Buffer.concat([lenBuf, data, Buffer.from([0x7e, 0x7e, 0x7e, 0x7e])]);
+async function embedWatermark(imageBuffer, userId) {
+  const metadata = await sharp(imageBuffer).metadata();
+  const { width, height, channels } = metadata;
+
+  const watermark = generateWatermark(userId);
+  const bits = stringToBits(JSON.stringify(watermark));
+
+  const image = sharp(imageBuffer);
+  const { data, info } = await image.raw().toBuffer({ resolveWithObject: true });
+
+  const pixelCount = info.width * info.height;
+  const availableBits = pixelCount * channels * BITS_PER_CHANNEL;
+  if (bits.length > availableBits) {
+    throw new Error("Image too small for watermark");
+  }
+
+  const modified = Buffer.from(data);
+  let bitIndex = 0;
+
+  for (let i = 0; i < modified.length && bitIndex < bits.length; i += (32 / BITS_PER_CHANNEL)) {
+    for (let b = 0; b < BITS_PER_CHANNEL && bitIndex < bits.length; b++) {
+      const bit = bits[bitIndex];
+      const shift = BITS_PER_CHANNEL - 1 - b;
+      modified[i] = (modified[i] & ~(1 << shift)) | (bit << shift);
+      bitIndex++;
+    }
+  }
+
+  const result = await sharp(modified, {
+    raw: { width: info.width, height: info.height, channels: info.channels }
+  })
+    .jpeg({ quality: 95 })
+    .toBuffer();
+
+  return { buffer: result, watermark };
 }
 
-function extractPayloadMessage(bytes) {
-  // Look for payload within the bit-stuffed bytes.
-  if (bytes.length < 8) return null;
-  const len = bytes.readUInt32BE(0);
-  if (len <= 0 || len > bytes.length - 8) return null;
-  const content = bytes.slice(4, 4 + len);
-  // Validate trailing marker
-  if (bytes[4 + len] !== 0x7e || bytes[4 + len + 1] !== 0x7e ||
-      bytes[4 + len + 2] !== 0x7e || bytes[4 + len + 3] !== 0x7e) return null;
+async function extractWatermark(imageBuffer) {
+  const image = sharp(imageBuffer);
+  const { data, info } = await image.raw().toBuffer({ resolveWithObject: true });
+
+  const bits = [];
+  for (let i = 0; i < data.length; i += (32 / BITS_PER_CHANNEL)) {
+    for (let b = 0; b < BITS_PER_CHANNEL; b++) {
+      const shift = BITS_PER_CHANNEL - 1 - b;
+      bits.push((data[i] >> shift) & 1);
+    }
+  }
+
+  let jsonStr = "";
+  let currentByte = 0;
+  let bitCount = 0;
+
+  for (const bit of bits) {
+    currentByte = (currentByte << 1) | bit;
+    bitCount++;
+    if (bitCount === 8) {
+      const char = String.fromCharCode(currentByte);
+      if (char === "}" && jsonStr.includes("{")) {
+        jsonStr += char;
+        break;
+      }
+      jsonStr += char;
+      currentByte = 0;
+      bitCount = 0;
+    }
+  }
+
   try {
-    return JSON.parse(content.toString('utf8'));
-  } catch (_) {
+    return JSON.parse(jsonStr);
+  } catch {
     return null;
   }
 }
 
-function embedPayloadInPng(png, payload) {
-  const message = buildPayloadMessage(payload);
-  const bitLength = message.length * 8;
-  const totalPixels = png.width * png.height;
-  // Need at least 1 LSB slot per byte (use channel 0 of each pixel = enough for small payloads)
-  const capacity = totalPixels; // one bit per pixel (channel 0 LSB)
-  if (bitLength > capacity) {
-    throw new Error('Image too small to embed watermark payload');
+async function verifyWatermark(imageBuffer, expectedUserId) {
+  const watermark = await extractWatermark(imageBuffer);
+  if (!watermark) {
+    return { verified: false, reason: "No watermark found" };
   }
-  let bitIndex = 0;
-  for (let i = 0; i < bitLength; i++) {
-    const byte = message[Math.floor(i / 8)];
-    const bit = (byte >> (7 - (i % 8))) & 1;
-    const idx = i * 4; // channel 0 of pixel i
-    const current = png.data[idx];
-    png.data[idx] = (current & 0xfe) | bit;
+
+  if (expectedUserId && watermark.userId !== expectedUserId) {
+    return { verified: false, reason: "User ID mismatch", watermark };
   }
-  return png;
-}
 
-function extractPayloadFromPng(png) {
-  const bitLength = png.width * png.height;
-  const byteCount = Math.floor(bitLength / 8);
-  const bytes = Buffer.alloc(byteCount);
-  for (let i = 0; i < byteCount * 8; i++) {
-    const byteIdx = Math.floor(i / 8);
-    const bit = png.data[i * 4] & 1;
-    bytes[byteIdx] = (bytes[byteIdx] << 1) | bit;
+  const age = Date.now() - watermark.timestamp;
+  const maxAge = 365 * 24 * 60 * 60 * 1000;
+  if (age > maxAge) {
+    return { verified: false, reason: "Watermark expired", watermark };
   }
-  return extractPayloadMessage(bytes);
+
+  return { verified: true, watermark };
 }
 
-function isPng(buffer) {
-  return buffer.length > 8 &&
-    buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4e && buffer[3] === 0x47;
-}
-
-/**
- * Embed an invisible watermark into a PNG image buffer.
- * Returns a new PNG buffer.
- */
-function embedWatermark(inputBuffer, payload) {
-  if (!isPng(inputBuffer)) {
-    // For non-PNG (e.g. JPEG), embed as EXIF-style user comment is lossy;
-    // store in sidecar is not viable in-memory, so we wrap: re-encode not possible.
-    // Instead we return a result signaling unsupported so caller can tell the user.
-    throw new Error('Watermark embedding currently supports PNG images only. Convert to PNG first.');
+function stringToBits(str) {
+  const bits = [];
+  for (let i = 0; i < str.length; i++) {
+    const byte = str.charCodeAt(i);
+    for (let b = 7; b >= 0; b--) {
+      bits.push((byte >> b) & 1);
+    }
   }
-  const png = PNG.sync.read(inputBuffer);
-  embedPayloadInPng(png, payload);
-  return PNG.sync.write(png, { colorType: png.colorType || 6 });
+  return bits;
 }
 
-/**
- * Verify a watermark on an image buffer. Returns payload object or null.
- */
-function verifyWatermark(inputBuffer) {
-  if (!isPng(inputBuffer)) return null;
-  const png = PNG.sync.read(inputBuffer);
-  return extractPayloadFromPng(png);
-}
-
-module.exports = {
-  embedWatermark,
-  verifyWatermark,
-};
+module.exports = { embedWatermark, extractWatermark, verifyWatermark, generateWatermark };

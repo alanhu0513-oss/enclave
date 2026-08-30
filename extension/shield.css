@@ -1,0 +1,104 @@
+#enclave-shield-indicator {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 999999;
+  pointer-events: none;
+}
+
+.shield-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: rgba(0, 200, 150, 0.15);
+  border: 1px solid rgba(0, 200, 150, 0.3);
+  border-radius: 20px;
+  color: #00c896;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  backdrop-filter: blur(10px);
+  animation: shield-pulse 2s ease-in-out infinite;
+}
+
+@keyframes shield-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(0, 200, 150, 0.2); }
+  50% { box-shadow: 0 0 0 8px rgba(0, 200, 150, 0); }
+}
+
+#enclave-shield-alert {
+  position: fixed;
+  top: 50px;
+  right: 12px;
+  z-index: 9999999;
+  animation: shield-slide-in 0.3s ease-out;
+}
+
+@keyframes shield-slide-in {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+.shield-alert-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  background: rgba(220, 38, 38, 0.95);
+  border: 1px solid rgba(255, 100, 100, 0.4);
+  border-radius: 12px;
+  color: white;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 8px 32px rgba(220, 38, 38, 0.4);
+  animation: shield-alert-glow 1s ease-in-out infinite alternate;
+}
+
+@keyframes shield-alert-glow {
+  from { box-shadow: 0 8px 32px rgba(220, 38, 38, 0.4); }
+  to { box-shadow: 0 8px 48px rgba(220, 38, 38, 0.7); }
+}
+
+.shield-alert-icon {
+  font-size: 24px;
+  animation: shield-alert-shake 0.5s ease-in-out;
+}
+
+@keyframes shield-alert-shake {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-10deg); }
+  75% { transform: rotate(10deg); }
+}
+
+.shield-alert-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.shield-alert-text strong {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.shield-alert-text span {
+  font-size: 12px;
+  opacity: 0.85;
+}
+
+.shield-alert-dismiss {
+  padding: 6px 14px;
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.shield-alert-dismiss:hover {
+  background: rgba(255, 255, 255, 0.3);
+}

@@ -169,17 +169,6 @@ export const api = {
     post(`/alerts/${alertId}/document`, { type }),
   deleteAlert: (id: string) =>
     apiFetch(`/alerts/${id}`, { method: "DELETE" }),
-  embedWatermark: (file: File, copyright?: string) => {
-    const fd = new FormData();
-    fd.append("image", file);
-    if (copyright) fd.append("copyright", copyright);
-    return form("/alerts/watermark/embed", fd);
-  },
-  verifyWatermark: (file: File) => {
-    const fd = new FormData();
-    fd.append("image", file);
-    return form("/alerts/watermark/verify", fd);
-  },
 
   // Crawler
   getCrawlerStatus: () => apiFetch("/crawler/status"),
@@ -196,6 +185,37 @@ export const api = {
     fd.append("image", file);
     return form("/biometrics/identity-changes", fd);
   },
+
+  // Insurance
+  getInsurancePlans: () => apiFetch("/insurance/plans"),
+  getInsuranceStatus: () => apiFetch("/insurance/status"),
+  subscribeInsurance: (planId: string) => post("/insurance/subscribe", { planId }),
+  unsubscribeInsurance: () => post("/insurance/unsubscribe"),
+  fileInsuranceClaim: (data: { alertId: string; description: string; damages?: number; evidenceUrls?: string[] }) =>
+    post("/insurance/claim", data),
+  getInsuranceClaims: () => apiFetch("/insurance/claims"),
+  getInsuranceClaim: (claimId: string) => apiFetch(`/insurance/claims/${claimId}`),
+
+  // Bounty
+  getBountyProfile: () => apiFetch("/bounty/profile"),
+  enrollBounty: (data: { faceImages: string[]; bountyAmount: number }) => post("/bounty/enroll", data),
+  scanBounty: (data: { imageUrl: string; source?: string; sourceUrl?: string }) => post("/bounty/scan", data),
+  getBountyMatches: () => apiFetch("/bounty/matches"),
+  confirmBountyMatch: (scanId: string, confirmed: boolean) => post(`/bounty/matches/${scanId}/confirm`, { confirmed }),
+  getBountyLeaderboard: () => apiFetch("/bounty/leaderboard"),
+  getBountyStats: () => apiFetch("/bounty/stats"),
+
+  // Passport
+  getPassport: () => apiFetch("/passport"),
+  enrollPassport: () => post("/passport/enroll"),
+  verifyPassport: (passportId: string) => apiFetch(`/passport/verify/${passportId}`),
+  getPassportQR: () => post("/passport/qr"),
+  verifyPassportQR: (qrData: string) => post("/passport/qr/verify", { qrData }),
+  revokePassport: () => post("/passport/revoke"),
+
+  // Watermark
+  embedWatermark: (imageBase64: string) => post("/watermark/embed", { imageBase64 }),
+  verifyWatermark: (imageBase64: string, userId?: string) => post("/watermark/verify", { imageBase64, userId }),
 
   // User
   getUserData: () => apiFetch<UserData>("/user/data"),

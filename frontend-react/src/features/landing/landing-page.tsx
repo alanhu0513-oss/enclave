@@ -499,7 +499,7 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
               <ul className="space-y-2 text-sm text-gray-500">
                 <li><a href="#features" className="hover:text-white transition-colors">Features</a></li>
                 <li><a href="#pricing" className="hover:text-white transition-colors">Pricing</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">API Docs</a></li>
+                <li><a href="https://enclave-production-d818.up.railway.app/api-docs" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">API Docs</a></li>
               </ul>
             </div>
             <div>
@@ -513,9 +513,9 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
             <div>
               <h4 className="mb-3 text-sm font-semibold">Legal</h4>
               <ul className="space-y-2 text-sm text-gray-500">
-                <li><a href="#" className="hover:text-white transition-colors">Privacy</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Terms</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Security</a></li>
+                <li><a href="/privacy" className="hover:text-white transition-colors">Privacy Policy</a></li>
+                <li><a href="/terms" className="hover:text-white transition-colors">Terms of Service</a></li>
+                <li><a href="/dmca" className="hover:text-white transition-colors">DMCA Policy</a></li>
               </ul>
             </div>
           </div>

@@ -20,17 +20,26 @@ const TIER_SCHEDULE_MINUTES = { pro: 60, shield: 60, business: 15 };
 
 /* ─── Source registry ─── */
 const SOURCES = [
-  { id: 'web',     label: 'Surface Web',      minTierRank: 0, fragile: false },
-  { id: 'reddit',  label: 'Reddit',           minTierRank: 1, fragile: false },
-  { id: 'paste',   label: 'Paste Sites',      minTierRank: 1, fragile: false },
-  { id: 'darkweb', label: 'Dark Web (Ahmia)', minTierRank: 2, fragile: false },
-  { id: 'social',  label: 'X/Twitter (Nitter)', minTierRank: 3, fragile: true },
+  { id: 'web',       label: 'Surface Web',        minTierRank: 0, fragile: false },
+  { id: 'reddit',    label: 'Reddit',             minTierRank: 1, fragile: false },
+  { id: 'paste',     label: 'Paste Sites',        minTierRank: 1, fragile: false },
+  { id: 'forums',    label: 'Forums & Boards',    minTierRank: 1, fragile: false },
+  { id: 'telegram',  label: 'Telegram',           minTierRank: 2, fragile: true },
+  { id: 'darkweb',   label: 'Dark Web (Ahmia)',   minTierRank: 2, fragile: false },
+  { id: 'social',    label: 'X/Twitter (Nitter)', minTierRank: 3, fragile: true },
 ];
 
 const SUSPICIOUS_SUBREDDITS = [
   'deepfake', 'deepfakes', 'faceswap', 'nsfw', 'gonewild', 'jerkbuds',
   'nudes', 'leaked', 'celebfakes', 'nsfw411',
 ];
+
+const FORUM_SITES = [
+  'forums.securityweekly.com', 'reddit.com/r/netsec', 'stackexchange.com',
+  'quora.com', 'medium.com', 'substack.com',
+];
+
+const TELEGRAM_SEARCHTerms = ['leaked', 'deepfake', 'nudes', 'exposed', 'doxx'];
 
 /* ─── State ─── */
 const _sessions = new Map();          // userId -> { running, timeout, ... }
@@ -211,12 +220,119 @@ async function searchSocial(userName) {
   );
 }
 
+/* ─── Forum & Board Search ─── */
+
+async function searchForums(userName) {
+  const results = [];
+  const query = `"${userName}" (deepfake OR leaked OR impersonat OR exposed OR nsfw)`;
+  const cheerio = require('cheerio');
+
+  for (const site of FORUM_SITES) {
+    try {
+      const res = await fetchWithTimeout(
+        `https://html.duckduckgo.com/html/?q=site:${site} ${encodeURIComponent(query)}`,
+        10000
+      );
+      if (!res.ok) continue;
+      const html = await res.text();
+      if (/anomaly|captcha/i.test(html.slice(0, 2000))) continue;
+
+      const $ = cheerio.load(html);
+      $('.result__a, a.result__a').each((i, el) => {
+        if (i > 5) return;
+        let url = $(el).attr('href') || '';
+        const m = url.match(/uddg=([^&]+)/);
+        if (m) url = decodeURIComponent(m[1]);
+        if (!url.startsWith('http')) return;
+        const title = $(el).text().trim();
+        results.push({
+          sourceUrl: url,
+          confidence: 60,
+          mediaType: 'forum',
+          matchedOn: `forum match on ${site}`,
+          notes: `Forum post: ${title || url}`,
+          timestamp: new Date().toISOString(),
+          engine: 'forum-ddg',
+        });
+      });
+    } catch (_) {}
+  }
+  return results;
+}
+
+/* ─── Telegram Search ─── */
+
+async function searchTelegram(userName) {
+  const results = [];
+  const cheerio = require('cheerio');
+  const query = `"${userName}" (leaked OR deepfake OR nsfw OR exposed)`;
+
+  try {
+    const res = await fetchWithTimeout(
+      `https://html.duckduckgo.com/html/?q=site:t.me ${encodeURIComponent(query)}`,
+      10000
+    );
+    if (!res.ok) throw new Error(`ddg returned ${res.status}`);
+    const html = await res.text();
+    if (/anomaly|captcha/i.test(html.slice(0, 2000))) {
+      throw Object.assign(new Error('ddg challenge page'), { code: 'SOURCE_BLOCKED' });
+    }
+
+    const $ = cheerio.load(html);
+    $('.result__a, a.result__a').each((i, el) => {
+      if (i > 10) return;
+      let url = $(el).attr('href') || '';
+      const m = url.match(/uddg=([^&]+)/);
+      if (m) url = decodeURIComponent(m[1]);
+      if (!url.startsWith('http')) return;
+      const title = $(el).text().trim();
+      results.push({
+        sourceUrl: url,
+        confidence: 55,
+        mediaType: 'social',
+        matchedOn: 'telegram mention',
+        notes: `Telegram: ${title || url}`,
+        timestamp: new Date().toISOString(),
+        engine: 'telegram-ddg',
+      });
+    });
+  } catch (e) {
+    throw Object.assign(new Error(`telegram search failed: ${e.message}`), { code: 'SOURCE_DOWN' });
+  }
+  return results;
+}
+
+/* ─── Tor Proxy Helper ─── */
+
+const TOR_PROXY = process.env.TOR_PROXY_URL || 'socks5://127.0.0.1:9050';
+const USE_TOR = process.env.USE_TOR_PROXY === 'true';
+
+async function fetchWithTor(url, timeoutMs = 15000) {
+  if (!USE_TOR) return fetchWithTimeout(url, timeoutMs);
+  try {
+    const { default: fetch } = await import('node-fetch');
+    const { SocksProxyAgent } = await import('socks-proxy-agent');
+    const agent = new SocksProxyAgent(TOR_PROXY);
+    return await fetch(url, {
+      agent,
+      timeout: timeoutMs,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; rv:109.0) Gecko/20100101 Firefox/115.0',
+      },
+    });
+  } catch (_) {
+    return fetchWithTimeout(url, timeoutMs);
+  }
+}
+
 /* ─── Source runner with health tracking ─── */
 
 const _sourceRunners = {
   web: (name) => crawler.searchWebEngines(name),
   reddit: searchReddit,
   paste: searchPastes,
+  forums: searchForums,
+  telegram: searchTelegram,
   darkweb: (name) => crawler.searchDarkWebSources(name),
   social: searchSocial,
 };

@@ -344,6 +344,20 @@ export const api = {
   disableSso: (orgId: string) =>
     apiFetch(`/organizations/${orgId}/sso`, { method: "DELETE" }),
 
+  // Admin
+  request: (path: string, opts?: RequestInit) =>
+    apiFetch(path, opts as any),
+  getAdminOverview: () => apiFetch("/admin/overview"),
+  getAdminRevenue: () => apiFetch("/admin/revenue"),
+  getAdminUsers: (limit?: number, offset?: number) =>
+    apiFetch(`/admin/users?limit=${limit || 50}&offset=${offset || 0}`),
+  getAdminHealth: () => apiFetch("/admin/health"),
+  getAdminAlerts: () => apiFetch("/admin/alerts"),
+  adminUpdateUserPlan: (userId: string, plan: string) =>
+    apiFetch(`/admin/users/${userId}/plan`, { method: "PATCH", body: JSON.stringify({ plan }) }),
+  adminUpdateUserRole: (userId: string, role: string) =>
+    apiFetch(`/admin/users/${userId}/role`, { method: "PATCH", body: JSON.stringify({ role }) }),
+
   getBaseUrl: () => API_BASE,
 };
 

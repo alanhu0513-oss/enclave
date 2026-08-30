@@ -26,6 +26,8 @@
     "pdfkit": "^0.13.0",
     "pngjs": "^7.0.0",
     "stripe": "^22.5.0",
+    "swagger-jsdoc": "^6.3.0",
+    "swagger-ui-express": "^5.0.1",
     "uuid": "^9.0.0"
   },
   "devDependencies": {

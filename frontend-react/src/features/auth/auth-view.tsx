@@ -12,7 +12,7 @@ import { CyberBackground } from "@/components/psychology/cyber-background";
 
 type Mode = "login" | "register" | "forgot";
 
-export function AuthView() {
+export function AuthView({ onBack }: { onBack?: () => void } = {}) {
   const { login, register, loading } = useAuth();
   const { toast } = useApp();
   const [mode, setMode] = useState<Mode>(() =>
@@ -59,6 +59,15 @@ export function AuthView() {
         className="glass-strong relative z-10 w-full max-w-md overflow-hidden rounded-2xl p-8 shadow-2xl"
       >
         <div className="mb-8 flex flex-col items-center text-center">
+          {onBack && (
+            <button
+              onClick={onBack}
+              className="mb-4 self-start flex items-center gap-1.5 text-xs text-ink-muted transition-colors hover:text-cyan"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              Back to home
+            </button>
+          )}
           <Brand className="mb-4" />
           <p className="text-sm text-ink-muted">
             {mode === "login"

@@ -12,6 +12,7 @@ export type TabId =
   | "monitoring"
   | "reports"
   | "enterprise"
+  | "admin"
   | "settings";
 
 interface Toast {

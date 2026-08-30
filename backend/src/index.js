@@ -72,6 +72,13 @@ if (stripeWebhookHandler) {
 
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true, limit: '5mb' }));
+
+// Swagger API docs
+const { swaggerUi, specs } = require('./config/swagger');
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs, {
+  customCss: '.swagger-ui .topbar { display: none }',
+  customSiteTitle: 'Enclave API Documentation',
+}));
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 const authRoutes = require('./routes/auth');
@@ -93,6 +100,7 @@ const familyRoutes = require('./routes/family');
 const referralsRoutes = require('./routes/referrals');
 const feedbackRoutes = require('./routes/feedback');
 const orgRoutes = require('./routes/organizations');
+const adminRoutes = require('./routes/admin');
 
 app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/biometrics', biometricsRoutes);
@@ -112,6 +120,7 @@ app.use('/api/family', familyRoutes);
 app.use('/api/referrals', referralsRoutes);
 app.use('/api/feedback', feedbackRoutes);
 app.use('/api/organizations', orgRoutes);
+app.use('/api/admin', adminRoutes);
 app.use('/api/legal', legalRoutes);
 
 app.get('/api/health', async (req, res) => {

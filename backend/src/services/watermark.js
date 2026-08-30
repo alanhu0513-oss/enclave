@@ -1,4 +1,9 @@
-const sharp = require("sharp");
+let sharp;
+try {
+  sharp = require("sharp");
+} catch {
+  sharp = null;
+}
 const crypto = require("crypto");
 
 const WATERMARK_STRENGTH = 3;
@@ -14,6 +19,9 @@ function generateWatermark(userId) {
 }
 
 async function embedWatermark(imageBuffer, userId) {
+  if (!sharp) {
+    throw new Error("Watermarking requires sharp module (not installed)");
+  }
   const metadata = await sharp(imageBuffer).metadata();
   const { width, height, channels } = metadata;
 
@@ -51,6 +59,9 @@ async function embedWatermark(imageBuffer, userId) {
 }
 
 async function extractWatermark(imageBuffer) {
+  if (!sharp) {
+    throw new Error("Watermarking requires sharp module (not installed)");
+  }
   const image = sharp(imageBuffer);
   const { data, info } = await image.raw().toBuffer({ resolveWithObject: true });
 

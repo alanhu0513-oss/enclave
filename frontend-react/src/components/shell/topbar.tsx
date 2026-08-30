@@ -18,6 +18,8 @@ const TITLES: Record<TabId, string> = {
   reports: "Reports & Analytics",
   enterprise: "Enterprise",
   admin: "Admin Dashboard",
+  family: "Family Dashboard",
+  "shield-dashboard": "Shield Hub",
   settings: "Vault Settings",
 };
 

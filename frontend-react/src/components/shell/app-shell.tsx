@@ -23,6 +23,8 @@ const ReportsView = lazy(() => import("@/features/reports/reports-view").then((m
 const MonitoringView = lazy(() => import("@/features/monitoring/monitoring-view").then((m) => ({ default: m.MonitoringView })));
 const EnterpriseView = lazy(() => import("@/features/enterprise/enterprise-view").then((m) => ({ default: m.EnterpriseView })));
 const AdminDashboard = lazy(() => import("@/features/admin/admin-dashboard").then((m) => ({ default: m.AdminDashboard })));
+const FamilyDashboard = lazy(() => import("@/features/family/family-dashboard").then((m) => ({ default: m.FamilyDashboard })));
+const ShieldDashboard = lazy(() => import("@/features/shield/shield-dashboard").then((m) => ({ default: m.ShieldDashboard })));
 const SettingsView = lazy(() => import("@/features/settings/settings-view").then((m) => ({ default: m.SettingsView })));
 
 const COLLAPSE_KEY = "enclave_sidebar_collapsed";
@@ -97,6 +99,8 @@ export function AppShell() {
                 {tab === "monitoring" && <MonitoringView />}
                 {tab === "enterprise" && <EnterpriseView />}
                 {tab === "admin" && <AdminDashboard />}
+                {tab === "family" && <FamilyDashboard />}
+                {tab === "shield-dashboard" && <ShieldDashboard />}
                 {tab === "settings" && <SettingsView />}
               </Suspense>
             </FadeIn>

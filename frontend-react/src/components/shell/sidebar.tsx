@@ -13,15 +13,16 @@ import {
   Radar,
   Building2,
   LayoutDashboard,
+  Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useApp, type TabId } from "@/lib/app-context";
 import { useAuth } from "@/lib/auth";
 import { ShieldMark } from "@/components/ui/logo";
 import { PlanModal } from "./plan-modal";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 
-const NAV: { id: TabId; label: string; icon: typeof Home }[] = [
+const BASE_NAV: { id: TabId; label: string; icon: typeof Home; plans?: string[] }[] = [
   { id: "home", label: "Home", icon: Home },
   { id: "shield", label: "Shields", icon: Shield },
   { id: "scan", label: "Scan", icon: ScanSearch },
@@ -29,8 +30,10 @@ const NAV: { id: TabId; label: string; icon: typeof Home }[] = [
   { id: "insights", label: "Insights", icon: BarChart3 },
   { id: "monitoring", label: "Monitoring", icon: Radar },
   { id: "reports", label: "Reports", icon: FileText },
-  { id: "enterprise", label: "Enterprise", icon: Building2 },
-  { id: "admin", label: "Admin", icon: LayoutDashboard },
+  { id: "family", label: "Family", icon: Users, plans: ["family"] },
+  { id: "shield-dashboard", label: "Shield Hub", icon: Lock, plans: ["shield", "family", "business"] },
+  { id: "enterprise", label: "Enterprise", icon: Building2, plans: ["business"] },
+  { id: "admin", label: "Admin", icon: LayoutDashboard, plans: ["business"] },
   { id: "settings", label: "Settings", icon: Settings },
 ];
 
@@ -52,6 +55,14 @@ export function Sidebar({
   const { tab, setTab, unread } = useApp();
   const { user, lock } = useAuth();
   const [planModalOpen, setPlanModalOpen] = useState(false);
+
+  const NAV = useMemo(() => {
+    const plan = user?.plan || "free";
+    return BASE_NAV.filter((item) => {
+      if (!item.plans) return true;
+      return item.plans.includes(plan);
+    });
+  }, [user?.plan]);
 
   useEffect(() => {
     const openPlans = () => setPlanModalOpen(true);

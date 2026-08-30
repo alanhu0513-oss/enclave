@@ -508,6 +508,59 @@ async function updateTakedownStatus(takedownId, userId, status, notes = '') {
     await alerts.update({ id: takedown.alert_id }, { status: 'RESOLVED_REMOVED' });
   }
 
+  // Notify user of takedown status change
+  try {
+    const users = await table('users');
+    const user = await users.find({ id: userId });
+    if (user) {
+      const statusLabels = {
+        sent: 'Takedown notice sent',
+        acknowledged: 'Platform acknowledged your takedown',
+        removed: 'Content removed successfully',
+        escalated: 'Takedown escalated',
+      };
+      const title = statusLabels[status] || `Takedown ${status}`;
+      const body = status === 'removed'
+        ? `The content has been removed from the platform.`
+        : status === 'escalated'
+        ? `Your takedown has been escalated. ${notes || ''}`
+        : `Takedown notice has been ${status}.`;
+
+      // In-app notification
+      const notifications = await table('notifications');
+      await notifications.insert({
+        id: uuidv4(),
+        user_id: userId,
+        type: 'takedown_update',
+        title,
+        body,
+        data: JSON.stringify({ takedownId, status, alertId: takedown.alert_id }),
+        read: false,
+        created_at: new Date().toISOString(),
+      });
+
+      // Email notification
+      if (user.email && user.email_notifications !== false) {
+        await notifications.sendEmail(
+          user.email,
+          `Enclave: ${title}`,
+          `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
+            <h2 style="color:#1a1a2e;">${title}</h2>
+            <p>${body}</p>
+            <p><a href="${APP_URL}/alerts" style="background:#e94560;color:#fff;padding:10px 20px;text-decoration:none;border-radius:6px;">View in Enclave</a></p>
+          </div>`
+        );
+      }
+
+      // FCM push
+      if (user.fcm_token) {
+        await notifications.sendPush(user.fcm_token, { title, body, data: { takedownId, status } });
+      }
+    }
+  } catch (e) {
+    console.warn('[Takedown] Notification failed:', e.message);
+  }
+
   return { id: takedownId, status, updatedAt: now };
 }
 

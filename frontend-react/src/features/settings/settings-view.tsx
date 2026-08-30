@@ -6,6 +6,8 @@ import {
   CreditCard,
   Bell,
   LogOut,
+  CheckCircle2,
+  Clock,
 } from "lucide-react";
 import { useApp } from "@/lib/app-context";
 import { useAuth } from "@/lib/auth";
@@ -18,6 +20,7 @@ import { StaggerContainer, StaggerItem } from "@/components/ui/motion";
 import { FamilyPanel } from "./family-panel";
 import { ReferralPanel } from "./referral-panel";
 import { PlanModal } from "@/components/shell/plan-modal";
+import { timeAgo, cn } from "@/lib/utils";
 
 export function SettingsView() {
   const { toast } = useApp();
@@ -173,17 +176,11 @@ export function SettingsView() {
         </StaggerItem>
 
         {/* Notifications + Sign out */}
-        <StaggerItem className="grid gap-5 sm:grid-cols-2">
-          <Card>
-            <CardContent className="flex items-center gap-3 p-5">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-green/15 text-green">
-                <Bell className="h-5 w-5" />
-              </div>
-              <p className="text-sm text-ink-muted">
-                Email & push alerts are active
-              </p>
-            </CardContent>
-          </Card>
+        <StaggerItem>
+          <NotificationPrefs />
+        </StaggerItem>
+
+        <StaggerItem>
           <Card>
             <CardContent className="flex items-center justify-between p-5">
               <div className="flex items-center gap-3">
@@ -202,5 +199,99 @@ export function SettingsView() {
 
       <PlanModal open={planOpen} onClose={() => setPlanOpen(false)} />
     </div>
+  );
+}
+
+function NotificationPrefs() {
+  const { toast } = useApp();
+  const [emailEnabled, setEmailEnabled] = useState(true);
+  const [recentNotifs, setRecentNotifs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const [prefs, notifs] = await Promise.all([
+          api.getNotificationPreferences(),
+          api.getNotifications({ limit: 5 }),
+        ]);
+        setEmailEnabled((prefs as any)?.emailNotifications !== false);
+        setRecentNotifs(Array.isArray(notifs) ? notifs : []);
+      } catch {
+        /* ignore */
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
+
+  async function toggleEmail() {
+    const next = !emailEnabled;
+    setEmailEnabled(next);
+    try {
+      await api.updateNotificationPreferences({ emailNotifications: next });
+      toast({ title: next ? "Email alerts enabled" : "Email alerts disabled", variant: "success" });
+    } catch (e: any) {
+      setEmailEnabled(!next);
+      toast({ title: "Failed to update", variant: "error" });
+    }
+  }
+
+  if (loading) return null;
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center gap-2">
+          <Bell className="h-4 w-4 text-green" />
+          <CardTitle>Notifications</CardTitle>
+        </div>
+        <CardDescription>Manage alert delivery and view recent notifications</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium text-ink">Email alerts</p>
+            <p className="text-xs text-ink-muted">Receive threat alerts and takedown updates via email</p>
+          </div>
+          <button
+            onClick={toggleEmail}
+            className={cn(
+              "relative h-6 w-11 rounded-full transition-colors",
+              emailEnabled ? "bg-green" : "bg-white/10"
+            )}
+          >
+            <span
+              className={cn(
+                "absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform",
+                emailEnabled ? "left-[22px]" : "left-0.5"
+              )}
+            />
+          </button>
+        </div>
+
+        {recentNotifs.length > 0 && (
+          <div>
+            <p className="mb-2 text-xs font-semibold text-ink-muted">Recent</p>
+            <div className="space-y-2">
+              {recentNotifs.map((n: any) => (
+                <div key={n.id} className="flex items-start gap-2 rounded-lg bg-white/[0.03] p-2.5">
+                  {n.read ? (
+                    <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-ink-faint" />
+                  ) : (
+                    <Clock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-cyan" />
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-medium text-ink">{n.title}</p>
+                    <p className="text-[11px] text-ink-muted truncate">{n.body}</p>
+                  </div>
+                  <span className="shrink-0 text-[10px] text-ink-faint">{timeAgo(n.createdAt)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

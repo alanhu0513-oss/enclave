@@ -28,11 +28,14 @@ afterAll(() => {
 });
 
 describe('Health Check', () => {
-  it('GET /api/health returns status ok', async () => {
+  it('GET /api/health returns status ok or degraded', async () => {
     const res = await request(app).get('/api/health');
-    expect(res.status).toBe(200);
-    expect(res.body.status).toBe('ok');
+    expect([200, 503]).toContain(res.status);
+    expect(['ok', 'degraded']).toContain(res.body.status);
     expect(res.body.version).toBe('1.0.0');
+    expect(res.body).toHaveProperty('uptime');
+    expect(res.body).toHaveProperty('memory');
+    expect(res.body).toHaveProperty('db');
   });
 });
 

@@ -11,6 +11,10 @@ import {
   AlertTriangle,
   Link2,
   Sparkles,
+  ArrowRight,
+  ArrowLeft,
+  ChevronRight,
+  FileImage,
 } from "lucide-react";
 import { useApp } from "@/lib/app-context";
 import { api } from "@/lib/api";
@@ -21,107 +25,129 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { StaggerContainer, StaggerItem } from "@/components/ui/motion";
-import { confidenceColor, confidenceLabel } from "@/lib/utils";
+import { confidenceColor, confidenceLabel, cn } from "@/lib/utils";
 
 type Tool = "url" | "image" | "deep" | "reverse" | "watermark";
+type Step = "choose" | "input" | "processing" | "result";
+
+const TOOLS: { id: Tool; label: string; icon: typeof Globe; color: string; desc: string }[] = [
+  { id: "url", label: "Scan a URL", icon: Globe, color: "cyan", desc: "Paste a link and we'll analyze it for deepfakes" },
+  { id: "image", label: "Scan an Image", icon: FileImage, color: "green", desc: "Upload a photo to check if it's a deepfake" },
+  { id: "deep", label: "Deep Web Crawl", icon: ScanSearch, color: "purple", desc: "Actively search the web & dark web for your face" },
+  { id: "reverse", label: "Reverse Image Search", icon: Link2, color: "amber", desc: "Find where an image appears across the web" },
+  { id: "watermark", label: "Rights Shield", icon: Stamp, color: "purple", desc: "Embed an invisible watermark to prove ownership" },
+];
+
+const COLOR_MAP: Record<string, string> = {
+  cyan: "bg-cyan/15 text-cyan",
+  green: "bg-green/15 text-green",
+  purple: "bg-purple/15 text-purple",
+  amber: "bg-amber/15 text-amber",
+};
+
+const STEPS: Step[] = ["choose", "input", "processing", "result"];
+const STEP_LABELS = ["Choose", "Input", "Processing", "Result"];
 
 export function ScanView() {
   const { toast } = useApp();
   const psych = usePsychology();
+  const [step, setStep] = useState<Step>("choose");
+  const [tool, setTool] = useState<Tool | null>(null);
   const [url, setUrl] = useState("");
-  const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<{ type: Tool; data: any } | null>(null);
   const imageRef = useRef<HTMLInputElement>(null);
   const wmRef = useRef<HTMLInputElement>(null);
   const revRef = useRef<HTMLInputElement>(null);
 
-  async function scanUrl() {
-    if (!url) {
+  const stepIdx = STEPS.indexOf(step);
+  const toolInfo = TOOLS.find((t) => t.id === tool);
+
+  function chooseTool(t: Tool) {
+    setTool(t);
+    setResult(null);
+    setStep("input");
+  }
+
+  function goBack() {
+    if (step === "input") {
+      setStep("choose");
+      setTool(null);
+      setUrl("");
+    } else if (step === "result") {
+      setStep("choose");
+      setTool(null);
+      setResult(null);
+      setUrl("");
+    }
+  }
+
+  async function runScan() {
+    if (tool === "url" && !url) {
       toast({ title: "Enter a URL", variant: "info" });
       return;
     }
-    setBusy(true);
-    setResult(null);
+    setStep("processing");
     try {
-      const data = await api.scanUrl(url);
-      setResult({ type: "url", data });
+      let data: any;
+      if (tool === "url") {
+        data = await api.scanUrl(url);
+      }
+      setResult({ type: tool!, data });
       psych.recordScan();
       track("first_scan");
       psych
         .checkBadges(5)
         .forEach((name) => toast({ title: `🏆 Badge unlocked: ${name}!`, variant: "success" }));
+      setStep("result");
       toast({ title: "Scan complete", variant: "success" });
     } catch (e: any) {
       toast({ title: "Scan failed", body: e.message, variant: "error" });
-    } finally {
-      setBusy(false);
+      setStep("input");
     }
   }
 
-  async function scanImage(file: File) {
-    setBusy(true);
-    setResult(null);
+  async function handleImageFile(file: File) {
+    setStep("processing");
     try {
-      const data = await api.scanImage(file);
-      setResult({ type: "image", data });
+      let data: any;
+      if (tool === "image") {
+        data = await api.scanImage(file);
+      } else if (tool === "reverse") {
+        data = await api.reverseImageSearch(file);
+      } else if (tool === "watermark") {
+        data = await api.embedWatermark(file, "© ENCLADE");
+      }
+      setResult({ type: tool!, data });
       psych.recordScan();
       track("first_scan");
       psych
         .checkBadges(5)
         .forEach((name) => toast({ title: `🏆 Badge unlocked: ${name}!`, variant: "success" }));
-      toast({ title: "Image scan complete", variant: "success" });
+      setStep("result");
+      toast({ title: `${tool === "watermark" ? "Watermark embedded" : "Scan complete"}`, variant: "success" });
     } catch (e: any) {
-      toast({ title: "Scan failed", body: e.message, variant: "error" });
-    } finally {
-      setBusy(false);
+      toast({ title: "Failed", body: e.message, variant: "error" });
+      setStep("input");
     }
   }
 
-  async function deepScan() {
-    setBusy(true);
-    setResult(null);
+  async function runDeepScan() {
+    setStep("processing");
     toast({ title: "Deep scan started", body: "This may take a few minutes", variant: "info" });
     try {
       const data = await api.deepScan();
       setResult({ type: "deep", data });
+      setStep("result");
       toast({ title: "Deep scan complete", variant: "success" });
     } catch (e: any) {
       toast({ title: "Deep scan failed", body: e.message, variant: "error" });
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function reverseSearch(file: File) {
-    setBusy(true);
-    setResult(null);
-    try {
-      const data = await api.reverseImageSearch(file);
-      setResult({ type: "reverse", data });
-      toast({ title: "Reverse search complete", variant: "success" });
-    } catch (e: any) {
-      toast({ title: "Search failed", body: e.message, variant: "error" });
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function watermark(file: File) {
-    setBusy(true);
-    setResult(null);
-    try {
-      const data = await api.embedWatermark(file, "© ENCLAVE");
-      setResult({ type: "watermark", data });
-      toast({ title: "Watermark embedded", variant: "success" });
-    } catch (e: any) {
-      toast({ title: "Embed failed", body: e.message, variant: "error" });
-    } finally {
-      setBusy(false);
+      setStep("input");
     }
   }
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6">
+      {/* Header */}
       <div className="flex items-center gap-3">
         <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-cyan/15 text-cyan">
           <ScanSearch className="h-5 w-5" />
@@ -134,166 +160,169 @@ export function ScanView() {
         </div>
       </div>
 
-      {/* Primary scan tools */}
-      <StaggerContainer className="grid gap-5 lg:grid-cols-2">
-        {/* URL scan */}
-        <StaggerItem>
-          <Card className="h-full">
-            <CardHeader>
-              <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-cyan/15 text-cyan">
-                <Globe className="h-5 w-5" />
-              </div>
-              <CardTitle>Scan a URL</CardTitle>
-              <CardDescription>
-                Paste a link and we'll analyze it for deepfakes and impersonation.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex gap-2">
-                <Input
-                  placeholder="https://example.com/article"
-                  value={url}
-                  onChange={(e) => setUrl(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && scanUrl()}
-                  disabled={busy}
-                />
-                <Button onClick={scanUrl} disabled={busy} className="shrink-0">
-                  {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Crosshair className="h-4 w-4" />}
-                  Scan
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </StaggerItem>
+      {/* Step indicator */}
+      <div className="flex items-center gap-1.5">
+        {STEP_LABELS.map((label, i) => (
+          <div key={label} className="flex items-center gap-1.5">
+            <div
+              className={cn(
+                "flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold transition-colors",
+                i <= stepIdx ? "bg-cyan/20 text-cyan" : "bg-white/[0.04] text-ink-faint"
+              )}
+            >
+              {i < stepIdx ? <CheckCircle2 className="h-3.5 w-3.5" /> : i + 1}
+            </div>
+            <span className={cn("text-xs", i <= stepIdx ? "text-ink" : "text-ink-faint")}>{label}</span>
+            {i < STEP_LABELS.length - 1 && <ChevronRight className="h-3 w-3 text-ink-faint" />}
+          </div>
+        ))}
+      </div>
 
-        {/* Image scan */}
-        <StaggerItem>
-          <Card className="h-full">
-            <CardHeader>
-              <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-green/15 text-green">
-                <ImagePlus className="h-5 w-5" />
-              </div>
-              <CardTitle>Scan an Image</CardTitle>
-              <CardDescription>
-                Upload a photo or screenshot to check if it's a deepfake.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <input
-                ref={imageRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) scanImage(f);
-                }}
-              />
-              <Button variant="glass" className="w-full" disabled={busy} onClick={() => imageRef.current?.click()}>
-                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
-                Upload Image
-              </Button>
-            </CardContent>
-          </Card>
-        </StaggerItem>
+      <AnimatePresence mode="wait">
+        {/* Step 1: Choose tool */}
+        {step === "choose" && (
+          <motion.div key="choose" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }}>
+            <StaggerContainer className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {TOOLS.map((t) => {
+                const Icon = t.icon;
+                return (
+                  <StaggerItem key={t.id}>
+                    <Card
+                      className="cursor-pointer transition-all hover:border-cyan/40 hover:bg-cyan/[0.03]"
+                      onClick={() => chooseTool(t.id)}
+                    >
+                      <CardContent className="p-5">
+                        <div className={cn("mb-3 flex h-10 w-10 items-center justify-center rounded-xl", COLOR_MAP[t.color])}>
+                          <Icon className="h-5 w-5" />
+                        </div>
+                        <p className="text-sm font-semibold text-ink">{t.label}</p>
+                        <p className="mt-1 text-xs text-ink-muted">{t.desc}</p>
+                      </CardContent>
+                    </Card>
+                  </StaggerItem>
+                );
+              })}
+            </StaggerContainer>
+          </motion.div>
+        )}
 
-        {/* Deep scan */}
-        <StaggerItem>
-          <Card className="h-full">
-            <CardHeader>
-              <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-purple/15 text-purple">
-                <ScanSearch className="h-5 w-5" />
-              </div>
-              <CardTitle>Deep Web Crawl</CardTitle>
-              <CardDescription>
-                Actively search the web & dark web for your face and data.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button variant="glass" className="w-full" disabled={busy} onClick={deepScan}>
-                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                Start Deep Scan
-              </Button>
-            </CardContent>
-          </Card>
-        </StaggerItem>
-
-        {/* Watermark */}
-        <StaggerItem>
-          <Card className="h-full">
-            <CardHeader>
-              <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-amber/15 text-amber">
-                <Stamp className="h-5 w-5" />
-              </div>
-              <CardTitle>Rights Shield</CardTitle>
-              <CardDescription>
-                Embed an invisible watermark to prove ownership & deter theft.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex gap-2">
-                <input
-                  ref={wmRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) watermark(f);
-                  }}
-                />
-                <Button variant="outline" className="flex-1" disabled={busy} onClick={() => wmRef.current?.click()}>
-                  {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Stamp className="h-4 w-4" />}
-                  Embed Watermark
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </StaggerItem>
-
-        {/* Reverse image */}
-        <StaggerItem className="lg:col-span-2">
-          <Card className="h-full">
-            <CardContent className="flex flex-wrap items-center justify-between gap-4 p-5">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-green/15 text-green">
-                  <Link2 className="h-5 w-5" />
+        {/* Step 2: Input */}
+        {step === "input" && tool && (
+          <motion.div key="input" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }}>
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <button onClick={goBack} className="rounded-lg bg-white/[0.04] p-1.5 text-ink-muted hover:text-ink">
+                    <ArrowLeft className="h-4 w-4" />
+                  </button>
+                  <div className={cn("flex h-9 w-9 items-center justify-center rounded-lg", COLOR_MAP[toolInfo?.color || "cyan"])}>
+                    {toolInfo && <toolInfo.icon className="h-4.5 w-4.5" />}
+                  </div>
+                  <div>
+                    <CardTitle>{toolInfo?.label}</CardTitle>
+                    <CardDescription>{toolInfo?.desc}</CardDescription>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm font-medium text-ink">Reverse Image Search</p>
-                  <p className="text-xs text-ink-muted">
-                    Upload an image to find where it appears across the web
+              </CardHeader>
+              <CardContent>
+                {tool === "url" && (
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="https://example.com/article"
+                      value={url}
+                      onChange={(e) => setUrl(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && runScan()}
+                      autoFocus
+                    />
+                    <Button onClick={runScan} className="shrink-0">
+                      <Crosshair className="h-4 w-4" />
+                      Scan
+                    </Button>
+                  </div>
+                )}
+
+                {(tool === "image" || tool === "reverse" || tool === "watermark") && (
+                  <div>
+                    <input
+                      ref={tool === "image" ? imageRef : tool === "reverse" ? revRef : wmRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) handleImageFile(f);
+                      }}
+                    />
+                    <button
+                      onClick={() =>
+                        (tool === "image" ? imageRef : tool === "reverse" ? revRef : wmRef).current?.click()
+                      }
+                      className="flex w-full flex-col items-center gap-3 rounded-xl border-2 border-dashed border-white/10 bg-white/[0.02] p-8 transition-colors hover:border-cyan/40 hover:bg-cyan/[0.03]"
+                    >
+                      <ImagePlus className="h-8 w-8 text-ink-faint" />
+                      <div className="text-center">
+                        <p className="text-sm font-medium text-ink">Click to upload</p>
+                        <p className="text-xs text-ink-muted">PNG, JPG up to 10MB</p>
+                      </div>
+                    </button>
+                  </div>
+                )}
+
+                {tool === "deep" && (
+                  <div className="text-center">
+                    <p className="mb-4 text-sm text-ink-muted">
+                      This will search the surface web, Reddit, paste sites, and dark web for your identity.
+                      It may take several minutes.
+                    </p>
+                    <Button onClick={runDeepScan}>
+                      <Sparkles className="h-4 w-4" />
+                      Start Deep Scan
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+
+        {/* Step 3: Processing */}
+        {step === "processing" && (
+          <motion.div key="processing" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }}>
+            <Card>
+              <CardContent className="flex flex-col items-center gap-4 p-12">
+                <div className="relative">
+                  <Loader2 className="h-12 w-12 animate-spin text-cyan" />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="h-6 w-6 rounded-full bg-cyan/20" />
+                  </div>
+                </div>
+                <div className="text-center">
+                  <p className="font-display text-lg font-bold text-ink">
+                    {tool === "deep" ? "Crawling the web..." : "Analyzing..."}
+                  </p>
+                  <p className="mt-1 text-sm text-ink-muted">
+                    {tool === "deep"
+                      ? "Scanning surface web, Reddit, paste sites, and dark web"
+                      : "Running ML detection on your content"}
                   </p>
                 </div>
-              </div>
-              <input
-                ref={revRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) reverseSearch(f);
-                }}
-              />
-              <Button variant="glass" disabled={busy} onClick={() => revRef.current?.click()}>
-                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Globe className="h-4 w-4" />}
-                Search Image
-              </Button>
-            </CardContent>
-          </Card>
-        </StaggerItem>
-      </StaggerContainer>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
 
-      {/* Result panel */}
-      <AnimatePresence>
-        {result && (
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 16 }}
-          >
-            <ResultCard result={result} />
+        {/* Step 4: Result */}
+        {step === "result" && result && (
+          <motion.div key="result" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }}>
+            <div className="space-y-4">
+              <ResultCard result={result} />
+              <div className="flex justify-center">
+                <Button variant="glass" onClick={goBack}>
+                  <ArrowRight className="h-4 w-4" />
+                  New Scan
+                </Button>
+              </div>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -329,9 +358,7 @@ function ResultCard({ result }: { result: { type: Tool; data: any } }) {
               {Math.round(conf)}%
             </div>
             <div>
-              <Badge
-                variant={conf >= 80 ? "red" : conf >= 50 ? "amber" : "green"}
-              >
+              <Badge variant={conf >= 80 ? "red" : conf >= 50 ? "amber" : "green"}>
                 {label}
               </Badge>
               <p className="mt-1 text-sm text-ink-muted">

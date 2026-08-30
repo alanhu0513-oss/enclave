@@ -10,6 +10,7 @@ export type TabId =
   | "alerts"
   | "insights"
   | "reports"
+  | "monitoring"
   | "settings";
 
 interface Toast {

@@ -11,6 +11,7 @@ import { ScanView } from "@/features/scan/scan-view";
 import { AlertsView } from "@/features/alerts/alerts-view";
 import { InsightsView } from "@/features/insights/insights-view";
 import { ReportsView } from "@/features/reports/reports-view";
+import { MonitoringView } from "@/features/monitoring/monitoring-view";
 import { SettingsView } from "@/features/settings/settings-view";
 import {
   OnboardingWizard,
@@ -79,6 +80,7 @@ export function AppShell() {
               {tab === "alerts" && <AlertsView />}
               {tab === "insights" && <InsightsView />}
               {tab === "reports" && <ReportsView />}
+              {tab === "monitoring" && <MonitoringView />}
               {tab === "settings" && <SettingsView />}
             </FadeIn>
           </main>

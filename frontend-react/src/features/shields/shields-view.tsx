@@ -6,6 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { StaggerContainer, StaggerItem, Kinetic } from "@/components/ui/motion";
 import { cn } from "@/lib/utils";
+import { NativeShieldPanel } from "./native-shield-panel";
 
 const SHIELDS = [
   { key: "crawler", name: "Proactive Crawler", desc: "Continuously searches the web for unauthorized copies of your identity.", color: "text-cyan accent-cyan" },
@@ -153,6 +154,10 @@ export function ShieldsView() {
           </Card>
         </StaggerItem>
       </StaggerContainer>
+
+      <div className="mt-6">
+        <NativeShieldPanel />
+      </div>
     </div>
   );
 }

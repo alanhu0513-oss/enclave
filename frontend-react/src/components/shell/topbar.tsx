@@ -14,6 +14,7 @@ const TITLES: Record<TabId, string> = {
   scan: "Deep Scan",
   alerts: "Alert Center",
   insights: "Intelligence",
+  monitoring: "Live Monitoring",
   reports: "Reports & Analytics",
   settings: "Vault Settings",
 };

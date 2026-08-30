@@ -331,6 +331,41 @@ async function monitorCycle(userId, tier) {
     }
   }
 
+  // Notify user if new alerts were found
+  if (newAlertCount > 0 && user) {
+    try {
+      const notifTbl = await table('notifications');
+      await notifTbl.insert({
+        id: uuidv4(),
+        user_id: userId,
+        type: 'monitoring_cycle',
+        title: `${newAlertCount} new alert${newAlertCount > 1 ? 's' : ''} found`,
+        body: `Monitoring scan completed across ${enabledIds.length} sources. ${findings.length} finding(s) total.`,
+        data: JSON.stringify({ sourcesRun: enabledIds.length, findings: findings.length, newAlerts: newAlertCount }),
+        read: false,
+        created_at: new Date().toISOString(),
+      });
+      if (user.email && user.email_notifications !== false) {
+        await notifications.sendEmail(
+          user.email,
+          `Enclave: ${newAlertCount} new identity threat${newAlertCount > 1 ? 's' : ''} detected`,
+          `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
+            <h2 style="color:#1a1a2e;">New threats detected</h2>
+            <p>Monitoring scan completed across ${enabledIds.length} sources.</p>
+            <p><strong>${newAlertCount}</strong> new alert(s), <strong>${findings.length}</strong> total finding(s).</p>
+            <p><a href="${process.env.APP_URL || 'http://localhost:3000'}/alerts" style="background:#e94560;color:#fff;padding:10px 20px;text-decoration:none;border-radius:6px;">View Alerts</a></p>
+          </div>`
+        );
+      }
+      if (user.fcm_token) {
+        await notifications.sendPush(user.fcm_token, {
+          title: `${newAlertCount} new alert(s)`,
+          body: `Monitoring found ${findings.length} finding(s) across ${enabledIds.length} sources`,
+        });
+      }
+    } catch (_) {}
+  }
+
   return { sourcesRun: enabledIds.length, findings: findings.length, newAlerts: newAlertCount };
 }
 

@@ -12,6 +12,8 @@ import {
 import { FeedbackWidget } from "@/features/feedback/feedback-widget";
 import { NpsSurvey } from "@/features/feedback/nps-survey";
 import { FadeIn } from "@/components/ui/motion";
+import { updateSEO } from "@/lib/seo";
+import { SeoJsonLd } from "@/components/seo-json-ld";
 import { Loader2 } from "lucide-react";
 
 const HomeView = lazy(() => import("@/features/home/home-view").then((m) => ({ default: m.HomeView })));
@@ -26,6 +28,8 @@ const AdminDashboard = lazy(() => import("@/features/admin/admin-dashboard").the
 const FamilyDashboard = lazy(() => import("@/features/family/family-dashboard").then((m) => ({ default: m.FamilyDashboard })));
 const ShieldDashboard = lazy(() => import("@/features/shield/shield-dashboard").then((m) => ({ default: m.ShieldDashboard })));
 const InsuranceView = lazy(() => import("@/features/insurance/insurance-view").then((m) => ({ default: m.InsuranceView })));
+const PassportView = lazy(() => import("@/features/passport/passport-view").then((m) => ({ default: m.PassportView })));
+const BountyView = lazy(() => import("@/features/bounty/bounty-view").then((m) => ({ default: m.BountyView })));
 const SettingsView = lazy(() => import("@/features/settings/settings-view").then((m) => ({ default: m.SettingsView })));
 
 const COLLAPSE_KEY = "enclave_sidebar_collapsed";
@@ -55,6 +59,10 @@ export function AppShell() {
     });
 
   useEffect(() => {
+    updateSEO(window.location.pathname);
+  }, [tab]);
+
+  useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
@@ -71,6 +79,7 @@ export function AppShell() {
 
   return (
     <div className="relative min-h-screen bg-[#04060a]">
+      <SeoJsonLd />
       <HaikeiBackground />
 
       <div className="relative z-10 flex min-h-screen flex-col">
@@ -103,6 +112,8 @@ export function AppShell() {
                 {tab === "family" && <FamilyDashboard />}
                 {tab === "shield-dashboard" && <ShieldDashboard />}
                 {tab === "insurance" && <InsuranceView />}
+                {tab === "passport" && <PassportView />}
+                {tab === "bounty" && <BountyView />}
                 {tab === "settings" && <SettingsView />}
               </Suspense>
             </FadeIn>

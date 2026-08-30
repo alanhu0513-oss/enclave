@@ -21,6 +21,8 @@ const TITLES: Record<TabId, string> = {
   family: "Family Dashboard",
   "shield-dashboard": "Shield Hub",
   insurance: "Deepfake Insurance",
+  passport: "Identity Passport",
+  bounty: "Deepfake Bounty",
   settings: "Vault Settings",
 };
 

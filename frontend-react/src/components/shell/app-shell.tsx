@@ -1,25 +1,38 @@
-import { useEffect, useState } from "react";
+import { Suspense, lazy, useEffect, useState } from "react";
 import { Sidebar } from "./sidebar";
 import { Topbar } from "./topbar";
 import { CommandPalette } from "./command-palette";
 import { NotificationsPanel } from "./notifications-panel";
 import { HaikeiBackground } from "./haikei-background";
 import { useApp } from "@/lib/app-context";
-import { HomeView } from "@/features/home/home-view";
-import { ShieldsView } from "@/features/shields/shields-view";
-import { ScanView } from "@/features/scan/scan-view";
-import { AlertsView } from "@/features/alerts/alerts-view";
-import { InsightsView } from "@/features/insights/insights-view";
-import { ReportsView } from "@/features/reports/reports-view";
-import { MonitoringView } from "@/features/monitoring/monitoring-view";
-import { SettingsView } from "@/features/settings/settings-view";
 import {
   OnboardingWizard,
   hasCompletedOnboarding,
 } from "@/features/onboarding/onboarding-wizard";
+import { FeedbackWidget } from "@/features/feedback/feedback-widget";
+import { NpsSurvey } from "@/features/feedback/nps-survey";
 import { FadeIn } from "@/components/ui/motion";
+import { Loader2 } from "lucide-react";
+
+const HomeView = lazy(() => import("@/features/home/home-view").then((m) => ({ default: m.HomeView })));
+const ShieldsView = lazy(() => import("@/features/shields/shields-view").then((m) => ({ default: m.ShieldsView })));
+const ScanView = lazy(() => import("@/features/scan/scan-view").then((m) => ({ default: m.ScanView })));
+const AlertsView = lazy(() => import("@/features/alerts/alerts-view").then((m) => ({ default: m.AlertsView })));
+const InsightsView = lazy(() => import("@/features/insights/insights-view").then((m) => ({ default: m.InsightsView })));
+const ReportsView = lazy(() => import("@/features/reports/reports-view").then((m) => ({ default: m.ReportsView })));
+const MonitoringView = lazy(() => import("@/features/monitoring/monitoring-view").then((m) => ({ default: m.MonitoringView })));
+const EnterpriseView = lazy(() => import("@/features/enterprise/enterprise-view").then((m) => ({ default: m.EnterpriseView })));
+const SettingsView = lazy(() => import("@/features/settings/settings-view").then((m) => ({ default: m.SettingsView })));
 
 const COLLAPSE_KEY = "enclave_sidebar_collapsed";
+
+function ViewLoader() {
+  return (
+    <div className="flex h-64 items-center justify-center">
+      <Loader2 className="h-6 w-6 animate-spin text-cyan" />
+    </div>
+  );
+}
 
 export function AppShell() {
   const { tab } = useApp();
@@ -54,7 +67,6 @@ export function AppShell() {
 
   return (
     <div className="relative min-h-screen bg-[#04060a]">
-      {/* Haikei layered background (behind everything) */}
       <HaikeiBackground />
 
       <div className="relative z-10 flex min-h-screen flex-col">
@@ -74,14 +86,17 @@ export function AppShell() {
             role="main"
           >
             <FadeIn key={tab}>
-              {tab === "home" && <HomeView />}
-              {tab === "shield" && <ShieldsView />}
-              {tab === "scan" && <ScanView />}
-              {tab === "alerts" && <AlertsView />}
-              {tab === "insights" && <InsightsView />}
-              {tab === "reports" && <ReportsView />}
-              {tab === "monitoring" && <MonitoringView />}
-              {tab === "settings" && <SettingsView />}
+              <Suspense fallback={<ViewLoader />}>
+                {tab === "home" && <HomeView />}
+                {tab === "shield" && <ShieldsView />}
+                {tab === "scan" && <ScanView />}
+                {tab === "alerts" && <AlertsView />}
+                {tab === "insights" && <InsightsView />}
+                {tab === "reports" && <ReportsView />}
+                {tab === "monitoring" && <MonitoringView />}
+                {tab === "enterprise" && <EnterpriseView />}
+                {tab === "settings" && <SettingsView />}
+              </Suspense>
             </FadeIn>
           </main>
         </div>
@@ -90,6 +105,8 @@ export function AppShell() {
       <CommandPalette open={commandOpen} onClose={() => setCommandOpen(false)} />
       <NotificationsPanel open={notifOpen} onClose={() => setNotifOpen(false)} />
       {!hasCompletedOnboarding() && <OnboardingWizard />}
+      <FeedbackWidget />
+      <NpsSurvey />
     </div>
   );
 }

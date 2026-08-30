@@ -20,6 +20,7 @@ import { StaggerContainer, StaggerItem } from "@/components/ui/motion";
 import { FamilyPanel } from "./family-panel";
 import { ReferralPanel } from "./referral-panel";
 import { PlanModal } from "@/components/shell/plan-modal";
+import { FeatureBoard } from "@/features/feedback/feature-board";
 import { timeAgo, cn } from "@/lib/utils";
 
 export function SettingsView() {
@@ -173,6 +174,11 @@ export function SettingsView() {
         {/* Referrals */}
         <StaggerItem>
           <ReferralPanel />
+        </StaggerItem>
+
+        {/* Feature Requests */}
+        <StaggerItem>
+          <FeatureBoard />
         </StaggerItem>
 
         {/* Notifications + Sign out */}

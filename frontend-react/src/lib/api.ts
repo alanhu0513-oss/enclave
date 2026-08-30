@@ -138,6 +138,21 @@ export const api = {
     return form("/detect/reverse", fd);
   },
   getDetectStatus: () => apiFetch("/detect/status"),
+  detectAudio: (file: File) => {
+    const fd = new FormData();
+    fd.append("audio", file);
+    return form("/detect/audio", fd);
+  },
+  detectMultiFace: (file: File) => {
+    const fd = new FormData();
+    fd.append("image", file);
+    return form("/detect/multi-face", fd);
+  },
+  detectVideo: (file: File) => {
+    const fd = new FormData();
+    fd.append("video", file);
+    return form("/detect/video", fd);
+  },
 
   // Alerts
   getAlerts: () => apiFetch<Alert[]>(`/alerts`),
@@ -294,6 +309,40 @@ export const api = {
 
   // Health
   getHealth: () => apiFetch("/health"),
+
+  // Feedback
+  submitFeedback: (data: { type: string; message: string; page?: string }) =>
+    post("/feedback", data),
+  submitNps: (score: number, comment?: string) =>
+    post("/feedback/nps", { score, comment }),
+  getNpsStatus: () => apiFetch("/feedback/nps/status"),
+  getFeatureRequests: () => apiFetch("/feedback/features"),
+  createFeatureRequest: (title: string, description?: string) =>
+    post("/feedback/features", { title, description }),
+  voteFeatureRequest: (id: string) => post(`/feedback/features/${id}/vote`),
+
+  // Organizations
+  getOrganizations: () => apiFetch("/organizations"),
+  createOrganization: (name: string) => post("/organizations", { name }),
+  getOrganization: (id: string) => apiFetch(`/organizations/${id}`),
+  updateOrganization: (id: string, data: any) =>
+    apiFetch(`/organizations/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+  inviteOrgMember: (orgId: string, email: string, role?: string) =>
+    post(`/organizations/${orgId}/invite`, { email, role }),
+  acceptOrgInvite: (code: string) => post("/organizations/invite/accept", { code }),
+  updateOrgMemberRole: (orgId: string, userId: string, role: string) =>
+    apiFetch(`/organizations/${orgId}/members/${userId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ role }),
+    }),
+  removeOrgMember: (orgId: string, userId: string) =>
+    apiFetch(`/organizations/${orgId}/members/${userId}`, { method: "DELETE" }),
+  getAuditLogs: (orgId: string, limit?: number) =>
+    apiFetch(`/organizations/${orgId}/audit-logs${limit ? `?limit=${limit}` : ""}`),
+  configureSso: (orgId: string, data: any) =>
+    post(`/organizations/${orgId}/sso`, data),
+  disableSso: (orgId: string) =>
+    apiFetch(`/organizations/${orgId}/sso`, { method: "DELETE" }),
 
   getBaseUrl: () => API_BASE,
 };

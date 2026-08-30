@@ -11,6 +11,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Radar,
+  Building2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useApp, type TabId } from "@/lib/app-context";
@@ -27,6 +28,7 @@ const NAV: { id: TabId; label: string; icon: typeof Home }[] = [
   { id: "insights", label: "Insights", icon: BarChart3 },
   { id: "monitoring", label: "Monitoring", icon: Radar },
   { id: "reports", label: "Reports", icon: FileText },
+  { id: "enterprise", label: "Enterprise", icon: Building2 },
   { id: "settings", label: "Settings", icon: Settings },
 ];
 

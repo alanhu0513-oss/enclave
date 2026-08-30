@@ -15,6 +15,9 @@ import {
   ArrowLeft,
   ChevronRight,
   FileImage,
+  Mic,
+  Film,
+  Users,
 } from "lucide-react";
 import { useApp } from "@/lib/app-context";
 import { api } from "@/lib/api";
@@ -27,15 +30,18 @@ import { Badge } from "@/components/ui/badge";
 import { StaggerContainer, StaggerItem } from "@/components/ui/motion";
 import { confidenceColor, confidenceLabel, cn } from "@/lib/utils";
 
-type Tool = "url" | "image" | "deep" | "reverse" | "watermark";
+type Tool = "url" | "image" | "deep" | "reverse" | "watermark" | "audio" | "video" | "multi-face";
 type Step = "choose" | "input" | "processing" | "result";
 
 const TOOLS: { id: Tool; label: string; icon: typeof Globe; color: string; desc: string }[] = [
   { id: "url", label: "Scan a URL", icon: Globe, color: "cyan", desc: "Paste a link and we'll analyze it for deepfakes" },
   { id: "image", label: "Scan an Image", icon: FileImage, color: "green", desc: "Upload a photo to check if it's a deepfake" },
+  { id: "audio", label: "Audio Analysis", icon: Mic, color: "amber", desc: "Detect AI-generated or cloned voice audio" },
+  { id: "video", label: "Video Analysis", icon: Film, color: "purple", desc: "Analyze video frames for manipulation" },
+  { id: "multi-face", label: "Multi-Face Detect", icon: Users, color: "cyan", desc: "Detect and analyze multiple faces in an image" },
   { id: "deep", label: "Deep Web Crawl", icon: ScanSearch, color: "purple", desc: "Actively search the web & dark web for your face" },
   { id: "reverse", label: "Reverse Image Search", icon: Link2, color: "amber", desc: "Find where an image appears across the web" },
-  { id: "watermark", label: "Rights Shield", icon: Stamp, color: "purple", desc: "Embed an invisible watermark to prove ownership" },
+  { id: "watermark", label: "Rights Shield", icon: Stamp, color: "green", desc: "Embed an invisible watermark to prove ownership" },
 ];
 
 const COLOR_MAP: Record<string, string> = {
@@ -106,7 +112,7 @@ export function ScanView() {
     }
   }
 
-  async function handleImageFile(file: File) {
+  async function handleFile(file: File) {
     setStep("processing");
     try {
       let data: any;
@@ -116,6 +122,12 @@ export function ScanView() {
         data = await api.reverseImageSearch(file);
       } else if (tool === "watermark") {
         data = await api.embedWatermark(file, "© ENCLADE");
+      } else if (tool === "audio") {
+        data = await api.detectAudio(file);
+      } else if (tool === "video") {
+        data = await api.detectVideo(file);
+      } else if (tool === "multi-face") {
+        data = await api.detectMultiFace(file);
       }
       setResult({ type: tool!, data });
       psych.recordScan();
@@ -124,7 +136,8 @@ export function ScanView() {
         .checkBadges(5)
         .forEach((name) => toast({ title: `🏆 Badge unlocked: ${name}!`, variant: "success" }));
       setStep("result");
-      toast({ title: `${tool === "watermark" ? "Watermark embedded" : "Scan complete"}`, variant: "success" });
+      const label = tool === "watermark" ? "Watermark embedded" : "Analysis complete";
+      toast({ title: label, variant: "success" });
     } catch (e: any) {
       toast({ title: "Failed", body: e.message, variant: "error" });
       setStep("input");
@@ -241,16 +254,20 @@ export function ScanView() {
                   </div>
                 )}
 
-                {(tool === "image" || tool === "reverse" || tool === "watermark") && (
+                {(tool === "image" || tool === "reverse" || tool === "watermark" || tool === "audio" || tool === "video" || tool === "multi-face") && (
                   <div>
                     <input
                       ref={tool === "image" ? imageRef : tool === "reverse" ? revRef : wmRef}
                       type="file"
-                      accept="image/*"
+                      accept={
+                        tool === "audio" ? "audio/*" :
+                        tool === "video" ? "video/*" :
+                        "image/*"
+                      }
                       className="hidden"
                       onChange={(e) => {
                         const f = e.target.files?.[0];
-                        if (f) handleImageFile(f);
+                        if (f) handleFile(f);
                       }}
                     />
                     <button
@@ -262,7 +279,11 @@ export function ScanView() {
                       <ImagePlus className="h-8 w-8 text-ink-faint" />
                       <div className="text-center">
                         <p className="text-sm font-medium text-ink">Click to upload</p>
-                        <p className="text-xs text-ink-muted">PNG, JPG up to 10MB</p>
+                        <p className="text-xs text-ink-muted">
+                          {tool === "audio" ? "MP3, WAV, OGG up to 25MB" :
+                           tool === "video" ? "MP4, MOV, AVI up to 50MB" :
+                           "PNG, JPG up to 10MB"}
+                        </p>
                       </div>
                     </button>
                   </div>

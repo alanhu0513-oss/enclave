@@ -16,6 +16,7 @@ const TITLES: Record<TabId, string> = {
   insights: "Intelligence",
   monitoring: "Live Monitoring",
   reports: "Reports & Analytics",
+  enterprise: "Enterprise",
   settings: "Vault Settings",
 };
 

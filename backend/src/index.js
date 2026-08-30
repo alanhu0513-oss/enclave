@@ -91,6 +91,8 @@ const revenueRoutes = require('./routes/revenue');
 const reportsRoutes = require('./routes/reports');
 const familyRoutes = require('./routes/family');
 const referralsRoutes = require('./routes/referrals');
+const feedbackRoutes = require('./routes/feedback');
+const orgRoutes = require('./routes/organizations');
 
 app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/biometrics', biometricsRoutes);
@@ -108,6 +110,8 @@ app.use('/api/revenue', revenueRoutes);
 app.use('/api/reports', reportsRoutes);
 app.use('/api/family', familyRoutes);
 app.use('/api/referrals', referralsRoutes);
+app.use('/api/feedback', feedbackRoutes);
+app.use('/api/organizations', orgRoutes);
 app.use('/api/legal', legalRoutes);
 
 app.get('/api/health', async (req, res) => {

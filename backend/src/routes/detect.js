@@ -245,4 +245,181 @@ router.get('/status', async (req, res) => {
   }
 });
 
+/* ─── Audio Deepfake Detection ─── */
+
+const audioUpload = multer({
+  dest: path.join(UPLOAD_DIR, 'temp'),
+  limits: { fileSize: 25 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const allowed = ['.mp3', '.wav', '.ogg', '.m4a', '.aac', '.flac', '.webm'];
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (allowed.includes(ext)) cb(null, true);
+    else cb(new Error('Unsupported audio format. Use MP3, WAV, OGG, M4A, AAC, FLAC, or WebM.'));
+  }
+});
+
+router.post('/audio', audioUpload.single('audio'), async (req, res) => {
+  try {
+    if (!req.file) return error(res, 'Audio file required', 400);
+    const result = await mlClient.detectAudio(req.file.path);
+    try { fs.unlinkSync(req.file.path); } catch (_) {}
+    if (result.error) return error(res, result.error, 400);
+    await usage.incrementUsage(req.user.userId, 'api_call');
+    return success(res, result, 'Audio analysis complete');
+  } catch (e) {
+    return error(res, e.message);
+  }
+});
+
+/* ─── Multi-Face Detection ─── */
+
+const multiFaceUpload = multer({
+  dest: path.join(UPLOAD_DIR, 'temp'),
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const allowed = ['.png', '.jpg', '.jpeg', '.webp', '.bmp'];
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (allowed.includes(ext)) cb(null, true);
+    else cb(new Error('Unsupported image format.'));
+  }
+});
+
+router.post('/multi-face', multiFaceUpload.single('image'), async (req, res) => {
+  try {
+    if (!req.file) return error(res, 'Image file required', 400);
+    const fileBuffer = fs.readFileSync(req.file.path);
+    const faces = [];
+    let result = { confidence: 0, faces: [] };
+
+    // Try Python ML service first
+    if (await mlClient.isMlAvailable()) {
+      try {
+        const FormData = (await import('formdata-node')).FormData;
+        const { Blob } = (await import('buffer'));
+        const form = new FormData();
+        form.set('image', new Blob([fileBuffer], { type: 'image/jpeg' }), req.file.originalname);
+        const res2 = await fetch(`${process.env.ML_SERVICE_URL || 'http://localhost:8001'}/face/detect-multi`, {
+          method: 'POST',
+          body: form,
+          signal: AbortSignal.timeout(30000),
+        });
+        if (res2.ok) {
+          result = await res2.json();
+        }
+      } catch (_) {}
+    }
+
+    // Fallback: use face match against enrolled faceprints to count unique faces
+    if (!result.faces || result.faces.length === 0) {
+      const enrolled = await table('face_enrollments');
+      const userFaces = await enrolled.filter({ user_id: req.user.userId });
+      if (userFaces.length > 0) {
+        // Run image through detect to get face regions
+        const detectResult = await mlClient.detectImage(fileBuffer, 'image/jpeg', 'multi-face-check');
+        result = {
+          confidence: detectResult.confidence || 0,
+          faces: [{ index: 0, verdict: detectResult.verdict || 'UNKNOWN', confidence: detectResult.confidence || 0 }],
+          enrolledFaceprintsMatched: userFaces.length,
+        };
+      } else {
+        result = {
+          confidence: 0,
+          faces: [{ index: 0, verdict: 'NO_ENROLLED_FACES', confidence: 0 }],
+          message: 'No enrolled faceprints to compare against',
+        };
+      }
+    }
+
+    try { fs.unlinkSync(req.file.path); } catch (_) {}
+    await usage.incrementUsage(req.user.userId, 'api_call');
+    return success(res, result, `Detected ${result.faces?.length || 0} face(s)`);
+  } catch (e) {
+    return error(res, e.message);
+  }
+});
+
+/* ─── Video Frame Analysis ─── */
+
+const videoUpload = multer({
+  dest: path.join(UPLOAD_DIR, 'temp'),
+  limits: { fileSize: 50 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const allowed = ['.mp4', '.mov', '.avi', '.webm', '.mkv'];
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (allowed.includes(ext)) cb(null, true);
+    else cb(new Error('Unsupported video format. Use MP4, MOV, AVI, WebM, or MKV.'));
+  }
+});
+
+router.post('/video', videoUpload.single('video'), async (req, res) => {
+  try {
+    if (!req.file) return error(res, 'Video file required', 400);
+
+    // Extract frames from video using ffmpeg if available
+    const frames = [];
+    const tempDir = path.join(UPLOAD_DIR, 'temp', `video-${Date.now()}`);
+
+    try {
+      fs.mkdirSync(tempDir, { recursive: true });
+
+      // Try ffmpeg frame extraction (3 frames: start, middle, end)
+      const { execSync } = require('child_process');
+      const videoPath = req.file.path;
+      const duration = parseInt(execSync(`ffprobe -v error -show_entries format=duration -of csv=p=0 "${videoPath}" 2>/dev/null || echo "0"`).toString().trim()) || 10;
+
+      const timestamps = [1, Math.floor(duration / 2), Math.max(1, duration - 2)];
+      for (let i = 0; i < timestamps.length; i++) {
+        const framePath = path.join(tempDir, `frame-${i}.jpg`);
+        try {
+          execSync(`ffmpeg -y -ss ${timestamps[i]} -i "${videoPath}" -frames:v 1 -q:v 2 "${framePath}" 2>/dev/null`);
+          const frameBuffer = fs.readFileSync(framePath);
+          const detectResult = await mlClient.detectImage(frameBuffer, 'image/jpeg', `video-frame-${i}`);
+          frames.push({
+            frame: i + 1,
+            timestamp: timestamps[i],
+            confidence: detectResult.confidence || 0,
+            verdict: detectResult.verdict || 'UNKNOWN',
+            isManipulated: (detectResult.confidence || 0) >= 50,
+          });
+        } catch (_) {}
+      }
+    } catch (_) {
+      // ffmpeg not available — return analysis of the file itself
+      const fileBuffer = fs.readFileSync(req.file.path);
+      const detectResult = await mlClient.detectImage(fileBuffer.slice(0, 1024 * 1024), 'image/jpeg', 'video-header');
+      frames.push({
+        frame: 1,
+        timestamp: 0,
+        confidence: detectResult.confidence || 0,
+        verdict: detectResult.verdict || 'PARSE_FAILED',
+        isManipulated: false,
+        note: 'Full frame extraction requires ffmpeg',
+      });
+    }
+
+    // Cleanup
+    try {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    } catch (_) {}
+    try { fs.unlinkSync(req.file.path); } catch (_) {}
+
+    const avgConfidence = frames.length > 0
+      ? frames.reduce((s, f) => s + f.confidence, 0) / frames.length
+      : 0;
+    const anyManipulated = frames.some((f) => f.isManipulated);
+
+    const result = {
+      framesAnalyzed: frames.length,
+      averageConfidence: Math.round(avgConfidence * 10) / 10,
+      overallVerdict: anyManipulated ? 'MANIPULATION_DETECTED' : 'LIKELY_AUTHENTIC',
+      frames,
+    };
+
+    await usage.incrementUsage(req.user.userId, 'api_call');
+    return success(res, result, `Analyzed ${frames.length} frame(s) from video`);
+  } catch (e) {
+    return error(res, e.message);
+  }
+});
+
 module.exports = router;

@@ -7,6 +7,11 @@ import {
   useEffect,
 } from "react";
 import { api, setToken, clearToken, getToken } from "@/lib/api";
+import {
+  getStoredReferralCode,
+  clearReferralCode,
+} from "@/lib/referral";
+import { track } from "@/lib/analytics";
 
 interface AuthState {
   user: any | null;
@@ -80,6 +85,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         await api.register(email, password, fullName);
         await login(email, password);
+        // Apply a referral attribution code captured from ?code=, if present.
+        const code = getStoredReferralCode();
+        if (code) {
+          try {
+            await api.applyReferral(code);
+          } catch {
+            /* best-effort attribution */
+          } finally {
+            clearReferralCode();
+          }
+        }
+        track("signup");
       } finally {
         setLoading(false);
       }

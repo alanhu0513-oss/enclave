@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Gift, Copy, Check, Loader2, Link2, Users } from "lucide-react";
 import { useApp } from "@/lib/app-context";
 import { api } from "@/lib/api";
+import { track } from "@/lib/analytics";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,6 +41,7 @@ export function ReferralPanel() {
     try {
       await navigator.clipboard.writeText(shareUrl);
       setCopied(true);
+      track("referral_shared");
       setTimeout(() => setCopied(false), 1600);
       toast({ title: "Referral link copied", variant: "success" });
     } catch {

@@ -9,6 +9,9 @@ import {
   ArrowRight,
   Zap,
   Sparkles,
+  Lock,
+  X,
+  Gift,
 } from "lucide-react";
 import { useApp } from "@/lib/app-context";
 import { useAuth } from "@/lib/auth";
@@ -33,6 +36,7 @@ import { InsightsList, ProtectionTimeline } from "@/components/psychology/insigh
 import { getShieldStates } from "@/features/shields/shields-view";
 
 const TOTAL_SHIELDS = 5;
+const EDU_KEY = "enclave_plan_edu_dismissed";
 
 export function HomeView() {
   const { setTab, toast } = useApp();
@@ -41,6 +45,11 @@ export function HomeView() {
   const [data, setData] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
   const [shieldsActive, setShieldsActive] = useState(0);
+  const [eduDismissed, setEduDismissed] = useState(
+    () => localStorage.getItem(EDU_KEY) === "1"
+  );
+
+  const onFreePlan = (user as any)?.plan === "free" && !eduDismissed;
 
   useEffect(() => {
     let active = true;
@@ -174,6 +183,49 @@ export function HomeView() {
           </div>
         </StaggerItem>
       </StaggerContainer>
+
+      {/* ─── FREE-PLAN EDUCATION / CONTEXTUAL UPGRADE ─── */}
+      {onFreePlan && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="relative overflow-hidden rounded-2xl border border-cyan/20 bg-gradient-to-r from-cyan/[0.07] via-green/[0.03] to-transparent p-5 md:p-6"
+        >
+          <button
+            onClick={() => {
+              localStorage.setItem(EDU_KEY, "1");
+              setEduDismissed(true);
+            }}
+            className="absolute right-4 top-4 rounded-lg p-1 text-ink-faint transition-colors hover:bg-white/[0.06] hover:text-ink"
+            aria-label="Dismiss"
+          >
+            <X className="h-4 w-4" />
+          </button>
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:gap-6">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-cyan/15 text-cyan">
+              <Lock className="h-6 w-6" />
+            </span>
+            <div className="flex-1">
+              <p className="font-display text-base font-bold text-ink">
+                Your identity deserves continuous protection.
+              </p>
+              <p className="mt-1 text-sm text-ink-muted">
+                Your Free plan detects threats when you scan. Upgrade for ongoing monitoring,
+                automated takedowns, and dark-web scanning — so threats are caught before they spread.
+              </p>
+            </div>
+            <Button
+              variant="cyan"
+              className="shrink-0"
+              onClick={() => window.dispatchEvent(new CustomEvent("enclave:open-plans"))}
+            >
+              See plans
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </motion.div>
+      )}
 
       {/* ─── URGENCY BANNER (FOMO + SCARCITY) ─── */}
       <motion.div
@@ -311,6 +363,13 @@ export function HomeView() {
                   color="purple"
                   label="Configure Notifications"
                   sub="Alert strategy & digest"
+                  onClick={() => setTab("settings")}
+                />
+                <QuickAction
+                  icon={Gift}
+                  color="green"
+                  label="Grow Your Protection"
+                  sub="Invite friends & earn rewards"
                   onClick={() => setTab("settings")}
                 />
               </div>

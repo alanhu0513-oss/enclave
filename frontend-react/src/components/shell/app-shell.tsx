@@ -12,6 +12,10 @@ import { AlertsView } from "@/features/alerts/alerts-view";
 import { InsightsView } from "@/features/insights/insights-view";
 import { ReportsView } from "@/features/reports/reports-view";
 import { SettingsView } from "@/features/settings/settings-view";
+import {
+  OnboardingWizard,
+  hasCompletedOnboarding,
+} from "@/features/onboarding/onboarding-wizard";
 import { FadeIn } from "@/components/ui/motion";
 
 const COLLAPSE_KEY = "enclave_sidebar_collapsed";
@@ -83,6 +87,7 @@ export function AppShell() {
 
       <CommandPalette open={commandOpen} onClose={() => setCommandOpen(false)} />
       <NotificationsPanel open={notifOpen} onClose={() => setNotifOpen(false)} />
+      {!hasCompletedOnboarding() && <OnboardingWizard />}
     </div>
   );
 }

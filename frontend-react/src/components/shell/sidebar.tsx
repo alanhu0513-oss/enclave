@@ -16,7 +16,7 @@ import { useApp, type TabId } from "@/lib/app-context";
 import { useAuth } from "@/lib/auth";
 import { ShieldMark } from "@/components/ui/logo";
 import { PlanModal } from "./plan-modal";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const NAV: { id: TabId; label: string; icon: typeof Home }[] = [
   { id: "home", label: "Home", icon: Home },
@@ -46,6 +46,12 @@ export function Sidebar({
   const { tab, setTab, unread } = useApp();
   const { user, lock } = useAuth();
   const [planModalOpen, setPlanModalOpen] = useState(false);
+
+  useEffect(() => {
+    const openPlans = () => setPlanModalOpen(true);
+    window.addEventListener("enclave:open-plans", openPlans);
+    return () => window.removeEventListener("enclave:open-plans", openPlans);
+  }, []);
 
   const initials = (user?.fullName || user?.email || "U")
     .slice(0, 2)

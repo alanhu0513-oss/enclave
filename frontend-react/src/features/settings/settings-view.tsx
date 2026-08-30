@@ -57,6 +57,30 @@ export function SettingsView() {
 
   const plan = sub?.tier || user?.plan || "free";
 
+  const TIER_INFO: Record<string, { tagline: string; features: string[] }> = {
+    free: {
+      tagline: "Essential protection on demand",
+      features: ["3 scans/month", "On-demand web search", "Email alerts"],
+    },
+    detection_only: {
+      tagline: "Basic detection capabilities",
+      features: ["10 scans/month", "On-demand web search", "Priority alerts"],
+    },
+    pro: {
+      tagline: "Round-the-clock identity monitoring",
+      features: ["50 scans/month", "Hourly surface monitoring", "2 takedowns/mo with evidence"],
+    },
+    shield: {
+      tagline: "Protect your whole household",
+      features: ["200 scans/month (5 members)", "Dark web monitoring", "10 takedowns/mo"],
+    },
+    business: {
+      tagline: "Enterprise-grade identity security",
+      features: ["Unlimited scans, 10 seats", "15-min real-time monitoring", "Unlimited takedowns"],
+    },
+  };
+  const tierInfo = TIER_INFO[plan] ?? TIER_INFO.free;
+
   return (
     <div className="mx-auto w-full max-w-4xl space-y-6">
       <div className="flex items-center justify-between">
@@ -123,11 +147,12 @@ export function SettingsView() {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-ink capitalize">{plan} plan</p>
-                  <p className="text-xs text-ink-muted">
-                    {plan === "free"
-                      ? "3 scans · 1 deep scan"
-                      : "Extended protection active"}
-                  </p>
+                  <p className="text-xs text-ink-muted">{tierInfo.tagline}</p>
+                  <ul className="mt-1.5 space-y-0.5">
+                    {tierInfo.features.map((f) => (
+                      <li key={f} className="text-xs text-ink-faint">· {f}</li>
+                    ))}
+                  </ul>
                 </div>
               </div>
               <Button variant="glass" onClick={() => setPlanOpen(true)}>

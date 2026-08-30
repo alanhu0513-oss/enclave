@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { useApp } from "@/lib/app-context";
 import { api } from "@/lib/api";
+import { track } from "@/lib/analytics";
 import { usePsychology } from "@/lib/psychology";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -45,6 +46,7 @@ export function ScanView() {
       const data = await api.scanUrl(url);
       setResult({ type: "url", data });
       psych.recordScan();
+      track("first_scan");
       psych
         .checkBadges(5)
         .forEach((name) => toast({ title: `🏆 Badge unlocked: ${name}!`, variant: "success" }));
@@ -63,6 +65,7 @@ export function ScanView() {
       const data = await api.scanImage(file);
       setResult({ type: "image", data });
       psych.recordScan();
+      track("first_scan");
       psych
         .checkBadges(5)
         .forEach((name) => toast({ title: `🏆 Badge unlocked: ${name}!`, variant: "success" }));

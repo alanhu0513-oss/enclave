@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { useApp } from "@/lib/app-context";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
+import { track } from "@/lib/analytics";
 import { Shield, Users, Check, Loader2, ExternalLink } from "lucide-react";
 
 interface PlanModalProps {
@@ -13,10 +14,10 @@ interface PlanModalProps {
 }
 
 const FALLBACK_TIERS = [
-  { id: "free", name: "Free", price: 0, features: ["3 deepfake scans/month", "On-demand web search", "Email alerts", "Local heuristic fallback"] },
-  { id: "pro", name: "Individual Pro", price: 999, features: ["50 scans/month", "Hourly surface monitoring (web/Reddit/paste)", "2 takedowns/mo with evidence chain", "Priority alerts"] },
-  { id: "shield", name: "Family", price: 1999, features: ["200 scans/month, up to 5 members", "Dark web monitoring (Ahmia)", "10 takedowns/mo", "Voice authentication"] },
-  { id: "business", name: "Business", price: 4999, features: ["Unlimited scans, 10 seats", "15-min real-time monitoring incl. social", "Unlimited takedowns", "API access (10k calls/mo)"] },
+  { id: "free", name: "Free", price: 0, tagline: "Get started with essential protection", features: ["3 deepfake scans/month", "On-demand web search", "Email alerts", "Local heuristic fallback"] },
+  { id: "pro", name: "Individual Pro", price: 999, tagline: "Round-the-clock identity monitoring", features: ["50 scans/month", "Hourly surface monitoring (web/Reddit/paste)", "2 takedowns/mo with evidence chain", "Priority alerts"] },
+  { id: "shield", name: "Family", price: 1999, tagline: "Protect your whole household", features: ["200 scans/month, up to 5 members", "Dark web monitoring (Ahmia)", "10 takedowns/mo", "Voice authentication"] },
+  { id: "business", name: "Business", price: 4999, tagline: "Enterprise-grade identity security", features: ["Unlimited scans, 10 seats", "15-min real-time monitoring incl. social", "Unlimited takedowns", "API access (10k calls/mo)"] },
 ];
 
 const ORDER = ["free", "detection_only", "pro", "shield", "business"];
@@ -36,6 +37,7 @@ export function PlanModal({ open, onClose }: PlanModalProps) {
 
   useEffect(() => {
     if (!open) return;
+    track("plan_view");
     let active = true;
     (async () => {
       try {
@@ -65,6 +67,7 @@ export function PlanModal({ open, onClose }: PlanModalProps) {
       const success = window.location.origin + "/billing/success";
       const cancel = window.location.origin + "/billing/cancel";
       const session: any = await api.startCheckout(tierId, success, cancel);
+      track("checkout_started", { tier: tierId });
       if (session?.url) {
         window.location.href = session.url;
       } else {
@@ -123,6 +126,9 @@ export function PlanModal({ open, onClose }: PlanModalProps) {
 
                 <div className="mb-3">
                   <h3 className="font-display text-base font-bold text-ink">{plan.name}</h3>
+                  {plan.tagline && (
+                    <p className="mt-0.5 text-xs text-ink-muted">{plan.tagline}</p>
+                  )}
                   <div className="mt-1.5 flex items-baseline gap-1">
                     <span className="font-display text-2xl font-bold text-ink">
                       {fmtPrice(plan.price)}

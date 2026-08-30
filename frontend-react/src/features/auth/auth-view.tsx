@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { motion } from "motion/react";
-import { Loader2, LogIn, UserPlus, ShieldQuestion, ArrowLeft, Eye, EyeOff } from "lucide-react";
+import { Loader2, LogIn, UserPlus, ShieldQuestion, ArrowLeft, Eye, EyeOff, Gift } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useApp } from "@/lib/app-context";
 import { api } from "@/lib/api";
+import { getStoredReferralCode } from "@/lib/referral";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Brand } from "@/components/ui/logo";
@@ -14,7 +15,9 @@ type Mode = "login" | "register" | "forgot";
 export function AuthView() {
   const { login, register, loading } = useAuth();
   const { toast } = useApp();
-  const [mode, setMode] = useState<Mode>("login");
+  const [mode, setMode] = useState<Mode>(() =>
+    getStoredReferralCode() ? "register" : "login"
+  );
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
@@ -65,6 +68,20 @@ export function AuthView() {
               : "Recover your account"}
           </p>
         </div>
+
+        {getStoredReferralCode() && (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-6 flex items-center gap-3 rounded-xl border border-green/25 bg-green/[0.06] p-3"
+          >
+            <Gift className="h-5 w-5 shrink-0 text-green" />
+            <p className="text-xs text-ink">
+              You were invited to ENCLAVE. Create your account to start protected — and your
+              invite counts toward rewards.
+            </p>
+          </motion.div>
+        )}
 
         {mode === "forgot" && (
           <button

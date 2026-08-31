@@ -349,7 +349,7 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
                 viewport={{ once: true }}
                 className="relative text-center"
               >
-                <div className="mb-4 font-display text-6xl font-bold text-white/5">{item.step}</div>
+                <div className="mb-4 font-display text-6xl font-bold text-gray-600" aria-hidden="true">{item.step}</div>
                 <h3 className="font-display text-xl font-bold">{item.title}</h3>
                 <p className="mt-2 text-sm text-gray-400">{item.desc}</p>
               </motion.div>

@@ -211,6 +211,17 @@ export function ThreatIntelView() {
             <AlertTriangle className="w-10 h-10 text-amber-400 mx-auto mb-3" />
             <h3 className="text-lg font-semibold text-white">Report an IOC</h3>
             <p className="text-sm text-white/60 mt-1">Submit indicators of compromise to the community database</p>
+            <div className="flex gap-2 mt-4 justify-center">
+              <select value={reportType} onChange={(e) => setReportType(e.target.value)} className="bg-white/5 border border-white/10 rounded px-3 py-2 text-sm text-white">
+                <option value="ip">IP Address</option>
+                <option value="domain">Domain</option>
+                <option value="url">URL</option>
+                <option value="hash">File Hash</option>
+                <option value="email">Email</option>
+              </select>
+              <Input placeholder="IOC value" value={reportValue} onChange={(e) => setReportValue(e.target.value)} className="max-w-xs" />
+            </div>
+            <Input placeholder="Threat description" value={reportThreat} onChange={(e) => setReportThreat(e.target.value)} className="max-w-xs mx-auto mt-2" />
             <Button className="mt-4 bg-cyan-500 text-black" disabled={reporting || !reportValue || !reportThreat} onClick={async () => {
               setReporting(true);
               try {

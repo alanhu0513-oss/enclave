@@ -103,8 +103,12 @@ export function NotificationsPanel({
                     )}
                     onClick={async () => {
                       if (!n.read) {
-                        try { await api.markNotificationRead(n.id); } catch (_) {}
-                        refresh();
+                        try {
+                          await api.markNotificationRead(n.id);
+                          setItems((prev) => prev?.map((x) => x.id === n.id ? { ...x, read: true } as Notification : x) ?? []);
+                          const count = await api.getUnreadCount();
+                          setUnread(typeof count === 'number' ? count : 0);
+                        } catch (_) {}
                       }
                     }}
                   >

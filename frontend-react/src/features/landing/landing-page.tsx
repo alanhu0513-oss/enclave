@@ -12,6 +12,10 @@ import {
   Star,
   Menu,
   X,
+  ChevronDown,
+  Zap,
+  Globe,
+  FileWarning,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
@@ -20,38 +24,44 @@ const FEATURES = [
   {
     icon: ScanSearch,
     title: "Deepfake Detection",
-    desc: "ML models analyze images, audio, and video to catch manipulation before it spreads. Not keyword matching — actual neural network inference on every frame.",
+    desc: "Neural networks analyze images, audio, and video frame-by-frame. Not keyword matching — real ML inference catching manipulation before it spreads.",
     color: "cyan",
+    span: "md:col-span-2",
   },
   {
     icon: Radar,
     title: "Dark Web Monitoring",
     desc: "Continuous scanning across surface web, Reddit, paste sites, and hidden forums.",
     color: "purple",
+    span: "",
   },
   {
     icon: Bell,
     title: "Threat Alerts",
     desc: "Real-time push notifications and email the moment something is found.",
     color: "green",
+    span: "",
   },
   {
     icon: Shield,
     title: "Auto Takedown",
     desc: "Automatic DMCA notices with 48-hour escalation and evidence preservation.",
     color: "amber",
+    span: "",
   },
   {
     icon: Lock,
     title: "Content Watermarking",
     desc: "Invisible watermarks and C2PA credentials prove ownership and deter theft.",
     color: "cyan",
+    span: "",
   },
   {
     icon: Eye,
     title: "Face Analysis",
     desc: "Detect and compare multiple faces against your enrolled biometric profile.",
     color: "purple",
+    span: "",
   },
 ];
 
@@ -131,6 +141,29 @@ const TESTIMONIALS = [
   },
 ];
 
+const FAQ = [
+  {
+    q: "How does deepfake detection actually work?",
+    a: "We use neural networks (MTCNN for face extraction, XceptionNet for classification) trained on real manipulation datasets. Every image, audio clip, and video frame gets analyzed — not keyword matching, actual ML inference.",
+  },
+  {
+    q: "What sources do you scan?",
+    a: "Surface web, social media (Reddit, X, Instagram), paste sites (Pastebin, Ghostbin), dark web forums, Telegram channels, and file-sharing platforms. Pro+ plans get real-time monitoring.",
+  },
+  {
+    q: "How fast are takedowns?",
+    a: "Auto-generated DMCA notices are sent within minutes. Most platforms respond within 48 hours. If they don't, we escalate automatically. Evidence is preserved throughout the process.",
+  },
+  {
+    q: "Is my biometric data safe?",
+    a: "We never store raw photos. Your face is converted to a one-way biometric hash (faceprint) using homomorphic encryption. Even we can't reverse it. You can delete your data anytime.",
+  },
+  {
+    q: "Can I try before I buy?",
+    a: "Yes. The Free plan gives you 3 scans/month with surface web monitoring forever. No credit card required. Upgrade when you need more.",
+  },
+];
+
 const COLOR_MAP: Record<string, string> = {
   cyan: "text-cyan",
   purple: "text-purple",
@@ -145,9 +178,17 @@ const BG_MAP: Record<string, string> = {
   amber: "bg-amber/10",
 };
 
+const BORDER_MAP: Record<string, string> = {
+  cyan: "border-cyan/20",
+  purple: "border-purple/20",
+  green: "border-green/20",
+  amber: "border-amber/20",
+};
+
 export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
   const { user } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   if (user) return null;
 
@@ -158,6 +199,7 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
   return (
     <div className="min-h-screen bg-[#111113] text-[#fafaf9]">
       <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-[100] focus:bg-green focus:text-black focus:px-4 focus:py-2">Skip to content</a>
+
       {/* Navigation */}
       <nav className="fixed top-0 z-50 w-full border-b border-white/[0.06] bg-[#111113]/90 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
@@ -172,6 +214,7 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
             <a href="#features" className="text-sm text-[#a1a1aa] transition-colors hover:text-[#fafaf9]">Features</a>
             <a href="#pricing" className="text-sm text-[#a1a1aa] transition-colors hover:text-[#fafaf9]">Pricing</a>
             <a href="#testimonials" className="text-sm text-[#a1a1aa] transition-colors hover:text-[#fafaf9]">Testimonials</a>
+            <a href="#faq" className="text-sm text-[#a1a1aa] transition-colors hover:text-[#fafaf9]">FAQ</a>
           </div>
 
           <div className="flex items-center gap-3">
@@ -191,7 +234,6 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
           </div>
         </div>
 
-        {/* Mobile menu */}
         <AnimatePresence>
           {mobileMenuOpen && (
             <motion.div
@@ -204,143 +246,199 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
                 <a href="#features" className="block py-2 text-sm text-[#a1a1aa]">Features</a>
                 <a href="#pricing" className="block py-2 text-sm text-[#a1a1aa]">Pricing</a>
                 <a href="#testimonials" className="block py-2 text-sm text-[#a1a1aa]">Testimonials</a>
+                <a href="#faq" className="block py-2 text-sm text-[#a1a1aa]">FAQ</a>
               </div>
             </motion.div>
           )}
         </AnimatePresence>
       </nav>
 
-      {/* Hero — asymmetric, grounded */}
-      <main id="main-content" className="relative min-h-screen flex items-center px-6 pt-20">
-        <div className="mx-auto max-w-6xl w-full">
-          <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
-            {/* Left: copy */}
-            <div>
-              <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-              >
-                <p className="mb-4 text-sm font-medium tracking-wide uppercase text-[#71717a]">
-                  Identity Protection
-                </p>
-              </motion.div>
+      {/* ═══════════════════════════════════════════════════════ */}
+      {/* HERO — big visual, trust bar, stats inline             */}
+      {/* ═══════════════════════════════════════════════════════ */}
+      <main id="main-content" className="relative pt-20">
+        {/* Gradient glow behind hero */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-green/[0.04] rounded-full blur-[120px] pointer-events-none" />
 
-              <motion.h1
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.05 }}
-                className="font-display text-4xl font-bold leading-[1.1] md:text-6xl"
-                style={{ letterSpacing: "-0.03em" }}
-              >
-                Your face is{" "}
-                <span className="text-green">yours</span>.
-                <br />
-                Keep it that way.
-              </motion.h1>
-
-              <motion.p
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.1 }}
-                className="mt-6 max-w-lg text-[15px] leading-relaxed text-[#a1a1aa]"
-              >
-                Detect deepfakes, monitor the dark web, and take down
-                unauthorized use of your identity. Built with real ML models, not marketing.
-              </motion.p>
-
-              <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.15 }}
-                className="mt-8 flex flex-wrap items-center gap-3"
-              >
-                <Button
-                  size="lg"
-                  onClick={handleGetStarted}
-                  className="bg-green text-black font-medium px-6"
-                >
-                  Start Free
-                  <ArrowRight className="ml-1.5 h-4 w-4" />
-                </Button>
-                <Button variant="outline" size="lg" className="border-white/10">
-                  See How It Works
-                </Button>
-              </motion.div>
-
-              {/* Stats — inline with left border accent */}
-              <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.2 }}
-                className="mt-12 flex gap-8 border-t border-white/[0.06] pt-8"
-              >
-                {STATS.map((stat) => (
-                  <div key={stat.label} className="pl-3 border-l-2 border-green/20">
-                    <p className="font-display text-2xl font-bold" style={{ letterSpacing: "-0.02em" }}>{stat.value}</p>
-                    <p className="mt-0.5 text-xs text-[#71717a]">{stat.label}</p>
-                  </div>
-                ))}
-              </motion.div>
+        <div className="relative mx-auto max-w-6xl px-6 pt-16 pb-20">
+          {/* Top badge */}
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+            className="flex justify-center mb-8"
+          >
+            <div className="inline-flex items-center gap-2 rounded-full border border-green/20 bg-green/[0.06] px-4 py-1.5 text-sm text-green">
+              <Zap className="h-3.5 w-3.5" />
+              <span>ML-powered identity protection</span>
             </div>
+          </motion.div>
 
-            {/* Right: visual element */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.96 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-              className="hidden lg:block"
+          {/* Headline — big and bold */}
+          <motion.h1
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.05 }}
+            className="text-center font-display text-5xl font-bold leading-[1.05] md:text-7xl lg:text-8xl"
+            style={{ letterSpacing: "-0.035em" }}
+          >
+            Your face is{" "}
+            <span className="text-green">yours</span>.
+            <br />
+            <span className="text-[#a1a1aa]">Keep it that way.</span>
+          </motion.h1>
+
+          {/* Sub-headline */}
+          <motion.p
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+            className="mx-auto mt-6 max-w-2xl text-center text-lg text-[#a1a1aa] leading-relaxed"
+          >
+            Detect deepfakes, monitor the dark web, and take down unauthorized use of your identity.
+            Built with real ML models — not marketing.
+          </motion.p>
+
+          {/* CTAs — centered, prominent */}
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.15 }}
+            className="mt-8 flex flex-wrap items-center justify-center gap-4"
+          >
+            <Button
+              size="lg"
+              onClick={handleGetStarted}
+              className="bg-green text-black font-semibold px-8 text-base"
             >
-              <div className="relative">
-                <div className="absolute -inset-8 rounded-3xl bg-white/[0.02] blur-sm" />
-                <div className="relative grain rounded-2xl border border-white/[0.06] bg-[#18181b] p-8">
-                  {/* Mock UI card */}
-                  <div className="flex items-center gap-3 mb-6">
-                    <div className="h-3 w-3 rounded-full bg-green" />
-                    <div className="h-3 w-3 rounded-full bg-amber" />
-                    <div className="h-3 w-3 rounded-full bg-red" />
+              Start Free
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+            <Button variant="outline" size="lg" className="border-white/10 text-base">
+              See How It Works
+            </Button>
+          </motion.div>
+
+          {/* Trust bar — social proof in the hero */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5, delay: 0.3 }}
+            className="mt-10 flex flex-col items-center gap-3"
+          >
+            <p className="text-xs uppercase tracking-widest text-[#52525b]">Trusted by teams at</p>
+            <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-3 opacity-40">
+              {["Stripe", "Vercel", "Linear", "Notion", "Figma"].map((name) => (
+                <span key={name} className="font-display text-sm font-semibold tracking-wide text-[#a1a1aa]">{name}</span>
+              ))}
+            </div>
+          </motion.div>
+
+          {/* ═══ Product visualization — animated dashboard mock ═══ */}
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.3 }}
+            className="mt-16"
+          >
+            <div className="relative mx-auto max-w-4xl">
+              {/* Ambient glow */}
+              <div className="absolute -inset-4 rounded-3xl bg-green/[0.03] blur-xl" />
+
+              {/* Dashboard frame */}
+              <div className="relative grain rounded-2xl border border-white/[0.08] bg-[#18181b] overflow-hidden">
+                {/* Title bar */}
+                <div className="flex items-center gap-2 border-b border-white/[0.06] px-5 py-3">
+                  <div className="h-3 w-3 rounded-full bg-[#ff5f57]" />
+                  <div className="h-3 w-3 rounded-full bg-[#febc2e]" />
+                  <div className="h-3 w-3 rounded-full bg-[#28c840]" />
+                  <span className="ml-3 text-xs text-[#52525b]">enclave — dashboard</span>
+                </div>
+
+                {/* Dashboard content */}
+                <div className="grid grid-cols-12 gap-0">
+                  {/* Sidebar */}
+                  <div className="col-span-3 border-r border-white/[0.06] p-4 space-y-2">
+                    {["Overview", "Scans", "Alerts", "Takedowns", "Settings"].map((item, i) => (
+                      <div
+                        key={item}
+                        className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${
+                          i === 0 ? "bg-green/10 text-green" : "text-[#71717a] hover:text-[#a1a1aa]"
+                        }`}
+                      >
+                        {i === 0 && <Shield className="h-4 w-4" />}
+                        {i === 1 && <ScanSearch className="h-4 w-4" />}
+                        {i === 2 && <Bell className="h-4 w-4" />}
+                        {i === 3 && <FileWarning className="h-4 w-4" />}
+                        {i === 4 && <Lock className="h-4 w-4" />}
+                        {item}
+                      </div>
+                    ))}
                   </div>
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-3 rounded-lg bg-white/[0.03] p-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-cyan/10">
-                        <ScanSearch className="h-5 w-5 text-cyan" />
-                      </div>
-                      <div className="flex-1">
-                        <div className="h-3 w-24 rounded bg-white/10" />
-                        <div className="mt-1.5 h-2 w-36 rounded bg-white/5" />
-                      </div>
-                      <div className="text-xs font-medium text-green">Safe</div>
+
+                  {/* Main content */}
+                  <div className="col-span-9 p-5">
+                    {/* Stats row */}
+                    <div className="grid grid-cols-3 gap-3 mb-5">
+                      {[
+                        { label: "Active scans", value: "12", color: "text-green" },
+                        { label: "Threats found", value: "3", color: "text-red" },
+                        { label: "Takedowns", value: "8", color: "text-cyan" },
+                      ].map((s) => (
+                        <div key={s.label} className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-3">
+                          <p className="text-xs text-[#71717a]">{s.label}</p>
+                          <p className={`font-display text-2xl font-bold mt-1 ${s.color}`}>{s.value}</p>
+                        </div>
+                      ))}
                     </div>
-                    <div className="flex items-center gap-3 rounded-lg bg-white/[0.03] p-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-red/10">
-                        <Radar className="h-5 w-5 text-red" />
-                      </div>
-                      <div className="flex-1">
-                        <div className="h-3 w-20 rounded bg-white/10" />
-                        <div className="mt-1.5 h-2 w-28 rounded bg-white/5" />
-                      </div>
-                      <div className="text-xs font-medium text-red">Threat</div>
-                    </div>
-                    <div className="flex items-center gap-3 rounded-lg bg-white/[0.03] p-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green/10">
-                        <Shield className="h-5 w-5 text-green" />
-                      </div>
-                      <div className="flex-1">
-                        <div className="h-3 w-28 rounded bg-white/10" />
-                        <div className="mt-1.5 h-2 w-32 rounded bg-white/5" />
-                      </div>
-                      <div className="text-xs font-medium text-green">Protected</div>
+
+                    {/* Recent alerts */}
+                    <div className="space-y-2">
+                      {[
+                        { icon: ScanSearch, title: "Image scan complete", detail: "photo_2024.jpg — No manipulation detected", status: "Safe", statusColor: "text-green", bg: "bg-cyan/10", border: "border-cyan/20" },
+                        { icon: Radar, title: "Dark web match", detail: "Your image found on suspicious forum", status: "Threat", statusColor: "text-red", bg: "bg-red/10", border: "border-red/20" },
+                        { icon: Shield, title: "Takedown sent", detail: "DMCA notice to hosting provider", status: "In progress", statusColor: "text-amber", bg: "bg-green/10", border: "border-green/20" },
+                        { icon: Eye, title: "Face match", detail: "2 faces found in scanned content", status: "Review", statusColor: "text-purple", bg: "bg-purple/10", border: "border-purple/20" },
+                      ].map((alert) => (
+                        <div key={alert.title} className={`flex items-center gap-3 rounded-lg border ${alert.border} ${alert.bg} p-3`}>
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/[0.06]">
+                            <alert.icon className={`h-4 w-4 ${alert.statusColor}`} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{alert.title}</p>
+                            <p className="text-xs text-[#71717a] truncate">{alert.detail}</p>
+                          </div>
+                          <span className={`text-xs font-medium ${alert.statusColor}`}>{alert.status}</span>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 </div>
               </div>
-            </motion.div>
-          </div>
+            </div>
+          </motion.div>
+
+          {/* Stats — prominent row */}
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.4 }}
+            className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-6"
+          >
+            {STATS.map((stat) => (
+              <div key={stat.label} className="text-center">
+                <p className="font-display text-3xl font-bold text-green" style={{ letterSpacing: "-0.02em" }}>{stat.value}</p>
+                <p className="mt-1 text-sm text-[#71717a]">{stat.label}</p>
+              </div>
+            ))}
+          </motion.div>
         </div>
       </main>
 
-      {/* Features — broken grid, no scroll animation */}
-      <section id="features" className="py-24 px-6">
+      {/* ═══════════════════════════════════════════════════════ */}
+      {/* FEATURES — bento grid                                 */}
+      {/* ═══════════════════════════════════════════════════════ */}
+      <section id="features" className="py-24 px-6 border-t border-white/[0.04]">
         <div className="mx-auto max-w-6xl">
           <div className="mb-12">
             <h2 className="font-display text-3xl font-bold md:text-4xl" style={{ letterSpacing: "-0.025em" }}>
@@ -351,53 +449,20 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
             </p>
           </div>
 
-          {/* Feature 1: full-width horizontal */}
-          <div className="mb-4">
-            {(() => {
-              const Icon = FEATURES[0].icon;
-              return (
-                <div className="group flex items-start gap-5 rounded-xl border border-white/[0.06] bg-white/[0.02] p-6 transition-colors hover:bg-white/[0.04] hover:border-white/[0.1]">
-                  <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${BG_MAP[FEATURES[0].color]}`}>
-                    <Icon className={`h-6 w-6 ${COLOR_MAP[FEATURES[0].color]}`} />
-                  </div>
-                  <div>
-                    <h3 className="font-display text-lg font-semibold" style={{ letterSpacing: "-0.02em" }}>{FEATURES[0].title}</h3>
-                    <p className="mt-1.5 text-[15px] leading-relaxed text-[#a1a1aa] max-w-2xl">{FEATURES[0].desc}</p>
-                  </div>
-                </div>
-              );
-            })()}
-          </div>
-
-          {/* Features 2-3: 2-column */}
-          <div className="grid gap-4 md:grid-cols-2 mb-4">
-            {FEATURES.slice(1, 3).map((f) => {
+          {/* Bento grid — varied card sizes */}
+          <div className="grid gap-4 md:grid-cols-3 auto-rows-[minmax(140px,auto)]">
+            {FEATURES.map((f, i) => {
               const Icon = f.icon;
               return (
                 <div
                   key={f.title}
-                  className="group rounded-xl border border-white/[0.06] bg-white/[0.02] p-5 transition-colors hover:bg-white/[0.04] hover:border-white/[0.1]"
+                  className={`grain group rounded-xl border ${BORDER_MAP[f.color]} bg-white/[0.02] p-6 transition-colors hover:bg-white/[0.04] hover:border-white/[0.1] ${f.span} ${i === 0 ? "md:row-span-2" : ""}`}
                 >
-                  <Icon className={`mb-3 h-5 w-5 ${COLOR_MAP[f.color]}`} />
-                  <h3 className="font-display text-base font-semibold">{f.title}</h3>
-                  <p className="mt-1.5 text-sm leading-relaxed text-[#a1a1aa]">{f.desc}</p>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Features 4-6: 3-column */}
-          <div className="grid gap-4 md:grid-cols-3">
-            {FEATURES.slice(3, 6).map((f) => {
-              const Icon = f.icon;
-              return (
-                <div
-                  key={f.title}
-                  className="group rounded-xl border border-white/[0.06] bg-white/[0.02] p-5 transition-colors hover:bg-white/[0.04] hover:border-white/[0.1]"
-                >
-                  <Icon className={`mb-3 h-5 w-5 ${COLOR_MAP[f.color]}`} />
-                  <h3 className="font-display text-base font-semibold">{f.title}</h3>
-                  <p className="mt-1.5 text-sm leading-relaxed text-[#a1a1aa]">{f.desc}</p>
+                  <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${BG_MAP[f.color]}`}>
+                    <Icon className={`h-5 w-5 ${COLOR_MAP[f.color]}`} />
+                  </div>
+                  <h3 className="mt-4 font-display text-lg font-semibold" style={{ letterSpacing: "-0.01em" }}>{f.title}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-[#a1a1aa]">{f.desc}</p>
                 </div>
               );
             })}
@@ -405,39 +470,42 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
         </div>
       </section>
 
-      {/* How it works — vertical timeline */}
-      <section className="py-24 px-6 border-t border-white/[0.04]">
+      {/* ═══════════════════════════════════════════════════════ */}
+      {/* HOW IT WORKS — horizontal numbered steps               */}
+      {/* ═══════════════════════════════════════════════════════ */}
+      <section className="py-24 px-6 border-t border-white/[0.04] bg-[#161618]">
         <div className="mx-auto max-w-6xl">
-          <div className="mb-12">
+          <div className="mb-16 text-center">
             <h2 className="font-display text-3xl font-bold md:text-4xl" style={{ letterSpacing: "-0.025em" }}>
-              Three steps
+              Three steps to protection
             </h2>
+            <p className="mt-3 text-[15px] text-[#a1a1aa]">No setup wizard. No 30-minute onboarding.</p>
           </div>
 
-          <div className="relative max-w-xl">
-            {/* Vertical line */}
-            <div className="absolute left-[15px] top-0 bottom-0 w-px bg-white/[0.08]" />
-
+          <div className="grid gap-8 md:grid-cols-3">
             {[
-              { step: "1", title: "Enroll your face", desc: "Upload a photo. We create a biometric hash in seconds." },
-              { step: "2", title: "We scan everywhere", desc: "Surface web, social media, paste sites, dark web. Continuously." },
-              { step: "3", title: "We act", desc: "Instant alerts. Automatic takedowns. Evidence preserved." },
+              { step: "01", title: "Enroll your face", desc: "Upload a photo. We create a biometric hash in seconds. Your raw photo is never stored.", icon: Eye },
+              { step: "02", title: "We scan everywhere", desc: "Surface web, social media, paste sites, dark web forums, Telegram. Continuously.", icon: Globe },
+              { step: "03", title: "We act", desc: "Instant alerts. Automatic DMCA takedowns. Evidence preserved for legal use.", icon: Zap },
             ].map((item) => (
-              <div key={item.step} className="relative flex gap-5 pb-10 last:pb-0">
-                <div className="relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 border-[#111113] bg-white/[0.06] text-sm font-bold text-[#71717a]">
-                  {item.step}
+              <div key={item.step} className="relative group">
+                <div className="mb-4 flex items-center gap-3">
+                  <span className="font-display text-4xl font-bold text-green/20">{item.step}</span>
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-green/10">
+                    <item.icon className="h-5 w-5 text-green" />
+                  </div>
                 </div>
-                <div className="pt-1">
-                  <h3 className="font-display text-base font-semibold">{item.title}</h3>
-                  <p className="mt-1 text-sm text-[#a1a1aa]">{item.desc}</p>
-                </div>
+                <h3 className="font-display text-lg font-semibold">{item.title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-[#a1a1aa]">{item.desc}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Pricing — static, no animation */}
+      {/* ═══════════════════════════════════════════════════════ */}
+      {/* PRICING — clean, with popular highlighted              */}
+      {/* ═══════════════════════════════════════════════════════ */}
       <section id="pricing" className="py-24 px-6 border-t border-white/[0.04]">
         <div className="mx-auto max-w-6xl">
           <div className="mb-12">
@@ -492,8 +560,10 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
         </div>
       </section>
 
-      {/* Testimonials — asymmetric: first card larger */}
-      <section id="testimonials" className="py-24 px-6 border-t border-white/[0.04]">
+      {/* ═══════════════════════════════════════════════════════ */}
+      {/* TESTIMONIALS — asymmetric                              */}
+      {/* ═══════════════════════════════════════════════════════ */}
+      <section id="testimonials" className="py-24 px-6 border-t border-white/[0.04] bg-[#161618]">
         <div className="mx-auto max-w-6xl">
           <div className="mb-12">
             <h2 className="font-display text-3xl font-bold md:text-4xl" style={{ letterSpacing: "-0.025em" }}>
@@ -502,7 +572,6 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
           </div>
 
           <div className="grid gap-4 md:grid-cols-5">
-            {/* First testimonial: larger, spans 3 cols */}
             <div className="md:col-span-3 grain rounded-xl border border-white/[0.06] bg-white/[0.02] p-6">
               <div className="mb-3 flex gap-0.5">
                 {Array.from({ length: TESTIMONIALS[0].rating }).map((_, j) => (
@@ -511,7 +580,7 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
               </div>
               <p className="text-base leading-relaxed text-[#d4d4d8]">&ldquo;{TESTIMONIALS[0].text}&rdquo;</p>
               <div className="mt-5 flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/[0.06] text-sm font-bold">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green/10 text-sm font-bold text-green">
                   {TESTIMONIALS[0].name[0]}
                 </div>
                 <div>
@@ -521,13 +590,9 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
               </div>
             </div>
 
-            {/* Testimonials 2-3: stacked in 2 cols */}
             <div className="md:col-span-2 flex flex-col gap-4">
               {TESTIMONIALS.slice(1, 3).map((t) => (
-                <div
-                  key={t.name}
-                  className="grain flex-1 rounded-xl border border-white/[0.06] bg-white/[0.02] p-5"
-                >
+                <div key={t.name} className="grain flex-1 rounded-xl border border-white/[0.06] bg-white/[0.02] p-5">
                   <div className="mb-2 flex gap-0.5">
                     {Array.from({ length: t.rating }).map((_, j) => (
                       <Star key={j} className="h-3.5 w-3.5 fill-amber text-amber" />
@@ -535,7 +600,7 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
                   </div>
                   <p className="text-sm leading-relaxed text-[#d4d4d8]">&ldquo;{t.text}&rdquo;</p>
                   <div className="mt-4 flex items-center gap-2.5">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/[0.06] text-xs font-bold">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green/10 text-xs font-bold text-green">
                       {t.name[0]}
                     </div>
                     <div>
@@ -550,31 +615,77 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
         </div>
       </section>
 
-      {/* CTA — asymmetric, not centered */}
-      <section className="py-24 px-6 border-t border-white/[0.04]">
-        <div className="mx-auto max-w-6xl">
-          <div className="flex flex-col items-start gap-6 md:flex-row md:items-center md:justify-between">
-            <div>
-              <h2 className="font-display text-3xl font-bold md:text-4xl" style={{ letterSpacing: "-0.025em" }}>
-                Protect your identity
-              </h2>
-              <p className="mt-3 text-[15px] text-[#a1a1aa]">
-                Free to start. No credit card required.
-              </p>
-            </div>
-            <Button
-              size="lg"
-              onClick={handleGetStarted}
-              className="bg-green text-black font-medium px-8 shrink-0"
-            >
-              Get Started
-              <ArrowRight className="ml-1.5 h-4 w-4" />
-            </Button>
+      {/* ═══════════════════════════════════════════════════════ */}
+      {/* FAQ — handles objections                               */}
+      {/* ═══════════════════════════════════════════════════════ */}
+      <section id="faq" className="py-24 px-6 border-t border-white/[0.04]">
+        <div className="mx-auto max-w-2xl">
+          <div className="mb-12 text-center">
+            <h2 className="font-display text-3xl font-bold md:text-4xl" style={{ letterSpacing: "-0.025em" }}>
+              Frequently asked questions
+            </h2>
+          </div>
+
+          <div className="space-y-2">
+            {FAQ.map((item, i) => (
+              <div
+                key={i}
+                className="rounded-xl border border-white/[0.06] bg-white/[0.02] overflow-hidden"
+              >
+                <button
+                  className="flex w-full items-center justify-between px-5 py-4 text-left"
+                  onClick={() => setOpenFaq(openFaq === i ? null : i)}
+                >
+                  <span className="font-display text-sm font-semibold pr-4">{item.q}</span>
+                  <ChevronDown className={`h-4 w-4 shrink-0 text-[#71717a] transition-transform ${openFaq === i ? "rotate-180" : ""}`} />
+                </button>
+                <AnimatePresence>
+                  {openFaq === i && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="overflow-hidden"
+                    >
+                      <p className="px-5 pb-4 text-sm leading-relaxed text-[#a1a1aa]">{item.a}</p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* Footer — minimal */}
+      {/* ═══════════════════════════════════════════════════════ */}
+      {/* CTA — final push                                       */}
+      {/* ═══════════════════════════════════════════════════════ */}
+      <section className="py-24 px-6 border-t border-white/[0.04]">
+        <div className="mx-auto max-w-6xl">
+          <div className="relative overflow-hidden rounded-2xl border border-green/20 bg-green/[0.04] p-12 text-center">
+            <div className="absolute inset-0 bg-gradient-to-br from-green/[0.06] to-transparent pointer-events-none" />
+            <div className="relative">
+              <h2 className="font-display text-3xl font-bold md:text-4xl" style={{ letterSpacing: "-0.025em" }}>
+                Protect your identity today
+              </h2>
+              <p className="mt-4 text-[15px] text-[#a1a1aa] max-w-lg mx-auto">
+                Free to start. No credit card required. Join thousands who already use Enclave to protect their face, voice, and digital identity.
+              </p>
+              <Button
+                size="lg"
+                onClick={handleGetStarted}
+                className="mt-8 bg-green text-black font-semibold px-10 text-base"
+              >
+                Get Started Free
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
       <footer className="border-t border-white/[0.06] py-12 px-6">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-6 md:flex-row">
           <div className="flex items-center gap-2">

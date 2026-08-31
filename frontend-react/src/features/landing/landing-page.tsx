@@ -276,7 +276,7 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
             {STATS.map((stat) => (
               <div key={stat.label}>
                 <p className="font-display text-3xl font-bold text-white">{stat.value}</p>
-                <p className="mt-1 text-sm text-gray-500">{stat.label}</p>
+                <p className="mt-1 text-sm text-gray-400">{stat.label}</p>
               </div>
             ))}
           </motion.div>
@@ -392,7 +392,7 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
                 <h3 className="font-display text-lg font-bold">{tier.name}</h3>
                 <div className="mt-4 flex items-baseline gap-1">
                   <span className="font-display text-4xl font-bold">{tier.price}</span>
-                  <span className="text-sm text-gray-500">{tier.period}</span>
+                  <span className="text-sm text-gray-400">{tier.period}</span>
                 </div>
                 <p className="mt-2 text-sm text-gray-400">{tier.desc}</p>
                 <ul className="mt-6 space-y-2">
@@ -447,7 +447,7 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
                   </div>
                   <div>
                     <p className="text-sm font-medium">{t.name}</p>
-                    <p className="text-xs text-gray-500">{t.role}</p>
+                    <p className="text-xs text-gray-400">{t.role}</p>
                   </div>
                 </div>
               </motion.div>
@@ -493,7 +493,7 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
                 </div>
                 <span className="font-display text-lg font-bold">Enclave</span>
               </div>
-              <p className="mt-3 text-sm text-gray-500">AI-powered identity protection for everyone.</p>
+              <p className="mt-3 text-sm text-gray-400">AI-powered identity protection for everyone.</p>
             </div>
             <div>
               <h3 className="mb-3 text-sm font-semibold">Product</h3>
@@ -520,7 +520,7 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
               </ul>
             </div>
           </div>
-          <div className="mt-12 border-t border-white/5 pt-8 text-center text-sm text-gray-500">
+          <div className="mt-12 border-t border-white/5 pt-8 text-center text-sm text-gray-400">
             &copy; {new Date().getFullYear()} Enclave. All rights reserved.
           </div>
         </div>

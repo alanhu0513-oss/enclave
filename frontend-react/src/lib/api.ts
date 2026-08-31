@@ -353,6 +353,41 @@ export const api = {
   memorializeEstate: (estateId: string, data: { platform: string; profileUrl: string }) =>
     post(`/estate/${estateId}/memorialize`, data),
 
+  // SSO
+  getSSOConfig: () => apiFetch("/sso/config"),
+  configureSAML: (data: any) => post("/sso/saml/configure", data),
+  configureOIDC: (data: any) => post("/sso/oidc/configure", data),
+  initiateSSO: (data: { email?: string; provider?: string }) => post("/sso/initiate", data),
+  testSSO: () => post("/sso/test"),
+  scimProvision: (data: any) => post("/sso/scim/provision", data),
+  getSSOAudit: () => apiFetch("/sso/audit"),
+
+  // API Platform
+  getApiKeys: () => apiFetch("/platform/keys"),
+  createApiKey: (data: { name: string; permissions?: string[]; rateLimit?: number }) =>
+    post("/platform/keys", data),
+  revokeApiKey: (keyId: string) =>
+    apiFetch(`/platform/keys/${keyId}`, { method: "DELETE" }),
+  getApiUsage: () => apiFetch("/platform/usage"),
+  getWebhooks: () => apiFetch("/platform/webhooks"),
+  createWebhook: (data: { url: string; events: string[]; secret?: string }) =>
+    post("/platform/webhooks", data),
+  deleteWebhook: (webhookId: string) =>
+    apiFetch(`/platform/webhooks/${webhookId}`, { method: "DELETE" }),
+  testWebhook: (webhookId: string) => post(`/platform/webhooks/${webhookId}/test`),
+  getRateLimits: () => apiFetch("/platform/rate-limits"),
+
+  // ML
+  getMLModels: () => apiFetch("/ml/models"),
+  getMLModel: (modelId: string) => apiFetch(`/ml/models/${modelId}`),
+  deployMLModel: (modelId: string) => post(`/ml/models/${modelId}/deploy`),
+  rollbackMLModel: (modelId: string) => post(`/ml/models/${modelId}/rollback`),
+  getMLBenchmarks: (modelId?: string) => apiFetch(`/ml/benchmarks${modelId ? `?modelId=${modelId}` : ""}`),
+  getMLComparison: () => apiFetch("/ml/compare"),
+  getABTests: () => apiFetch("/ml/ab-tests"),
+  createABTest: (data: { name: string; modelA: string; modelB: string; trafficSplit?: number }) => post("/ml/ab-tests", data),
+  deleteABTest: (testId: string) => apiFetch(`/ml/ab-tests/${testId}`, { method: "DELETE" }),
+
   // Health
   getHealth: () => apiFetch("/health"),
 

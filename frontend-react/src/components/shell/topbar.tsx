@@ -24,6 +24,7 @@ const TITLES: Record<TabId, string> = {
   passport: "Identity Passport",
   bounty: "Deepfake Bounty",
   estate: "Digital Estate",
+  ml: "ML Command Center",
   activity: "Activity Timeline",
   settings: "Vault Settings",
 };

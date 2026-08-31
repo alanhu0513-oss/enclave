@@ -191,6 +191,9 @@ const passportRoutes = require('./routes/passport');
 const watermarkRoutes = require('./routes/watermark');
 const voiceCloneRoutes = require('./routes/voice-clone');
 const estateRoutes = require('./routes/estate');
+const ssoRoutes = require('./routes/sso');
+const apiPlatformRoutes = require('./routes/api-platform');
+const mlRoutes = require('./routes/ml');
 
 app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/biometrics', biometricsRoutes);
@@ -218,6 +221,9 @@ app.use('/api/watermark', watermarkRoutes);
 app.use('/api/voice-clone', voiceCloneRoutes);
 app.use('/api/legal', legalRoutes);
 app.use('/api/estate', estateRoutes);
+app.use('/api/sso', ssoRoutes);
+app.use('/api/platform', apiPlatformRoutes);
+app.use('/api/ml', mlRoutes);
 
 app.get('/api/health', async (req, res) => {
   const health = {

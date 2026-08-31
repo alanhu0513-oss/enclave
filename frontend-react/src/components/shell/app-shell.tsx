@@ -31,6 +31,7 @@ const InsuranceView = lazy(() => import("@/features/insurance/insurance-view").t
 const PassportView = lazy(() => import("@/features/passport/passport-view").then((m) => ({ default: m.PassportView })));
 const BountyView = lazy(() => import("@/features/bounty/bounty-view").then((m) => ({ default: m.BountyView })));
 const EstateView = lazy(() => import("@/features/estate/estate-view").then((m) => ({ default: m.EstateView })));
+const MLDashboard = lazy(() => import("@/features/ml/ml-dashboard").then((m) => ({ default: m.MLDashboard })));
 const ActivityView = lazy(() => import("@/features/activity/activity-view").then((m) => ({ default: m.ActivityView })));
 const SettingsView = lazy(() => import("@/features/settings/settings-view").then((m) => ({ default: m.SettingsView })));
 
@@ -117,6 +118,7 @@ export function AppShell() {
                 {tab === "passport" && <PassportView />}
                 {tab === "bounty" && <BountyView />}
                 {tab === "estate" && <EstateView />}
+                {tab === "ml" && <MLDashboard />}
                 {tab === "activity" && <ActivityView />}
                 {tab === "settings" && <SettingsView />}
               </Suspense>

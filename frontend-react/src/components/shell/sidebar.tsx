@@ -18,6 +18,7 @@ import {
   IdCard,
   DollarSign,
   Heart,
+  Brain,
   Activity,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -41,6 +42,7 @@ const BASE_NAV: { id: TabId; label: string; icon: typeof Home; plans?: string[] 
   { id: "passport", label: "Passport", icon: IdCard, plans: ["pro", "shield", "family", "business"] },
   { id: "bounty", label: "Bounty", icon: DollarSign, plans: ["pro", "shield", "family", "business"] },
   { id: "estate", label: "Estate", icon: Heart, plans: ["pro", "shield", "family", "business"] },
+  { id: "ml", label: "ML Command", icon: Brain, plans: ["pro", "shield", "family", "business"] },
   { id: "activity", label: "Activity", icon: Activity },
   { id: "enterprise", label: "Enterprise", icon: Building2, plans: ["business"] },
   { id: "admin", label: "Admin", icon: LayoutDashboard, plans: ["business"] },

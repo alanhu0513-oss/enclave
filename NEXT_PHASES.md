@@ -78,34 +78,34 @@
 > New capabilities that attract users
 
 ### 3.1 AI Voice Clone Detector
-- [ ] Backend: `/api/detect/voice-clone` endpoint
+- [x] Backend: `/api/detect/voice-clone` endpoint
 - [ ] Real-time audio analysis (WebRTC integration)
-- [ ] Voice enrollment (store voice fingerprint)
+- [x] Voice enrollment (store voice fingerprint)
 - [ ] Background monitoring during calls
-- [ ] Alert on suspicious voice patterns
-- [ ] Integration with Video Call Shield extension
+- [x] Alert on suspicious voice patterns
+- [x] Integration with Video Call Shield extension
 
 ### 3.2 Deepfake Radar (Social Feed)
-- [ ] Browser extension for Instagram/TikTok/Twitter
-- [ ] Real-time scoring of images in feed
-- [ ] Overlay badges (safe/suspicious/fake)
-- [ ] Community reporting button
+- [x] Browser extension for Instagram/TikTok/Twitter
+- [x] Real-time scoring of images in feed
+- [x] Overlay badges (safe/suspicious/fake)
+- [x] Community reporting button
 - [ ] Historical tracking of flagged content
 - [ ] Dashboard for social monitoring stats
 
 ### 3.3 Digital Estate Protection
-- [ ] Deceased member identity monitoring
-- [ ] Estate administrator role (family plan)
-- [ ] Post-mortem takedown authority
-- [ ] Memorialization request flow
+- [x] Deceased member identity monitoring
+- [x] Estate administrator role (family plan)
+- [x] Post-mortem takedown authority
+- [x] Memorialization request flow
 - [ ] Legal documentation generation
-- [ ] Integration with family dashboard
+- [x] Integration with family dashboard
 
 ### 3.4 Activity Timeline
-- [ ] New view: `activity-view.tsx`
-- [ ] Chronological feed of all actions
-- [ ] Scan results, alerts, takedowns, shield changes
-- [ ] Filter by type, date, severity
+- [x] New view: `activity-view.tsx`
+- [x] Chronological feed of all actions
+- [x] Scan results, alerts, takedowns, shield changes
+- [x] Filter by type, date, severity
 - [ ] Export timeline as PDF
 - [ ] Real-time updates via polling
 

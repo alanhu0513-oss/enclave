@@ -19,6 +19,7 @@ export type TabId =
   | "passport"
   | "bounty"
   | "estate"
+  | "ml"
   | "activity"
   | "settings";
 

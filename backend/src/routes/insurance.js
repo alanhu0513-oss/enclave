@@ -1,7 +1,9 @@
 const express = require("express");
 const { success, error } = require("../utils/response");
+const { authenticate } = require("../middleware/auth");
 
 const router = express.Router();
+router.use(authenticate);
 
 const INSURANCE_PLANS = {
   basic: {
@@ -69,7 +71,7 @@ router.get("/plans", (req, res) => {
 });
 
 router.get("/status", (req, res) => {
-  const userId = req.userId;
+  const userId = req.user.userId;
   const db = req.app.get("db");
   const policy = getInsurance(db, userId);
   const claims = getClaims(db, userId);
@@ -83,7 +85,7 @@ router.get("/status", (req, res) => {
 });
 
 router.post("/subscribe", (req, res) => {
-  const userId = req.userId;
+  const userId = req.user.userId;
   const { planId } = req.body;
   const db = req.app.get("db");
 
@@ -115,7 +117,7 @@ router.post("/subscribe", (req, res) => {
 });
 
 router.post("/unsubscribe", (req, res) => {
-  const userId = req.userId;
+  const userId = req.user.userId;
   const db = req.app.get("db");
 
   db.get("insurance_policies").remove({ userId }).write();
@@ -123,7 +125,7 @@ router.post("/unsubscribe", (req, res) => {
 });
 
 router.post("/claim", (req, res) => {
-  const userId = req.userId;
+  const userId = req.user.userId;
   const { alertId, description, damages, evidenceUrls } = req.body;
   const db = req.app.get("db");
 
@@ -151,18 +153,18 @@ router.post("/claim", (req, res) => {
 
   db.get("insurance_claims").push(claim).write();
 
-  return success(res, { message: "Claim submitted", claim }, 201);
+  return success(res, { claim }, 'Claim submitted', 201);
 });
 
 router.get("/claims", (req, res) => {
-  const userId = req.userId;
+  const userId = req.user.userId;
   const db = req.app.get("db");
   const claims = getClaims(db, userId);
   return success(res, { claims });
 });
 
 router.get("/claims/:claimId", (req, res) => {
-  const userId = req.userId;
+  const userId = req.user.userId;
   const db = req.app.get("db");
   const claim = db.get("insurance_claims")
     .find({ id: req.params.claimId, userId })
@@ -176,7 +178,7 @@ router.get("/claims/:claimId", (req, res) => {
 });
 
 router.patch("/claims/:claimId/status", (req, res) => {
-  const userId = req.userId;
+  const userId = req.user.userId;
   const { status, notes } = req.body;
   const db = req.app.get("db");
 

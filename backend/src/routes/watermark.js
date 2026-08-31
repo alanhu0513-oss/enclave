@@ -1,12 +1,14 @@
 const express = require("express");
 const { success, error } = require("../utils/response");
 const { embedWatermark, verifyWatermark } = require("../services/watermark");
+const { authenticate } = require("../middleware/auth");
 
 const router = express.Router();
+router.use(authenticate);
 
 router.post("/embed", async (req, res) => {
   try {
-    const userId = req.userId;
+    const userId = req.user.userId;
     const { imageBase64 } = req.body;
 
     if (!imageBase64) {

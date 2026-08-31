@@ -9,6 +9,7 @@ import {
   CheckCircle2,
   Clock,
   Settings,
+  Palette,
 } from "lucide-react";
 import { useApp } from "@/lib/app-context";
 import { useAuth } from "@/lib/auth";
@@ -23,6 +24,7 @@ import { FamilyPanel } from "./family-panel";
 import { ReferralPanel } from "./referral-panel";
 import { PlanModal } from "@/components/shell/plan-modal";
 import { FeatureBoard } from "@/features/feedback/feature-board";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { timeAgo, cn } from "@/lib/utils";
 
 export function SettingsView() {
@@ -182,6 +184,31 @@ export function SettingsView() {
                 Upgrade
               </Button>
             </CardContent>
+              </div>
+            </Card>
+          </Kinetic>
+        </StaggerItem>
+
+        {/* Appearance */}
+        <StaggerItem>
+          <Kinetic>
+            <Card className="relative overflow-hidden border-white/[0.06]">
+              <div className="absolute inset-0 bg-gradient-to-br from-purple/5 to-transparent" />
+              <div className="relative">
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple/15 text-purple">
+                      <Palette className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <CardTitle>Appearance</CardTitle>
+                      <CardDescription>Choose your preferred theme</CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <ThemeToggle />
+                </CardContent>
               </div>
             </Card>
           </Kinetic>

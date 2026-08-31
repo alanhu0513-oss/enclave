@@ -13,12 +13,15 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StaggerContainer, StaggerItem } from "@/components/ui/motion";
+import { generateScanReport } from "./pdf-export";
+import { exportAlertsCSV } from "./csv-export";
 
 export function ReportsView() {
   const { toast } = useApp();
   const [types, setTypes] = useState<any>({});
   const [reports, setReports] = useState<any[]>([]);
   const [schedules, setSchedules] = useState<any[]>([]);
+  const [userData, setUserData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -26,14 +29,16 @@ export function ReportsView() {
   async function load() {
     setLoading(true);
     try {
-      const [t, r, s] = await Promise.all([
+      const [t, r, s, u] = await Promise.all([
         api.getReportTypes().then((x: any) => (x?.types ? x.types : x || {})),
         api.getReports(20).then((x: any) => (Array.isArray(x) ? x : x?.reports || [])),
         api.getReportSchedules().then((x: any) => (Array.isArray(x) ? x : x || [])),
+        api.getUserData().catch(() => null),
       ]);
       setTypes(t);
       setReports(r);
       setSchedules(Array.isArray(s) ? s : []);
+      setUserData(u);
     } catch (e: any) {
       toast({ title: "Failed to load reports", body: e.message, variant: "error" });
     } finally {
@@ -78,13 +83,49 @@ export function ReportsView() {
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-cyan/15 text-cyan">
-          <FileText className="h-5 w-5" />
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-cyan/15 text-cyan">
+            <FileText className="h-5 w-5" />
+          </div>
+          <div>
+            <h2 className="font-display text-xl font-bold text-ink">Reports & Analytics</h2>
+            <p className="text-sm text-ink-muted">Generate and schedule detailed security reports</p>
+          </div>
         </div>
-        <div>
-          <h2 className="font-display text-xl font-bold text-ink">Reports & Analytics</h2>
-          <p className="text-sm text-ink-muted">Generate and schedule detailed security reports</p>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={!userData?.alerts?.length}
+            onClick={() => {
+              try {
+                generateScanReport(userData);
+                toast({ title: "PDF exported", variant: "success" });
+              } catch (e: any) {
+                toast({ title: "Export failed", body: e.message, variant: "error" });
+              }
+            }}
+          >
+            <FileText className="h-3.5 w-3.5" />
+            Export PDF
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={!userData?.alerts?.length}
+            onClick={() => {
+              try {
+                exportAlertsCSV(userData?.alerts || []);
+                toast({ title: "CSV exported", variant: "success" });
+              } catch (e: any) {
+                toast({ title: "Export failed", body: e.message, variant: "error" });
+              }
+            }}
+          >
+            <Download className="h-3.5 w-3.5" />
+            Export CSV
+          </Button>
         </div>
       </div>
 

@@ -8,36 +8,36 @@
 > Finish what's built but has no frontend
 
 ### 1.1 Identity Passport UI
-- [ ] New view: `passport-view.tsx`
-- [ ] Enroll form (name, email, face scan upload)
-- [ ] Passport display (token, QR code, status)
-- [ ] Verify page (scan QR → show passport validity)
-- [ ] Revoke button with confirmation
-- [ ] Add `passport` tab to sidebar (pro+ plans)
+- [x] New view: `passport-view.tsx`
+- [x] Enroll form (name, email, face scan upload)
+- [x] Passport display (token, QR code, status)
+- [x] Verify page (scan QR → show passport validity)
+- [x] Revoke button with confirmation
+- [x] Add `passport` tab to sidebar (pro+ plans)
 
 ### 1.2 Bounty UI
-- [ ] New view: `bounty-view.tsx`
-- [ ] Enroll card (upload face, set bounty amount $1-100)
-- [ ] My bounties list (status, matches, payout)
-- [ ] Hunter dashboard (available bounties, scan button)
-- [ ] Match confirmation flow (confirm/reject with evidence)
-- [ ] Leaderboard (top hunters, earnings)
-- [ ] Add `bounty` tab to sidebar (pro+ plans)
+- [x] New view: `bounty-view.tsx`
+- [x] Enroll card (upload face, set bounty amount $1-100)
+- [x] My bounties list (status, matches, payout)
+- [x] Hunter dashboard (available bounties, scan button)
+- [x] Match confirmation flow (confirm/reject with evidence)
+- [x] Leaderboard (top hunters, earnings)
+- [x] Add `bounty` tab to sidebar (pro+ plans)
 
 ### 1.3 Frontend Error Monitoring
-- [ ] Install `@sentry/react`
-- [ ] Create `SentryErrorBoundary` component
-- [ ] Wrap app root with error boundary
-- [ ] Add Sentry to vite config for source maps
+- [x] Install `@sentry/react`
+- [x] Create `SentryErrorBoundary` component
+- [x] Wrap app root with error boundary
+- [x] Add Sentry to vite config for source maps
 - [ ] Test: trigger error → verify it appears in Sentry
 
 ### 1.4 SEO Foundation
-- [ ] Add `<title>` and `<meta description>` per route
-- [ ] Open Graph tags (og:title, og:description, og:image)
-- [ ] Twitter card meta tags
-- [ ] JSON-LD structured data on landing page
-- [ ] `robots.txt` and `sitemap.xml`
-- [ ] Canonical URLs
+- [x] Add `<title>` and `<meta description>` per route
+- [x] Open Graph tags (og:title, og:description, og:image)
+- [x] Twitter card meta tags
+- [x] JSON-LD structured data on landing page
+- [x] `robots.txt` and `sitemap.xml`
+- [x] Canonical URLs
 
 ---
 

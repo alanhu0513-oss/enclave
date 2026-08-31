@@ -1,7 +1,9 @@
 const express = require("express");
 const { success, error } = require("../utils/response");
+const { authenticate } = require("../middleware/auth");
 
 const router = express.Router();
+router.use(authenticate);
 
 function getBountyProfile(db, userId) {
   return db.get("bounty_profiles").find({ userId }).value() || null;
@@ -16,7 +18,7 @@ function getHunterScans(db, hunterId) {
 }
 
 router.get("/profile", (req, res) => {
-  const userId = req.userId;
+  const userId = req.user.userId;
   const db = req.app.get("db");
   const profile = getBountyProfile(db, userId);
 
@@ -24,7 +26,7 @@ router.get("/profile", (req, res) => {
 });
 
 router.post("/enroll", (req, res) => {
-  const userId = req.userId;
+  const userId = req.user.userId;
   const { faceImages, bountyAmount } = req.body;
   const db = req.app.get("db");
 
@@ -63,7 +65,7 @@ router.post("/enroll", (req, res) => {
 });
 
 router.post("/scan", (req, res) => {
-  const hunterId = req.userId;
+  const hunterId = req.user.userId;
   const { imageUrl, source, sourceUrl } = req.body;
   const db = req.app.get("db");
 
@@ -104,7 +106,7 @@ router.post("/scan", (req, res) => {
 });
 
 router.get("/matches", (req, res) => {
-  const userId = req.userId;
+  const userId = req.user.userId;
   const db = req.app.get("db");
 
   const scans = db.get("hunter_scans").value() || [];
@@ -134,7 +136,7 @@ router.get("/matches", (req, res) => {
 });
 
 router.post("/matches/:scanId/confirm", (req, res) => {
-  const userId = req.userId;
+  const userId = req.user.userId;
   const { scanId } = req.params;
   const { confirmed } = req.body;
   const db = req.app.get("db");

@@ -49,6 +49,90 @@ const scanLimiter = rateLimit({
 const app = express();
 const PORT = process.env.PORT || 4000;
 
+// ─── LowDB-compatible wrapper for routes that use db.get().find().value() ───
+function createLowDbWrapper() {
+  const path = require('path');
+  const fs = require('fs');
+  const DB_PATH = process.env.DATABASE_PATH || path.join(__dirname, '../data/enclave.json');
+  let data = null;
+  function load() {
+    if (data) return data;
+    try {
+      if (fs.existsSync(DB_PATH)) {
+        data = JSON.parse(fs.readFileSync(DB_PATH, 'utf-8'));
+      } else {
+        const dir = path.dirname(DB_PATH);
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        data = {};
+      }
+    } catch { data = {}; }
+    return data;
+  }
+  function save() {
+    try { fs.writeFileSync(DB_PATH, JSON.stringify(data, null, 2)); } catch {}
+  }
+  function ensureCollection(name) {
+    const d = load();
+    if (!d[name]) d[name] = [];
+  }
+  function collectionApi(name) {
+    ensureCollection(name);
+    return {
+      find(conditions) {
+        const col = load()[name] || [];
+        const match = col.find(r => {
+          if (!conditions) return true;
+          return Object.keys(conditions).every(k => r[k] === conditions[k]);
+        });
+        return {
+          value: () => match || null,
+          assign(updates) {
+            if (match) Object.assign(match, updates);
+            return { write() { save(); } };
+          },
+        };
+      },
+      filter(conditions) {
+        const col = load()[name] || [];
+        const matched = col.filter(r => {
+          if (!conditions) return true;
+          return Object.keys(conditions).every(k => r[k] === conditions[k]);
+        });
+        return {
+          value: () => matched,
+        };
+      },
+      value() { return load()[name] || []; },
+      push(item) {
+        load()[name].push(item);
+        return { write() { save(); } };
+      },
+      remove(conditions) {
+        const col = load()[name];
+        if (!col) return;
+        for (let i = col.length - 1; i >= 0; i--) {
+          if (Object.keys(conditions).every(k => col[i][k] === conditions[k])) col.splice(i, 1);
+        }
+        save();
+        return { write() { save(); } };
+      },
+    };
+  }
+  return {
+    get: collectionApi,
+    defaults(collections) {
+      const d = load();
+      for (const [key, val] of Object.entries(collections)) {
+        if (!d[key]) d[key] = val;
+      }
+      save();
+      return { write() { save(); } };
+    },
+  };
+}
+
+app.set('db', createLowDbWrapper());
+
 app.set('trust proxy', 2);
 
 app.use(helmet({

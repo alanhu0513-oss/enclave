@@ -32,7 +32,7 @@ function generatePassport(db, userId) {
   const passport = {
     id: "pass_" + crypto.randomBytes(8).toString("hex"),
     userId,
-    holderName: user.fullName || user.email,
+    holderName: user.full_name || user.fullName || user.email,
     email: user.email,
     enrolledAt: new Date().toISOString(),
     expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),

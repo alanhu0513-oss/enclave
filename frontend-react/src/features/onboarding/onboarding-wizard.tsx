@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import {
   Camera,
@@ -17,6 +17,9 @@ import {
   Upload,
   ImageIcon,
   Sparkles,
+  Zap,
+  Eye,
+  Trash2,
 } from "lucide-react";
 import { useApp } from "@/lib/app-context";
 import { useAuth } from "@/lib/auth";
@@ -27,6 +30,8 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 const ONBOARD_KEY = "enclave_onboarding_completed";
+const ONBOARD_TIME_KEY = "enclave_onboarding_completed_at";
+const PROGRESS_DISMISS_KEY = "enclave_progress_tracker_dismissed";
 
 export function hasCompletedOnboarding() {
   try {
@@ -39,8 +44,19 @@ export function hasCompletedOnboarding() {
 export function completeOnboarding() {
   try {
     localStorage.setItem(ONBOARD_KEY, "1");
+    localStorage.setItem(ONBOARD_TIME_KEY, String(Date.now()));
   } catch {
     /* noop */
+  }
+}
+
+function getOnboardingAge(): number | null {
+  try {
+    const ts = localStorage.getItem(ONBOARD_TIME_KEY);
+    if (!ts) return null;
+    return Date.now() - Number(ts);
+  } catch {
+    return null;
   }
 }
 
@@ -73,16 +89,122 @@ const STEPS: Step[] = [
 ];
 
 const TOUR = [
-  { icon: Shield, label: "Shields", desc: "Toggle on permanent protections that run in the background." },
-  { icon: ScanSearch, label: "Scan", desc: "Deep-scan URLs, images, or the open web for your face." },
-  { icon: BellRing, label: "Alerts", desc: "Every detection, ranked by risk, with one-click takedown." },
-  { icon: FileBarChart, label: "Reports", desc: "Scheduled PDF reports documenting your exposure." },
-  { icon: Settings, label: "Settings", desc: "Plans, family, referral rewards, and account security." },
+  { icon: Shield, label: "Shields", desc: "Toggle on permanent protections that run in the background.", gradient: "from-green/20 to-green/5", iconColor: "text-green" },
+  { icon: ScanSearch, label: "Scan", desc: "Deep-scan URLs, images, or the open web for your face.", gradient: "from-cyan/20 to-cyan/5", iconColor: "text-cyan" },
+  { icon: BellRing, label: "Alerts", desc: "Every detection, ranked by risk, with one-click takedown.", gradient: "from-amber/20 to-amber/5", iconColor: "text-amber" },
+  { icon: FileBarChart, label: "Reports", desc: "Scheduled PDF reports documenting your exposure.", gradient: "from-purple/20 to-purple/5", iconColor: "text-purple" },
+  { icon: Settings, label: "Settings", desc: "Plans, family, referral rewards, and account security.", gradient: "from-rose/20 to-rose/5", iconColor: "text-rose" },
 ];
+
+const WELCOME_FEATURES = [
+  { icon: Eye, label: "Deepfake Detection", desc: "AI-powered analysis spots face swaps and voice clones." },
+  { icon: ShieldCheck, label: "Identity Monitoring", desc: "Continuous scans across the web for your likeness." },
+  { icon: Trash2, label: "Instant Takedowns", desc: "One-click removal requests to platforms." },
+];
+
+export function WelcomeModal({ onStart, onSkip }: { onStart: () => void; onSkip: () => void }) {
+  return (
+    <div className="fixed inset-0 z-[91] flex items-center justify-center bg-[#04060a]/95 p-4 backdrop-blur-xl">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.92, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.92, y: 20 }}
+        transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+        className="relative w-full max-w-md overflow-hidden rounded-3xl border border-white/[0.08] bg-gradient-to-br from-white/[0.06] to-white/[0.02] shadow-2xl backdrop-blur-xl"
+      >
+        {/* Glow backdrop */}
+        <div className="pointer-events-none absolute -top-32 left-1/2 h-64 w-64 -translate-x-1/2 rounded-full bg-green/20 blur-[100px]" />
+
+        <div className="relative flex flex-col items-center px-8 pt-12 pb-8 text-center">
+          {/* Shield icon with glow */}
+          <motion.div
+            initial={{ scale: 0.5, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ delay: 0.15, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+            className="relative mb-6"
+          >
+            <div className="absolute inset-0 rounded-full bg-green/30 blur-xl" />
+            <div className="relative flex h-20 w-20 items-center justify-center rounded-full border border-green/30 bg-gradient-to-br from-green/20 to-green/5 shadow-lg shadow-green/10">
+              <Shield className="h-10 w-10 text-green" />
+            </div>
+          </motion.div>
+
+          {/* Title */}
+          <motion.h1
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.25, duration: 0.4 }}
+            className="font-display text-3xl font-bold tracking-tight"
+          >
+            <span className="bg-gradient-to-r from-green via-cyan to-green bg-clip-text text-transparent">
+              Welcome to ENCLAVE
+            </span>
+          </motion.h1>
+
+          {/* Subtitle */}
+          <motion.p
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.35, duration: 0.4 }}
+            className="mt-3 text-sm text-ink-muted"
+          >
+            Your identity, protected by AI
+          </motion.p>
+
+          {/* Feature bullets */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.45, duration: 0.5 }}
+            className="mt-8 w-full space-y-3"
+          >
+            {WELCOME_FEATURES.map((f, i) => (
+              <motion.div
+                key={f.label}
+                initial={{ opacity: 0, x: -16 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.5 + i * 0.1, duration: 0.35 }}
+                className="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.03] px-4 py-3"
+              >
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-green/10 text-green">
+                  <f.icon className="h-4.5 w-4.5" />
+                </span>
+                <div className="text-left">
+                  <p className="text-sm font-medium text-ink">{f.label}</p>
+                  <p className="text-xs text-ink-muted">{f.desc}</p>
+                </div>
+              </motion.div>
+            ))}
+          </motion.div>
+
+          {/* Actions */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.85, duration: 0.4 }}
+            className="mt-8 flex w-full flex-col gap-3"
+          >
+            <Button onClick={onStart} className="h-12 w-full text-sm font-semibold">
+              <Zap className="mr-1.5 h-4 w-4" />
+              Get Started
+            </Button>
+            <button
+              onClick={onSkip}
+              className="text-xs text-ink-muted transition-colors hover:text-ink"
+            >
+              Explore on my own
+            </button>
+          </motion.div>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
 
 export function OnboardingWizard() {
   const { toast, setTab } = useApp();
   const { user } = useAuth();
+  const [showWelcome, setShowWelcome] = useState(true);
   const [stepIdx, setStepIdx] = useState(0);
   const [done, setDone] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -188,9 +310,14 @@ export function OnboardingWizard() {
     setDone(true);
   }
 
+  function handleWelcomeSkip() {
+    completeOnboarding();
+    track("onboarding_skip");
+    setDone(true);
+  }
+
   useEffect(() => {
     if (!done) return;
-    // End on the home/insights tab where the user can keep exploring.
     setTab("home");
   }, [done, setTab]);
 
@@ -200,7 +327,22 @@ export function OnboardingWizard() {
   const StepIcon = current.icon;
 
   return (
-    <div className="fixed inset-0 z-[90] flex items-center justify-center bg-[#04060a]/95 p-4 backdrop-blur-xl">
+    <AnimatePresence mode="wait">
+      {showWelcome ? (
+        <WelcomeModal
+          key="welcome"
+          onStart={() => setShowWelcome(false)}
+          onSkip={handleWelcomeSkip}
+        />
+      ) : (
+        <motion.div
+          key="wizard"
+          initial={{ opacity: 0, scale: 0.96 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.3 }}
+          className="fixed inset-0 z-[90] flex items-center justify-center bg-[#04060a]/95 p-4 backdrop-blur-xl"
+        >
       <div className="relative flex min-h-[520px] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-white/10 glass-strong shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-white/[0.07] px-6 py-4">
@@ -309,7 +451,9 @@ export function OnboardingWizard() {
           )}
         </div>
       </div>
-    </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
 
@@ -461,16 +605,24 @@ function TourStep({
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        {TOUR.map((t) => (
-          <div key={t.label} className="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/[0.05] text-cyan">
+        {TOUR.map((t, i) => (
+          <motion.div
+            key={t.label}
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.08, duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+            whileHover={{ scale: 1.01, y: -2 }}
+            className="group relative flex items-center gap-3 overflow-hidden rounded-xl border border-white/[0.06] bg-white/[0.02] p-3 transition-colors hover:border-white/[0.12] hover:bg-white/[0.04]"
+          >
+            <div className={cn("absolute inset-0 bg-gradient-to-r opacity-0 transition-opacity group-hover:opacity-100", t.gradient)} />
+            <span className={cn("relative flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/[0.05]", t.iconColor)}>
               <t.icon className="h-4 w-4" />
             </span>
-            <div className="min-w-0">
+            <div className="relative min-w-0">
               <p className="text-sm font-medium text-ink">{t.label}</p>
               <p className="text-xs text-ink-muted">{t.desc}</p>
             </div>
-          </div>
+          </motion.div>
         ))}
       </div>
 
@@ -538,5 +690,99 @@ function TourStep({
         </div>
       )}
     </div>
+  );
+}
+
+const PROGRESS_ITEMS = [
+  { key: "profile", label: "Profile", icon: Camera },
+  { key: "scan", label: "First Scan", icon: ScanSearch },
+  { key: "shields", label: "Shields Active", icon: Shield, max: 5 },
+];
+
+export function ProgressTracker() {
+  const { user } = useAuth();
+  const [dismissed, setDismissed] = useState(false);
+
+  const visible = useCallback(() => {
+    try {
+      if (localStorage.getItem(PROGRESS_DISMISS_KEY) === "1") return false;
+      const age = getOnboardingAge();
+      if (age === null) return false;
+      return age < 7 * 24 * 60 * 60 * 1000;
+    } catch {
+      return false;
+    }
+  }, []);
+
+  const [show, setShow] = useState(visible);
+
+  useEffect(() => {
+    setShow(visible());
+  }, [visible]);
+
+  if (!show || dismissed) return null;
+
+  const faceEnrolled = !!(user as any)?.faceEnrolled;
+  const scansDone = Math.min(((user as any)?.scansCount ?? 0), 1);
+  const shieldsActive = Math.min(((user as any)?.shieldsActive ?? 0), 5);
+
+  const items = [
+    { ...PROGRESS_ITEMS[0], done: faceEnrolled, count: faceEnrolled ? 1 : 0 },
+    { ...PROGRESS_ITEMS[1], done: scansDone > 0, count: scansDone },
+    { ...PROGRESS_ITEMS[2], count: shieldsActive, done: shieldsActive >= 5 },
+  ];
+
+  const allDone = items.every((it) => it.done);
+
+  useEffect(() => {
+    if (allDone) {
+      const t = setTimeout(() => {
+        setDismissed(true);
+        try { localStorage.setItem(PROGRESS_DISMISS_KEY, "1"); } catch {}
+      }, 3000);
+      return () => clearTimeout(t);
+    }
+  }, [allDone]);
+
+  function dismiss() {
+    setDismissed(true);
+    try { localStorage.setItem(PROGRESS_DISMISS_KEY, "1"); } catch {}
+  }
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0, y: 24, scale: 0.92 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 24, scale: 0.92 }}
+        transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+        className="fixed bottom-6 right-6 z-[80] w-64 overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0a0e16]/95 shadow-2xl backdrop-blur-xl"
+      >
+        <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-3">
+          <span className="text-xs font-semibold uppercase tracking-wider text-ink-muted">Progress</span>
+          <button onClick={dismiss} className="text-ink-faint transition-colors hover:text-ink">
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+        <div className="space-y-1 p-3">
+          {items.map((it) => (
+            <div key={it.key} className="flex items-center gap-3 rounded-lg px-2 py-1.5">
+              <span className={cn("flex h-6 w-6 shrink-0 items-center justify-center rounded-md", it.done ? "bg-green/15 text-green" : "bg-white/[0.05] text-ink-muted")}>
+                {it.done ? <Check className="h-3.5 w-3.5" /> : <it.icon className="h-3.5 w-3.5" />}
+              </span>
+              <span className={cn("text-sm", it.done ? "text-ink" : "text-ink-muted")}>
+                {it.label}
+                {"max" in it && it.max ? ` (${it.count}/${it.max})` : ""}
+              </span>
+            </div>
+          ))}
+        </div>
+        {allDone && (
+          <div className="border-t border-white/[0.06] px-4 py-2.5">
+            <p className="text-center text-xs font-medium text-green">All set! You're protected.</p>
+          </div>
+        )}
+      </motion.div>
+    </AnimatePresence>
   );
 }

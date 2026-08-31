@@ -1,11 +1,12 @@
 const express = require("express");
 const { success, error } = require("../utils/response");
 const passport = require("../services/passport");
+const { authenticate } = require("../middleware/auth");
 
 const router = express.Router();
 
-router.get("/", (req, res) => {
-  const userId = req.userId;
+router.get("/", authenticate, (req, res) => {
+  const userId = req.user.userId;
   const db = req.app.get("db");
   const p = passport.getPassport(db, userId);
 
@@ -26,8 +27,8 @@ router.get("/", (req, res) => {
   });
 });
 
-router.post("/enroll", (req, res) => {
-  const userId = req.userId;
+router.post("/enroll", authenticate, (req, res) => {
+  const userId = req.user.userId;
   const db = req.app.get("db");
 
   const existing = passport.getPassport(db, userId);
@@ -41,14 +42,13 @@ router.post("/enroll", (req, res) => {
   }
 
   return success(res, {
-    message: "Identity Passport created",
     passport: {
       id: p.id,
       holderName: p.holderName,
       verificationLevel: p.verificationLevel,
       expiresAt: p.expiresAt
     }
-  }, 201);
+  }, 'Identity Passport created', 201);
 });
 
 router.get("/verify/:passportId", (req, res) => {
@@ -57,8 +57,8 @@ router.get("/verify/:passportId", (req, res) => {
   return success(res, result);
 });
 
-router.post("/qr", (req, res) => {
-  const userId = req.userId;
+router.post("/qr", authenticate, (req, res) => {
+  const userId = req.user.userId;
   const db = req.app.get("db");
   const p = passport.getPassport(db, userId);
 
@@ -82,8 +82,8 @@ router.post("/qr/verify", (req, res) => {
   return success(res, result);
 });
 
-router.post("/revoke", (req, res) => {
-  const userId = req.userId;
+router.post("/revoke", authenticate, (req, res) => {
+  const userId = req.user.userId;
   const db = req.app.get("db");
   const p = passport.revokePassport(db, userId);
 

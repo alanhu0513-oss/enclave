@@ -1,155 +1,169 @@
 const express = require('express');
 const { authenticate } = require('../middleware/auth');
 const { success, error } = require('../utils/response');
+const { table } = require('../db/query');
 
 const router = express.Router();
 router.use(authenticate);
 
-// Per-user shield stats (in-memory, resets on restart)
-const userShieldStats = new Map();
+const DEFAULT_STATS = {
+  images_scanned: 0,
+  deepfakes_detected: 0,
+  deepfakes_found: 0,
+  watermarks_embedded: 0,
+  c2pa_credentials_embedded: 0,
+  voice_enrollments: 0,
+  voice_verifications: 0,
+  voice_matches: 0,
+  voice_rejections: 0,
+  takedowns_initiated: 0,
+  takedowns_completed: 0,
+  alerts_generated: 0,
+  threats_blocked: 0,
+  crawler_runs: 0,
+  urls_scanned: 0,
+  face_matches: 0,
+  sessions_protected: 0,
+  shield_activations: 0,
+  first_activated_at: null,
+  last_scan_at: null,
+  last_detection_at: null,
+  last_takedown_at: null,
+  recent_activity: '[]',
+};
 
-function getShieldStats(userId) {
-  if (!userShieldStats.has(userId)) {
-    userShieldStats.set(userId, {
-      imagesScanned: 0,
-      deepfakesDetected: 0,
-      deepfakesFound: 0,
-      watermarksEmbedded: 0,
-      c2paCredentialsEmbedded: 0,
-      voiceEnrollments: 0,
-      voiceVerifications: 0,
-      voiceMatches: 0,
-      voiceRejections: 0,
-      takedownsInitiated: 0,
-      takedownsCompleted: 0,
-      alertsGenerated: 0,
-      threatsBlocked: 0,
-      crawlerRuns: 0,
-      urlsScanned: 0,
-      faceMatches: 0,
-      sessionsProtected: 0,
-      shieldActivations: 0,
-      firstActivatedAt: null,
-      lastScanAt: null,
-      lastDetectionAt: null,
-      lastTakedownAt: null,
-      recentActivity: []
-    });
+async function getShieldStats(userId) {
+  const tbl = await table('shield_stats');
+  let stats = await tbl.find({ user_id: userId });
+  if (!stats) {
+    stats = { user_id: userId, ...DEFAULT_STATS };
+    await tbl.insert(stats);
   }
-  return userShieldStats.get(userId);
+  return stats;
 }
 
-function addActivity(stats, type, detail, status) {
-  stats.recentActivity.unshift({
-    type,
-    detail: detail || '',
-    status: status || 'success',
-    timestamp: new Date().toISOString()
-  });
-  if (stats.recentActivity.length > 100) {
-    stats.recentActivity = stats.recentActivity.slice(0, 100);
-  }
+async function addActivity(tbl, stats, type, detail, status) {
+  const activity = typeof stats.recent_activity === 'string' ? JSON.parse(stats.recent_activity) : (stats.recent_activity || []);
+  activity.unshift({ type, detail: detail || '', status: status || 'success', timestamp: new Date().toISOString() });
+  if (activity.length > 100) activity.length = 100;
+  await tbl.update({ user_id: stats.user_id }, { recent_activity: JSON.stringify(activity) });
 }
 
 // GET /api/shields/stats
-router.get('/stats', (req, res) => {
-  const stats = getShieldStats(req.user.userId);
-  return success(res, {
-    ...stats,
-    recentActivity: stats.recentActivity.slice(0, 20)
-  });
+router.get('/stats', async (req, res) => {
+  try {
+    const stats = await getShieldStats(req.user.userId);
+    const activity = typeof stats.recent_activity === 'string' ? JSON.parse(stats.recent_activity) : (stats.recent_activity || []);
+    return success(res, { ...stats, recent_activity: undefined, recentActivity: activity.slice(0, 20) });
+  } catch (e) {
+    return error(res, e.message, 500);
+  }
 });
 
 // GET /api/shields/summary
-router.get('/summary', (req, res) => {
-  const stats = getShieldStats(req.user.userId);
-  return success(res, {
-    imagesScanned: stats.imagesScanned,
-    deepfakesFound: stats.deepfakesFound,
-    watermarksEmbedded: stats.watermarksEmbedded,
-    c2paCredentialsEmbedded: stats.c2paCredentialsEmbedded,
-    threatsBlocked: stats.threatsBlocked,
-    takedownsCompleted: stats.takedownsCompleted,
-    voiceEnrollments: stats.voiceEnrollments,
-    sessionsProtected: stats.sessionsProtected,
-    firstActivatedAt: stats.firstActivatedAt,
-    lastScanAt: stats.lastScanAt,
-    lastDetectionAt: stats.lastDetectionAt,
-    lastTakedownAt: stats.lastTakedownAt,
-    recentActivity: stats.recentActivity.slice(0, 10)
-  });
+router.get('/summary', async (req, res) => {
+  try {
+    const stats = await getShieldStats(req.user.userId);
+    const activity = typeof stats.recent_activity === 'string' ? JSON.parse(stats.recent_activity) : (stats.recent_activity || []);
+    return success(res, {
+      imagesScanned: stats.images_scanned,
+      deepfakesFound: stats.deepfakes_found,
+      watermarksEmbedded: stats.watermarks_embedded,
+      c2paCredentialsEmbedded: stats.c2pa_credentials_embedded,
+      threatsBlocked: stats.threats_blocked,
+      takedownsCompleted: stats.takedowns_completed,
+      voiceEnrollments: stats.voice_enrollments,
+      sessionsProtected: stats.sessions_protected,
+      firstActivatedAt: stats.first_activated_at,
+      lastScanAt: stats.last_scan_at,
+      lastDetectionAt: stats.last_detection_at,
+      lastTakedownAt: stats.last_takedown_at,
+      recentActivity: activity.slice(0, 10),
+    });
+  } catch (e) {
+    return error(res, e.message, 500);
+  }
 });
 
-// POST /api/shields/record — Generic event recorder
-router.post('/record', (req, res) => {
-  const { type, detail, status: statusVal } = req.body;
-  if (!type) return error(res, 'Event type required', 400);
-  const stats = getShieldStats(req.user.userId);
+// POST /api/shields/record
+router.post('/record', async (req, res) => {
+  try {
+    const { type, detail, status: statusVal } = req.body;
+    if (!type) return error(res, 'Event type required', 400);
 
-  switch (type) {
-    case 'scan':
-      stats.imagesScanned++;
-      stats.lastScanAt = new Date().toISOString();
-      addActivity(stats, 'scan', detail, statusVal);
-      break;
-    case 'detection':
-      stats.deepfakesDetected++;
-      if (statusVal === 'threat' || statusVal === 'blocked') {
-        stats.deepfakesFound++;
-        stats.threatsBlocked++;
-        stats.lastDetectionAt = new Date().toISOString();
-      }
-      addActivity(stats, 'detection', detail, statusVal);
-      break;
-    case 'watermark':
-      stats.watermarksEmbedded++;
-      addActivity(stats, 'watermark', detail, 'success');
-      break;
-    case 'c2pa':
-      stats.c2paCredentialsEmbedded++;
-      addActivity(stats, 'c2pa', detail, 'success');
-      break;
-    case 'voice_enroll':
-      stats.voiceEnrollments++;
-      addActivity(stats, 'voice', detail || 'enrolled', 'success');
-      break;
-    case 'voice_verify':
-      stats.voiceVerifications++;
-      if (statusVal === 'match') stats.voiceMatches++;
-      else if (statusVal === 'reject') { stats.voiceRejections++; stats.threatsBlocked++; }
-      addActivity(stats, 'voice', detail, statusVal);
-      break;
-    case 'takedown':
-      stats.takedownsInitiated++;
-      stats.lastTakedownAt = new Date().toISOString();
-      if (statusVal === 'completed') stats.takedownsCompleted++;
-      addActivity(stats, 'takedown', detail, statusVal);
-      break;
-    case 'alert':
-      stats.alertsGenerated++;
-      addActivity(stats, 'alert', detail, statusVal || 'info');
-      break;
-    case 'shield_activate':
-      stats.shieldActivations++;
-      addActivity(stats, 'shield', detail || 'activated', 'success');
-      break;
-    case 'session':
-      stats.sessionsProtected++;
-      addActivity(stats, 'session', detail || 'protected', 'success');
-      break;
-    default:
-      return error(res, `Unknown event type: ${type}`, 400);
+    const userId = req.user.userId;
+    const tbl = await table('shield_stats');
+    const stats = await getShieldStats(userId);
+
+    const updates = {};
+    switch (type) {
+      case 'scan':
+        updates.images_scanned = (stats.images_scanned || 0) + 1;
+        updates.last_scan_at = new Date().toISOString();
+        break;
+      case 'detection':
+        updates.deepfakes_detected = (stats.deepfakes_detected || 0) + 1;
+        if (statusVal === 'threat' || statusVal === 'blocked') {
+          updates.deepfakes_found = (stats.deepfakes_found || 0) + 1;
+          updates.threats_blocked = (stats.threats_blocked || 0) + 1;
+          updates.last_detection_at = new Date().toISOString();
+        }
+        break;
+      case 'watermark':
+        updates.watermarks_embedded = (stats.watermarks_embedded || 0) + 1;
+        break;
+      case 'c2pa':
+        updates.c2pa_credentials_embedded = (stats.c2pa_credentials_embedded || 0) + 1;
+        break;
+      case 'voice_enroll':
+        updates.voice_enrollments = (stats.voice_enrollments || 0) + 1;
+        break;
+      case 'voice_verify':
+        updates.voice_verifications = (stats.voice_verifications || 0) + 1;
+        if (statusVal === 'match') updates.voice_matches = (stats.voice_matches || 0) + 1;
+        else if (statusVal === 'reject') {
+          updates.voice_rejections = (stats.voice_rejections || 0) + 1;
+          updates.threats_blocked = (stats.threats_blocked || 0) + 1;
+        }
+        break;
+      case 'takedown':
+        updates.takedowns_initiated = (stats.takedowns_initiated || 0) + 1;
+        updates.last_takedown_at = new Date().toISOString();
+        if (statusVal === 'completed') updates.takedowns_completed = (stats.takedowns_completed || 0) + 1;
+        break;
+      case 'alert':
+        updates.alerts_generated = (stats.alerts_generated || 0) + 1;
+        break;
+      case 'shield_activate':
+        updates.shield_activations = (stats.shield_activations || 0) + 1;
+        break;
+      case 'session':
+        updates.sessions_protected = (stats.sessions_protected || 0) + 1;
+        break;
+      default:
+        return error(res, `Unknown event type: ${type}`, 400);
+    }
+
+    if (!stats.first_activated_at) updates.first_activated_at = new Date().toISOString();
+
+    await tbl.update({ user_id: userId }, updates);
+    await addActivity(tbl, stats, type, detail, statusVal);
+
+    return success(res, { recorded: true });
+  } catch (e) {
+    return error(res, e.message, 500);
   }
-
-  if (!stats.firstActivatedAt) stats.firstActivatedAt = new Date().toISOString();
-
-  return success(res, { recorded: true });
 });
 
 // POST /api/shields/reset
-router.post('/reset', (req, res) => {
-  userShieldStats.delete(req.user.userId);
-  return success(res, { reset: true });
+router.post('/reset', async (req, res) => {
+  try {
+    const tbl = await table('shield_stats');
+    await tbl.remove({ user_id: req.user.userId });
+    return success(res, { reset: true });
+  } catch (e) {
+    return error(res, e.message, 500);
+  }
 });
 
 module.exports = router;

@@ -1,127 +1,124 @@
 const express = require("express");
 const { success, error } = require("../utils/response");
 const { authenticate } = require("../middleware/auth");
+const { table } = require("../db/query");
 
 const router = express.Router();
 router.use(authenticate);
 
-function getEstates(db, userId) {
-  return db.get("estate_profiles").filter({ ownerUserId: userId }).value() || [];
-}
-
-router.get("/", (req, res) => {
-  const userId = req.user.userId;
-  const db = req.app.get("db");
-  const estates = getEstates(db, userId);
-  return success(res, { estates });
+router.get("/", async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const tbl = await table("estate_profiles");
+    const estates = await tbl.filter({ owner_user_id: userId });
+    return success(res, { estates });
+  } catch (e) {
+    return error(res, e.message, 500);
+  }
 });
 
-router.post("/enroll", (req, res) => {
-  const userId = req.user.userId;
-  const { deceasedName, relationship, dateOfDeath, email, notes } = req.body;
-  const db = req.app.get("db");
+router.post("/enroll", async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { deceasedName, relationship, dateOfDeath, email, notes } = req.body;
+    if (!deceasedName || !relationship) return error(res, "deceasedName and relationship required", 400);
 
-  if (!deceasedName || !relationship) {
-    return error(res, "deceasedName and relationship required", 400);
+    const tbl = await table("estate_profiles");
+    const estate = {
+      id: "est_" + Date.now(),
+      owner_user_id: userId,
+      deceased_name: deceasedName,
+      relationship,
+      date_of_death: dateOfDeath || null,
+      email: email || null,
+      notes: notes || "",
+      status: "active",
+      monitoring_enabled: true,
+      takedowns_authorized: true,
+    };
+    await tbl.insert(estate);
+    return success(res, { message: "Estate enrolled", estate }, "OK", 201);
+  } catch (e) {
+    return error(res, e.message, 500);
   }
-
-  const estate = {
-    id: "est_" + Date.now(),
-    ownerUserId: userId,
-    deceasedName,
-    relationship,
-    dateOfDeath: dateOfDeath || null,
-    email: email || null,
-    notes: notes || "",
-    status: "active",
-    monitoringEnabled: true,
-    takedownsAuthorized: true,
-    createdAt: new Date().toISOString(),
-  };
-
-  db.get("estate_profiles").push(estate).write();
-  return success(res, { message: "Estate enrolled", estate }, "OK", 201);
 });
 
-router.post("/:estateId/takedown", (req, res) => {
-  const userId = req.user.userId;
-  const { estateId } = req.params;
-  const { url, description, type } = req.body;
-  const db = req.app.get("db");
+router.post("/:estateId/takedown", async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { estateId } = req.params;
+    const { url, description, type } = req.body;
 
-  const estate = db.get("estate_profiles").find({ id: estateId, ownerUserId: userId }).value();
-  if (!estate) {
-    return error(res, "Estate not found", 404);
+    const tbl = await table("estate_profiles");
+    const estate = await tbl.find({ id: estateId, owner_user_id: userId });
+    if (!estate) return error(res, "Estate not found", 404);
+    if (!estate.takedowns_authorized) return error(res, "Takedowns not authorized for this estate", 403);
+
+    const tdTbl = await table("estate_takedowns");
+    const takedown = {
+      id: "td_" + Date.now(),
+      estate_id: estateId,
+      owner_user_id: userId,
+      deceased_name: estate.deceased_name,
+      url: url || "",
+      description: description || "",
+      type: type || "dmca",
+      status: "pending",
+    };
+    await tdTbl.insert(takedown);
+    return success(res, { message: "Takedown initiated", takedown }, "OK", 201);
+  } catch (e) {
+    return error(res, e.message, 500);
   }
-
-  if (!estate.takedownsAuthorized) {
-    return error(res, "Takedowns not authorized for this estate", 403);
-  }
-
-  const takedown = {
-    id: "td_" + Date.now(),
-    estateId,
-    ownerUserId: userId,
-    deceasedName: estate.deceasedName,
-    url: url || "",
-    description: description || "",
-    type: type || "dmca",
-    status: "pending",
-    createdAt: new Date().toISOString(),
-  };
-
-  db.get("estate_takedowns").push(takedown).write();
-  return success(res, { message: "Takedown initiated", takedown }, "OK", 201);
 });
 
-router.get("/:estateId/takedowns", (req, res) => {
-  const userId = req.user.userId;
-  const { estateId } = req.params;
-  const db = req.app.get("db");
-
-  const takedowns = db.get("estate_takedowns")
-    .filter({ estateId, ownerUserId: userId })
-    .value() || [];
-
-  return success(res, { takedowns });
+router.get("/:estateId/takedowns", async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const tbl = await table("estate_takedowns");
+    const takedowns = await tbl.filter({ estate_id: req.params.estateId, owner_user_id: userId });
+    return success(res, { takedowns });
+  } catch (e) {
+    return error(res, e.message, 500);
+  }
 });
 
-router.post("/:estateId/memorialize", (req, res) => {
-  const userId = req.user.userId;
-  const { estateId } = req.params;
-  const { platform, profileUrl } = req.body;
-  const db = req.app.get("db");
+router.post("/:estateId/memorialize", async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { estateId } = req.params;
+    const { platform, profileUrl } = req.body;
 
-  const estate = db.get("estate_profiles").find({ id: estateId, ownerUserId: userId }).value();
-  if (!estate) {
-    return error(res, "Estate not found", 404);
+    const tbl = await table("estate_profiles");
+    const estate = await tbl.find({ id: estateId, owner_user_id: userId });
+    if (!estate) return error(res, "Estate not found", 404);
+
+    const memTbl = await table("memorial_requests");
+    const request = {
+      id: "mem_" + Date.now(),
+      estate_id: estateId,
+      platform: platform || "facebook",
+      profile_url: profileUrl || "",
+      status: "submitted",
+    };
+    await memTbl.insert(request);
+    return success(res, { message: "Memorialization request submitted", request }, "OK", 201);
+  } catch (e) {
+    return error(res, e.message, 500);
   }
-
-  const request = {
-    id: "mem_" + Date.now(),
-    estateId,
-    platform: platform || "facebook",
-    profileUrl: profileUrl || "",
-    status: "submitted",
-    createdAt: new Date().toISOString(),
-  };
-
-  db.get("memorial_requests").push(request).write();
-  return success(res, { message: "Memorialization request submitted", request }, "OK", 201);
 });
 
-router.delete("/:estateId", (req, res) => {
-  const userId = req.user.userId;
-  const { estateId } = req.params;
-  const db = req.app.get("db");
-
-  const estate = db.get("estate_profiles").find({ id: estateId, ownerUserId: userId }).value();
-  if (!estate) {
-    return error(res, "Estate not found", 404);
+router.delete("/:estateId", async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const tbl = await table("estate_profiles");
+    const estate = await tbl.find({ id: req.params.estateId, owner_user_id: userId });
+    if (!estate) return error(res, "Estate not found", 404);
+    await tbl.remove({ id: req.params.estateId });
+    return success(res, { message: "Estate removed" });
+  } catch (e) {
+    return error(res, e.message, 500);
   }
-
-  db.get("estate_profiles").remove({ id: estateId }).write();
-  return success(res, { message: "Estate removed" });
 });
 
 module.exports = router;

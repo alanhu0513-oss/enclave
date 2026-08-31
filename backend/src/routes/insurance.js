@@ -1,210 +1,181 @@
 const express = require("express");
 const { success, error } = require("../utils/response");
 const { authenticate } = require("../middleware/auth");
+const { table } = require("../db/query");
 
 const router = express.Router();
 router.use(authenticate);
 
-const INSURANCE_PLANS = {
-  basic: {
-    id: "basic",
-    name: "Basic Shield",
-    monthlyPrice: 2.99,
-    coverageAmount: 10000,
-    features: [
-      "Deepfake damage coverage up to $10,000",
-      "Legal consultation (1 hour)",
-      "Evidence preservation",
-      "Takedown assistance"
-    ]
-  },
-  pro: {
-    id: "pro",
-    name: "Pro Shield",
-    monthlyPrice: 4.99,
-    coverageAmount: 25000,
-    features: [
-      "Deepfake damage coverage up to $25,000",
-      "Legal consultation (3 hours)",
-      "PR crisis support",
-      "Evidence preservation",
-      "Priority takedown",
-      "Reputation monitoring"
-    ]
-  },
-  max: {
-    id: "max",
-    name: "Max Shield",
-    monthlyPrice: 9.99,
-    coverageAmount: 50000,
-    features: [
-      "Deepfake damage coverage up to $50,000",
-      "Unlimited legal consultation",
-      "Full PR crisis management",
-      "Evidence preservation",
-      "Priority takedown",
-      "Reputation monitoring",
-      "Identity restoration",
-      "Lost wages compensation"
-    ]
+const CLAIM_STATUS = { PENDING: "pending", UNDER_REVIEW: "under_review", APPROVED: "approved", DENIED: "denied", PAID: "paid" };
+
+const SEED_PLANS = [
+  { id: "basic", name: "Basic Shield", monthly_price: 2.99, coverage_amount: 10000, features: JSON.stringify(["Deepfake damage coverage up to $10,000", "Legal consultation (1 hour)", "Evidence preservation", "Takedown assistance"]) },
+  { id: "pro", name: "Pro Shield", monthly_price: 4.99, coverage_amount: 25000, features: JSON.stringify(["Deepfake damage coverage up to $25,000", "Legal consultation (3 hours)", "PR crisis support", "Evidence preservation", "Priority takedown", "Reputation monitoring"]) },
+  { id: "max", name: "Max Shield", monthly_price: 9.99, coverage_amount: 50000, features: JSON.stringify(["Deepfake damage coverage up to $50,000", "Unlimited legal consultation", "Full PR crisis management", "Evidence preservation", "Priority takedown", "Reputation monitoring", "Identity restoration", "Lost wages compensation"]) },
+];
+
+async function ensureSeeded() {
+  const tbl = await table("insurance_plans");
+  const count = await tbl.count();
+  if (count === 0) {
+    for (const p of SEED_PLANS) await tbl.insert({ ...p, active: true });
   }
-};
-
-const CLAIM_STATUS = {
-  PENDING: "pending",
-  UNDER_REVIEW: "under_review",
-  APPROVED: "approved",
-  DENIED: "denied",
-  PAID: "paid"
-};
-
-function getInsurance(db, userId) {
-  return db.get("insurance_policies").find({ userId }).value() || null;
 }
 
-function getClaims(db, userId) {
-  return db.get("insurance_claims").filter({ userId }).value() || [];
+async function getPlans() {
+  await ensureSeeded();
+  const tbl = await table("insurance_plans");
+  const plans = await tbl.all();
+  const map = {};
+  for (const p of plans) map[p.id] = p;
+  return map;
 }
 
-router.get("/plans", (req, res) => {
-  return success(res, { plans: INSURANCE_PLANS });
+router.get("/plans", async (req, res) => {
+  try {
+    const plansRaw = await getPlans();
+    const plans = {};
+    for (const [k, v] of Object.entries(plansRaw)) {
+      plans[k] = {
+        id: v.id,
+        name: v.name,
+        monthlyPrice: v.monthly_price,
+        coverageAmount: v.coverage_amount,
+        features: typeof v.features === 'string' ? JSON.parse(v.features) : v.features,
+      };
+    }
+    return success(res, { plans });
+  } catch (e) {
+    return error(res, e.message, 500);
+  }
 });
 
-router.get("/status", (req, res) => {
-  const userId = req.user.userId;
-  const db = req.app.get("db");
-  const policy = getInsurance(db, userId);
-  const claims = getClaims(db, userId);
-
-  return success(res, {
-    policy: policy || { plan: null, active: false },
-    claimsCount: claims.length,
-    totalPaid: claims.filter(c => c.status === CLAIM_STATUS.PAID)
-      .reduce((sum, c) => sum + (c.amount || 0), 0)
-  });
+router.get("/status", async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const polTbl = await table("insurance_policies");
+    const policy = await polTbl.find({ user_id: userId });
+    const claimsTbl = await table("insurance_claims");
+    const claims = await claimsTbl.filter({ user_id: userId });
+    return success(res, {
+      policy: policy || { plan: null, active: false },
+      claimsCount: claims.length,
+      totalPaid: claims.filter(c => c.status === CLAIM_STATUS.PAID).reduce((sum, c) => sum + (c.damages || 0), 0),
+    });
+  } catch (e) {
+    return error(res, e.message, 500);
+  }
 });
 
-router.post("/subscribe", (req, res) => {
-  const userId = req.user.userId;
-  const { planId } = req.body;
-  const db = req.app.get("db");
+router.post("/subscribe", async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { planId } = req.body;
+    const plans = await getPlans();
+    if (!planId || !plans[planId]) return error(res, "Invalid plan", 400);
 
-  if (!planId || !INSURANCE_PLANS[planId]) {
-    return error(res, "Invalid plan", 400);
+    const plan = plans[planId];
+    const polTbl = await table("insurance_policies");
+    const existing = await polTbl.find({ user_id: userId });
+
+    if (existing) {
+      await polTbl.update({ user_id: userId }, { plan: planId, coverage_amount: plan.coverage_amount, updated_at: new Date().toISOString() });
+    } else {
+      await polTbl.insert({
+        id: "ins_" + Date.now(),
+        user_id: userId,
+        plan: planId,
+        coverage_amount: plan.coverage_amount,
+        monthly_price: plan.monthly_price,
+        status: "active",
+      });
+    }
+    return success(res, { message: "Insurance activated", plan });
+  } catch (e) {
+    return error(res, e.message, 500);
   }
-
-  const plan = INSURANCE_PLANS[planId];
-  const existing = getInsurance(db, userId);
-
-  if (existing) {
-    db.get("insurance_policies")
-      .find({ userId })
-      .assign({ plan: planId, coverageAmount: plan.coverageAmount, updatedAt: new Date().toISOString() })
-      .write();
-  } else {
-    db.get("insurance_policies").push({
-      id: "ins_" + Date.now(),
-      userId,
-      plan: planId,
-      coverageAmount: plan.coverageAmount,
-      monthlyPrice: plan.monthlyPrice,
-      status: "active",
-      createdAt: new Date().toISOString()
-    }).write();
-  }
-
-  return success(res, { message: "Insurance activated", plan });
 });
 
-router.post("/unsubscribe", (req, res) => {
-  const userId = req.user.userId;
-  const db = req.app.get("db");
-
-  db.get("insurance_policies").remove({ userId }).write();
-  return success(res, { message: "Insurance cancelled" });
+router.post("/unsubscribe", async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const polTbl = await table("insurance_policies");
+    await polTbl.remove({ user_id: userId });
+    return success(res, { message: "Insurance cancelled" });
+  } catch (e) {
+    return error(res, e.message, 500);
+  }
 });
 
-router.post("/claim", (req, res) => {
-  const userId = req.user.userId;
-  const { alertId, description, damages, evidenceUrls } = req.body;
-  const db = req.app.get("db");
+router.post("/claim", async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { alertId, description, damages, evidenceUrls } = req.body;
 
-  const policy = getInsurance(db, userId);
-  if (!policy || policy.status !== "active") {
-    return error(res, "No active insurance policy", 400);
+    const polTbl = await table("insurance_policies");
+    const policy = await polTbl.find({ user_id: userId });
+    if (!policy || policy.status !== "active") return error(res, "No active insurance policy", 400);
+    if (!alertId || !description) return error(res, "alertId and description required", 400);
+
+    const claim = {
+      id: "claim_" + Date.now(),
+      user_id: userId,
+      policy_id: policy.id,
+      alert_id: alertId,
+      description,
+      damages: damages || 0,
+      evidence_urls: JSON.stringify(evidenceUrls || []),
+      coverage_amount: policy.coverage_amount,
+      status: CLAIM_STATUS.PENDING,
+    };
+
+    const claimsTbl = await table("insurance_claims");
+    await claimsTbl.insert(claim);
+    return success(res, { claim }, "Claim submitted", 201);
+  } catch (e) {
+    return error(res, e.message, 500);
   }
-
-  if (!alertId || !description) {
-    return error(res, "alertId and description required", 400);
-  }
-
-  const claim = {
-    id: "claim_" + Date.now(),
-    userId,
-    policyId: policy.id,
-    alertId,
-    description,
-    damages: damages || 0,
-    evidenceUrls: evidenceUrls || [],
-    status: CLAIM_STATUS.PENDING,
-    coverageAmount: policy.coverageAmount,
-    createdAt: new Date().toISOString()
-  };
-
-  db.get("insurance_claims").push(claim).write();
-
-  return success(res, { claim }, 'Claim submitted', 201);
 });
 
-router.get("/claims", (req, res) => {
-  const userId = req.user.userId;
-  const db = req.app.get("db");
-  const claims = getClaims(db, userId);
-  return success(res, { claims });
+router.get("/claims", async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const tbl = await table("insurance_claims");
+    const claims = await tbl.filter({ user_id: userId });
+    return success(res, { claims });
+  } catch (e) {
+    return error(res, e.message, 500);
+  }
 });
 
-router.get("/claims/:claimId", (req, res) => {
-  const userId = req.user.userId;
-  const db = req.app.get("db");
-  const claim = db.get("insurance_claims")
-    .find({ id: req.params.claimId, userId })
-    .value();
-
-  if (!claim) {
-    return error(res, "Claim not found", 404);
+router.get("/claims/:claimId", async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const tbl = await table("insurance_claims");
+    const claim = await tbl.find({ id: req.params.claimId, user_id: userId });
+    if (!claim) return error(res, "Claim not found", 404);
+    return success(res, { claim });
+  } catch (e) {
+    return error(res, e.message, 500);
   }
-
-  return success(res, { claim });
 });
 
-router.patch("/claims/:claimId/status", (req, res) => {
-  const userId = req.user.userId;
-  const { status, notes } = req.body;
-  const db = req.app.get("db");
+router.patch("/claims/:claimId/status", async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { status, notes } = req.body;
 
-  if (!Object.values(CLAIM_STATUS).includes(status)) {
-    return error(res, "Invalid status", 400);
+    if (!Object.values(CLAIM_STATUS).includes(status)) return error(res, "Invalid status", 400);
+
+    const tbl = await table("insurance_claims");
+    const claim = await tbl.find({ id: req.params.claimId, user_id: userId });
+    if (!claim) return error(res, "Claim not found", 404);
+
+    await tbl.update({ id: req.params.claimId, user_id: userId }, { status, notes: notes || claim.notes, updated_at: new Date().toISOString() });
+    return success(res, { message: "Claim updated", status });
+  } catch (e) {
+    return error(res, e.message, 500);
   }
-
-  const claim = db.get("insurance_claims")
-    .find({ id: req.params.claimId, userId })
-    .value();
-
-  if (!claim) {
-    return error(res, "Claim not found", 404);
-  }
-
-  db.get("insurance_claims")
-    .find({ id: req.params.claimId, userId })
-    .assign({
-      status,
-      notes: notes || claim.notes,
-      updatedAt: new Date().toISOString()
-    })
-    .write();
-
-  return success(res, { message: "Claim updated", status });
 });
 
 module.exports = router;
-module.exports.INSURANCE_PLANS = INSURANCE_PLANS;

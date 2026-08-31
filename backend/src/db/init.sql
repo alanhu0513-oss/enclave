@@ -451,3 +451,398 @@ DO $$ BEGIN
   ALTER TABLE monitoring_state ADD COLUMN sources_health TEXT DEFAULT '{}';
 EXCEPTION WHEN duplicate_column THEN NULL;
 END $$;
+
+-- ═══════════════════════════════════════════════════════════════
+-- Phase 1: Missing tables for old-pattern routes
+-- ═══════════════════════════════════════════════════════════════
+
+-- API Platform
+CREATE TABLE IF NOT EXISTS api_keys (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  key TEXT UNIQUE NOT NULL,
+  permissions TEXT DEFAULT '["read"]',
+  rate_limit INTEGER DEFAULT 100,
+  total_requests INTEGER DEFAULT 0,
+  last_used_at TIMESTAMP WITH TIME ZONE,
+  status TEXT DEFAULT 'active',
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS api_usage_logs (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  key_id TEXT,
+  endpoint TEXT,
+  method TEXT,
+  status_code INTEGER,
+  latency_ms INTEGER,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+-- Audit Log
+CREATE TABLE IF NOT EXISTS audit_logs (
+  id TEXT PRIMARY KEY,
+  user_id TEXT,
+  action TEXT NOT NULL,
+  detail TEXT,
+  ip_address TEXT,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+-- ML Model Registry
+CREATE TABLE IF NOT EXISTS ml_models (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  version TEXT NOT NULL,
+  type TEXT NOT NULL,
+  accuracy REAL,
+  precision_score REAL,
+  recall_score REAL,
+  f1_score REAL,
+  trained_at TIMESTAMP WITH TIME ZONE,
+  deployed_at TIMESTAMP WITH TIME ZONE,
+  status TEXT DEFAULT 'draft',
+  dataset TEXT,
+  parameters TEXT,
+  inference_time TEXT,
+  model_path TEXT,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE
+);
+
+CREATE TABLE IF NOT EXISTS ml_benchmarks (
+  id TEXT PRIMARY KEY,
+  model_id TEXT NOT NULL REFERENCES ml_models(id) ON DELETE CASCADE,
+  dataset TEXT NOT NULL,
+  samples INTEGER,
+  accuracy REAL,
+  precision_score REAL,
+  recall_score REAL,
+  f1_score REAL,
+  run_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS ab_tests (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  model_a TEXT NOT NULL,
+  model_b TEXT NOT NULL,
+  traffic_split INTEGER DEFAULT 50,
+  status TEXT DEFAULT 'running',
+  results TEXT DEFAULT '{}',
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  ended_at TIMESTAMP WITH TIME ZONE
+);
+
+-- Bounty System
+CREATE TABLE IF NOT EXISTS bounty_profiles (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  face_images TEXT DEFAULT '[]',
+  bounty_amount REAL DEFAULT 10,
+  status TEXT DEFAULT 'active',
+  total_paid REAL DEFAULT 0,
+  total_matches INTEGER DEFAULT 0,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE
+);
+
+CREATE TABLE IF NOT EXISTS hunter_scans (
+  id TEXT PRIMARY KEY,
+  hunter_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  image_url TEXT NOT NULL,
+  source TEXT DEFAULT 'manual',
+  source_url TEXT DEFAULT '',
+  matches INTEGER DEFAULT 0,
+  candidates TEXT DEFAULT '[]',
+  status TEXT DEFAULT 'pending',
+  confirmed_at TIMESTAMP WITH TIME ZONE,
+  rejected_at TIMESTAMP WITH TIME ZONE,
+  payout REAL DEFAULT 0,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+-- Insurance
+CREATE TABLE IF NOT EXISTS insurance_policies (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  plan TEXT NOT NULL,
+  coverage_amount REAL DEFAULT 0,
+  monthly_price REAL DEFAULT 0,
+  status TEXT DEFAULT 'active',
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE
+);
+
+CREATE TABLE IF NOT EXISTS insurance_claims (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  policy_id TEXT REFERENCES insurance_policies(id) ON DELETE SET NULL,
+  alert_id TEXT,
+  scan_id TEXT,
+  type TEXT DEFAULT 'deepfake',
+  description TEXT,
+  damages REAL DEFAULT 0,
+  evidence_urls TEXT DEFAULT '[]',
+  image_url TEXT,
+  source TEXT,
+  source_url TEXT,
+  confidence REAL,
+  bounty_amount REAL,
+  coverage_amount REAL,
+  status TEXT DEFAULT 'pending',
+  notes TEXT,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE
+);
+
+-- Estate (Digital Legacy)
+CREATE TABLE IF NOT EXISTS estate_profiles (
+  id TEXT PRIMARY KEY,
+  owner_user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  deceased_name TEXT NOT NULL,
+  relationship TEXT NOT NULL,
+  date_of_death TEXT,
+  email TEXT,
+  notes TEXT DEFAULT '',
+  status TEXT DEFAULT 'active',
+  monitoring_enabled BOOLEAN DEFAULT TRUE,
+  takedowns_authorized BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS estate_takedowns (
+  id TEXT PRIMARY KEY,
+  estate_id TEXT NOT NULL REFERENCES estate_profiles(id) ON DELETE CASCADE,
+  owner_user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  deceased_name TEXT,
+  url TEXT DEFAULT '',
+  description TEXT DEFAULT '',
+  type TEXT DEFAULT 'dmca',
+  status TEXT DEFAULT 'pending',
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS memorial_requests (
+  id TEXT PRIMARY KEY,
+  estate_id TEXT NOT NULL REFERENCES estate_profiles(id) ON DELETE CASCADE,
+  platform TEXT DEFAULT 'facebook',
+  profile_url TEXT DEFAULT '',
+  status TEXT DEFAULT 'submitted',
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+-- Education
+CREATE TABLE IF NOT EXISTS tutorial_completions (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  tutorial_id TEXT NOT NULL,
+  score INTEGER,
+  passed BOOLEAN DEFAULT FALSE,
+  answers TEXT DEFAULT '[]',
+  completed_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS education_tutorials (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  description TEXT,
+  category TEXT,
+  difficulty TEXT DEFAULT 'beginner',
+  duration TEXT,
+  content TEXT,
+  steps TEXT DEFAULT '[]',
+  quiz TEXT DEFAULT '{}',
+  completions INTEGER DEFAULT 0,
+  rating REAL DEFAULT 0,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE
+);
+
+CREATE TABLE IF NOT EXISTS education_certs (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  level TEXT,
+  requirements TEXT DEFAULT '[]',
+  tutorials TEXT DEFAULT '[]',
+  badge TEXT,
+  holders INTEGER DEFAULT 0,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS blog_posts (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  excerpt TEXT,
+  content TEXT,
+  author TEXT,
+  date TEXT,
+  read_time TEXT,
+  category TEXT,
+  featured BOOLEAN DEFAULT FALSE,
+  image_url TEXT,
+  published_at TIMESTAMP WITH TIME ZONE,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE
+);
+
+-- Bug Bounty
+CREATE TABLE IF NOT EXISTS bug_bounty_vulns (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  severity TEXT NOT NULL,
+  cvss REAL,
+  status TEXT DEFAULT 'submitted',
+  reporter TEXT,
+  reported_at TIMESTAMP WITH TIME ZONE,
+  resolved_at TIMESTAMP WITH TIME ZONE,
+  bounty REAL DEFAULT 0,
+  description TEXT,
+  impact TEXT,
+  remediation TEXT,
+  proof_of_concept TEXT,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS bug_bounty_leaderboard (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name TEXT,
+  reports INTEGER DEFAULT 0,
+  resolved INTEGER DEFAULT 0,
+  earned REAL DEFAULT 0,
+  rank INTEGER DEFAULT 0,
+  updated_at TIMESTAMP WITH TIME ZONE
+);
+
+-- Threat Intel (per-user persistent IOCs)
+CREATE TABLE IF NOT EXISTS ioc_indicators (
+  id TEXT PRIMARY KEY,
+  user_id TEXT,
+  type TEXT NOT NULL,
+  value TEXT NOT NULL,
+  threat TEXT NOT NULL,
+  severity TEXT DEFAULT 'medium',
+  confidence REAL DEFAULT 0.5,
+  reports INTEGER DEFAULT 1,
+  region TEXT DEFAULT 'GLOBAL',
+  first_seen TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  last_seen TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  reporter TEXT,
+  verified BOOLEAN DEFAULT FALSE,
+  reported_by TEXT DEFAULT '[]',
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+-- Shield Stats (persistent)
+CREATE TABLE IF NOT EXISTS shield_stats (
+  user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  images_scanned INTEGER DEFAULT 0,
+  deepfakes_detected INTEGER DEFAULT 0,
+  deepfakes_found INTEGER DEFAULT 0,
+  watermarks_embedded INTEGER DEFAULT 0,
+  c2pa_credentials_embedded INTEGER DEFAULT 0,
+  voice_enrollments INTEGER DEFAULT 0,
+  voice_verifications INTEGER DEFAULT 0,
+  voice_matches INTEGER DEFAULT 0,
+  voice_rejections INTEGER DEFAULT 0,
+  takedowns_initiated INTEGER DEFAULT 0,
+  takedowns_completed INTEGER DEFAULT 0,
+  alerts_generated INTEGER DEFAULT 0,
+  threats_blocked INTEGER DEFAULT 0,
+  crawler_runs INTEGER DEFAULT 0,
+  urls_scanned INTEGER DEFAULT 0,
+  face_matches INTEGER DEFAULT 0,
+  sessions_protected INTEGER DEFAULT 0,
+  shield_activations INTEGER DEFAULT 0,
+  first_activated_at TIMESTAMP WITH TIME ZONE,
+  last_scan_at TIMESTAMP WITH TIME ZONE,
+  last_detection_at TIMESTAMP WITH TIME ZONE,
+  last_takedown_at TIMESTAMP WITH TIME ZONE,
+  recent_activity TEXT DEFAULT '[]',
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE
+);
+
+-- Voice Clone Analysis Results
+CREATE TABLE IF NOT EXISTS voice_analyses (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  file_name TEXT,
+  file_size INTEGER,
+  format TEXT,
+  is_clone BOOLEAN DEFAULT FALSE,
+  clone_score REAL DEFAULT 0,
+  breathing_score REAL DEFAULT 0,
+  spectral_score REAL DEFAULT 0,
+  result_json TEXT DEFAULT '{}',
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+-- Insurance Plans (configurable)
+CREATE TABLE IF NOT EXISTS insurance_plans (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  monthly_price REAL NOT NULL,
+  coverage_amount REAL NOT NULL,
+  features TEXT DEFAULT '[]',
+  active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+-- ═══════════════════════════════════════════════════════════════
+-- Indexes for new tables
+-- ═══════════════════════════════════════════════════════════════
+
+CREATE INDEX IF NOT EXISTS idx_api_keys_user ON api_keys(user_id, status);
+CREATE INDEX IF NOT EXISTS idx_api_keys_key ON api_keys(key);
+CREATE INDEX IF NOT EXISTS idx_api_usage_user ON api_usage_logs(user_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_api_usage_key ON api_usage_logs(key_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_user ON audit_logs(user_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON audit_logs(action, created_at);
+CREATE INDEX IF NOT EXISTS idx_ml_models_type ON ml_models(type, status);
+CREATE INDEX IF NOT EXISTS idx_ml_benchmarks_model ON ml_benchmarks(model_id);
+CREATE INDEX IF NOT EXISTS idx_bounty_profiles_user ON bounty_profiles(user_id);
+CREATE INDEX IF NOT EXISTS idx_bounty_profiles_status ON bounty_profiles(status);
+CREATE INDEX IF NOT EXISTS idx_hunter_scans_hunter ON hunter_scans(hunter_id);
+CREATE INDEX IF NOT EXISTS idx_hunter_scans_status ON hunter_scans(status);
+CREATE INDEX IF NOT EXISTS idx_insurance_policies_user ON insurance_policies(user_id);
+CREATE INDEX IF NOT EXISTS idx_insurance_claims_user ON insurance_claims(user_id);
+CREATE INDEX IF NOT EXISTS idx_insurance_claims_status ON insurance_claims(status);
+CREATE INDEX IF NOT EXISTS idx_estate_profiles_owner ON estate_profiles(owner_user_id);
+CREATE INDEX IF NOT EXISTS idx_estate_takedowns_estate ON estate_takedowns(estate_id);
+CREATE INDEX IF NOT EXISTS idx_memorial_requests_estate ON memorial_requests(estate_id);
+CREATE INDEX IF NOT EXISTS idx_tutorial_completions_user ON tutorial_completions(user_id);
+CREATE INDEX IF NOT EXISTS idx_tutorial_completions_tutorial ON tutorial_completions(tutorial_id);
+CREATE INDEX IF NOT EXISTS idx_education_tutorials_category ON education_tutorials(category, difficulty);
+CREATE INDEX IF NOT EXISTS idx_blog_posts_category ON blog_posts(category, published_at);
+CREATE INDEX IF NOT EXISTS idx_bug_bounty_vulns_severity ON bug_bounty_vulns(severity, status);
+CREATE INDEX IF NOT EXISTS idx_bug_bounty_leaderboard_user ON bug_bounty_leaderboard(user_id);
+CREATE INDEX IF NOT EXISTS idx_ioc_indicators_type ON ioc_indicators(type, severity);
+CREATE INDEX IF NOT EXISTS idx_ioc_indicators_value ON ioc_indicators(value);
+CREATE INDEX IF NOT EXISTS idx_ioc_indicators_user ON ioc_indicators(user_id);
+CREATE INDEX IF NOT EXISTS idx_voice_analyses_user ON voice_analyses(user_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_insurance_plans_active ON insurance_plans(active);
+
+-- Identity Passports
+CREATE TABLE IF NOT EXISTS identity_passports (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  holder_name TEXT,
+  email TEXT,
+  enrolled_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  expires_at TIMESTAMP WITH TIME ZONE,
+  verified BOOLEAN DEFAULT TRUE,
+  verification_level TEXT DEFAULT 'standard',
+  public_key TEXT,
+  biometric_hash TEXT,
+  qr_code TEXT,
+  status TEXT DEFAULT 'active',
+  revoked_at TIMESTAMP WITH TIME ZONE,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_identity_passports_user ON identity_passports(user_id);
+CREATE INDEX IF NOT EXISTS idx_identity_passports_status ON identity_passports(status);

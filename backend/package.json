@@ -6,7 +6,9 @@
     "dev": "node src/index.js",
     "start": "node src/index.js",
     "test": "DATABASE_PATH=./data/test-enclave.json AUTH_RATE_LIMIT_MAX=1000 GLOBAL_RATE_LIMIT_MAX=100000 jest --forceExit --detectOpenHandles",
-    "test:ci": "DATABASE_PATH=./data/test-enclave.json AUTH_RATE_LIMIT_MAX=1000 GLOBAL_RATE_LIMIT_MAX=100000 jest --forceExit --detectOpenHandles --ci"
+    "test:ci": "DATABASE_PATH=./data/test-enclave.json AUTH_RATE_LIMIT_MAX=1000 GLOBAL_RATE_LIMIT_MAX=100000 jest --forceExit --detectOpenHandles --ci",
+    "migrate": "node scripts/migrate-json-to-pg.js",
+    "migrate:dry": "node scripts/migrate-json-to-pg.js --dry-run"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

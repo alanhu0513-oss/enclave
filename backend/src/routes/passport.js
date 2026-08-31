@@ -5,93 +5,86 @@ const { authenticate } = require("../middleware/auth");
 
 const router = express.Router();
 
-router.get("/", authenticate, (req, res) => {
-  const userId = req.user.userId;
-  const db = req.app.get("db");
-  const p = passport.getPassport(db, userId);
-
-  if (!p) {
-    return success(res, { passport: null, enrolled: false });
+router.get("/", authenticate, async (req, res) => {
+  try {
+    const p = await passport.getPassport(req.user.userId);
+    if (!p) return success(res, { passport: null, enrolled: false });
+    return success(res, {
+      passport: {
+        id: p.id,
+        holderName: p.holder_name,
+        verificationLevel: p.verification_level,
+        enrolledAt: p.enrolled_at,
+        expiresAt: p.expires_at,
+        status: p.status,
+      },
+      enrolled: true,
+    });
+  } catch (e) {
+    return error(res, e.message, 500);
   }
-
-  return success(res, {
-    passport: {
-      id: p.id,
-      holderName: p.holderName,
-      verificationLevel: p.verificationLevel,
-      enrolledAt: p.enrolledAt,
-      expiresAt: p.expiresAt,
-      status: p.status
-    },
-    enrolled: true
-  });
 });
 
-router.post("/enroll", authenticate, (req, res) => {
-  const userId = req.user.userId;
-  const db = req.app.get("db");
-
-  const existing = passport.getPassport(db, userId);
-  if (existing && existing.status === "active") {
-    return error(res, "Passport already active", 400);
-  }
-
-  const p = passport.generatePassport(db, userId);
-  if (!p) {
-    return error(res, "Failed to generate passport", 500);
-  }
-
-  return success(res, {
-    passport: {
-      id: p.id,
-      holderName: p.holderName,
-      verificationLevel: p.verificationLevel,
-      expiresAt: p.expiresAt
+router.post("/enroll", authenticate, async (req, res) => {
+  try {
+    const existing = await passport.getPassport(req.user.userId);
+    if (existing && existing.status === "active") {
+      return error(res, "Passport already active", 400);
     }
-  }, 'Identity Passport created', 201);
-});
-
-router.get("/verify/:passportId", (req, res) => {
-  const db = req.app.get("db");
-  const result = passport.verifyPassport(db, req.params.passportId);
-  return success(res, result);
-});
-
-router.post("/qr", authenticate, (req, res) => {
-  const userId = req.user.userId;
-  const db = req.app.get("db");
-  const p = passport.getPassport(db, userId);
-
-  if (!p || p.status !== "active") {
-    return error(res, "No active passport", 400);
+    const p = await passport.generatePassport(req.user.userId);
+    if (!p) return error(res, "Failed to generate passport", 500);
+    return success(res, {
+      passport: {
+        id: p.id,
+        holderName: p.holder_name,
+        verificationLevel: p.verification_level,
+        expiresAt: p.expires_at,
+      },
+    }, "Identity Passport created", 201);
+  } catch (e) {
+    return error(res, e.message, 500);
   }
-
-  const qrData = passport.generateQRData(p);
-  return success(res, { qrData, expiresIn: 300 });
 });
 
-router.post("/qr/verify", (req, res) => {
-  const { qrData } = req.body;
-  const db = req.app.get("db");
-
-  if (!qrData) {
-    return error(res, "qrData required", 400);
+router.get("/verify/:passportId", async (req, res) => {
+  try {
+    const result = await passport.verifyPassport(req.params.passportId);
+    return success(res, result);
+  } catch (e) {
+    return error(res, e.message, 500);
   }
-
-  const result = passport.verifyQRData(db, qrData);
-  return success(res, result);
 });
 
-router.post("/revoke", authenticate, (req, res) => {
-  const userId = req.user.userId;
-  const db = req.app.get("db");
-  const p = passport.revokePassport(db, userId);
-
-  if (!p) {
-    return error(res, "No passport to revoke", 404);
+router.post("/qr", authenticate, async (req, res) => {
+  try {
+    const p = await passport.getPassport(req.user.userId);
+    if (!p) return error(res, "No passport found", 404);
+    const qrData = passport.generateQRData(p);
+    return success(res, { qrData, expiresIn: 300 });
+  } catch (e) {
+    return error(res, e.message, 500);
   }
+});
 
-  return success(res, { message: "Passport revoked" });
+router.post("/qr/verify", async (req, res) => {
+  try {
+    const { qrData } = req.body;
+    if (!qrData) return error(res, "qrData required", 400);
+    const result = await passport.verifyQRData(qrData);
+    return success(res, result);
+  } catch (e) {
+    return error(res, e.message, 500);
+  }
+});
+
+router.post("/revoke", authenticate, async (req, res) => {
+  try {
+    const result = await passport.revokePassport(req.user.userId);
+    if (!result) return error(res, "No passport found", 404);
+    return success(res, { message: "Passport revoked" });
+  } catch (e) {
+    return error(res, e.message, 500);
+  }
 });
 
 module.exports = router;

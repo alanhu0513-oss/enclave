@@ -27,6 +27,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { StaggerContainer, StaggerItem, Kinetic, FadeIn } from "@/components/ui/motion";
+import { buttonPulse } from "@/lib/motion-presets";
 import { SectionHeader } from "@/components/ui/dashboard";
 import { confidenceColor, confidenceLabel, cn } from "@/lib/utils";
 
@@ -269,10 +270,12 @@ export function ScanView() {
                       onKeyDown={(e) => e.key === "Enter" && runScan()}
                       autoFocus
                     />
-                    <Button onClick={runScan} className="shrink-0">
-                      <Crosshair className="h-4 w-4" />
-                      Scan
-                    </Button>
+                    <motion.div {...buttonPulse}>
+                      <Button onClick={runScan} className="shrink-0">
+                        <Crosshair className="h-4 w-4" />
+                        Scan
+                      </Button>
+                    </motion.div>
                   </div>
                 )}
 
@@ -349,6 +352,16 @@ export function ScanView() {
                       : "Running ML detection on your content"}
                   </p>
                 </div>
+                <div className="w-full max-w-xs">
+                  <div className="h-2 overflow-hidden rounded-full bg-white/10">
+                    <motion.div
+                      className="h-full rounded-full bg-gradient-to-r from-cyan to-green"
+                      initial={{ width: "0%" }}
+                      animate={{ width: "100%" }}
+                      transition={{ duration: 3, ease: "easeInOut", repeat: Infinity }}
+                    />
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </motion.div>
@@ -379,46 +392,55 @@ function ResultCard({ result }: { result: { type: Tool; data: any } }) {
   const color = conf !== null ? confidenceColor(conf) : "#00ff88";
 
   return (
-    <Card className="overflow-hidden">
-      <CardContent className="p-5">
-        <div className="mb-3 flex items-center gap-2">
-          {conf !== null && conf >= 80 ? (
-            <AlertTriangle className="h-5 w-5 text-red" />
-          ) : (
-            <CheckCircle2 className="h-5 w-5 text-green" />
-          )}
-          <p className="font-display text-sm font-semibold text-ink">
-            {result.type.toUpperCase()} RESULT
-          </p>
-        </div>
-
-        {conf !== null ? (
-          <div className="flex items-center gap-4">
-            <div
-              className="flex h-16 w-16 items-center justify-center rounded-full border-4 font-display text-lg font-bold"
-              style={{ borderColor: color, color }}
-            >
-              {Math.round(conf)}%
-            </div>
-            <div>
-              <Badge variant={conf >= 80 ? "red" : conf >= 50 ? "amber" : "green"}>
-                {label}
-              </Badge>
-              <p className="mt-1 text-sm text-ink-muted">
-                {conf >= 80
-                  ? "High confidence of manipulation detected."
-                  : conf >= 50
-                  ? "Some signs of manipulation detected."
-                  : "Looks authentic."}
-              </p>
-            </div>
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] }}
+    >
+      <Card className="overflow-hidden">
+        <CardContent className="p-5">
+          <div className="mb-3 flex items-center gap-2">
+            {conf !== null && conf >= 80 ? (
+              <AlertTriangle className="h-5 w-5 text-red" />
+            ) : (
+              <CheckCircle2 className="h-5 w-5 text-green" />
+            )}
+            <p className="font-display text-sm font-semibold text-ink">
+              {result.type.toUpperCase()} RESULT
+            </p>
           </div>
-        ) : (
-          <pre className="max-h-64 overflow-auto rounded-lg bg-black/30 p-3 font-mono text-xs text-ink-muted">
-            {JSON.stringify(result.data, null, 2)}
-          </pre>
-        )}
-      </CardContent>
-    </Card>
+
+          {conf !== null ? (
+            <div className="flex items-center gap-4">
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.2 }}
+                className="flex h-16 w-16 items-center justify-center rounded-full border-4 font-display text-lg font-bold"
+                style={{ borderColor: color, color }}
+              >
+                {Math.round(conf)}%
+              </motion.div>
+              <div>
+                <Badge variant={conf >= 80 ? "red" : conf >= 50 ? "amber" : "green"}>
+                  {label}
+                </Badge>
+                <p className="mt-1 text-sm text-ink-muted">
+                  {conf >= 80
+                    ? "High confidence of manipulation detected."
+                    : conf >= 50
+                    ? "Some signs of manipulation detected."
+                    : "Looks authentic."}
+                </p>
+              </div>
+            </div>
+          ) : (
+            <pre className="max-h-64 overflow-auto rounded-lg bg-black/30 p-3 font-mono text-xs text-ink-muted">
+              {JSON.stringify(result.data, null, 2)}
+            </pre>
+          )}
+        </CardContent>
+      </Card>
+    </motion.div>
   );
 }

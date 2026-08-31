@@ -34,6 +34,7 @@ import { SocialProofFeed } from "@/components/psychology/social-proof";
 import { BadgesGrid } from "@/components/psychology/badges";
 import { InsightsList, ProtectionTimeline } from "@/components/psychology/insights";
 import { getShieldStates } from "@/features/shields/shields-view";
+import { fadeInUp } from "@/lib/motion-presets";
 
 const TOTAL_SHIELDS = 5;
 const EDU_KEY = "enclave_plan_edu_dismissed";
@@ -86,13 +87,27 @@ export function HomeView() {
   useEffect(() => {
     const newly = psych.checkBadges(shieldsActive);
     newly.forEach((name) =>
-      toast({ title: `🏆 Badge unlocked: ${name}!`, variant: "success" })
+      toast({ title: `Badge unlocked: ${name}!`, variant: "success" })
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [alerts.length, psych.streak, psych.scans, psych.takedowns]);
 
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-5">
+    <div className="relative mx-auto w-full max-w-6xl space-y-5">
+      {/* Animated gradient background */}
+      <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
+        <motion.div
+          animate={{
+            background: [
+              "radial-gradient(800px 600px at 20% 20%, rgba(0,255,136,0.06), transparent 60%)",
+              "radial-gradient(800px 600px at 80% 80%, rgba(0,191,255,0.06), transparent 60%)",
+              "radial-gradient(800px 600px at 20% 20%, rgba(0,255,136,0.06), transparent 60%)",
+            ],
+          }}
+          transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
+        />
+      </div>
+
       {/* ─── HERO ─── */}
       <StaggerContainer className="grid gap-5 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
         <StaggerItem>
@@ -187,9 +202,7 @@ export function HomeView() {
       {/* ─── FREE-PLAN EDUCATION / CONTEXTUAL UPGRADE ─── */}
       {onFreePlan && (
         <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
+          {...fadeInUp}
           className="relative overflow-hidden rounded-2xl border border-cyan/20 bg-gradient-to-r from-cyan/[0.07] via-green/[0.03] to-transparent p-5 md:p-6"
         >
           <button
@@ -198,7 +211,7 @@ export function HomeView() {
               setEduDismissed(true);
             }}
             className="absolute right-4 top-4 rounded-lg p-1 text-ink-faint transition-colors hover:bg-white/[0.06] hover:text-ink"
-            aria-label="Dismiss"
+            aria-label="Dismiss education banner"
           >
             <X className="h-4 w-4" />
           </button>
@@ -229,9 +242,8 @@ export function HomeView() {
 
       {/* ─── URGENCY BANNER (FOMO + SCARCITY) ─── */}
       <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.15 }}
+        {...fadeInUp}
+        transition={{ ...fadeInUp.transition, delay: 0.15 }}
       >
         <UrgencyCountdown />
       </motion.div>
@@ -242,9 +254,9 @@ export function HomeView() {
           <Card className="h-full">
             <CardContent className="p-5">
               <div className="mb-4 flex items-center justify-between">
-                <h3 className="font-display text-sm font-semibold text-ink">
+                <h2 className="font-display text-sm font-semibold text-ink">
                   Latest Detections
-                </h3>
+                </h2>
                 <button
                   onClick={() => setTab("alerts")}
                   className="flex items-center gap-1 text-xs text-cyan transition-colors hover:text-green"
@@ -313,9 +325,9 @@ export function HomeView() {
             <CardContent className="p-5">
               <div className="mb-4 flex items-center gap-2">
                 <Zap className="h-4 w-4 text-amber" />
-                <h3 className="font-display text-sm font-semibold text-ink">
+                <h2 className="font-display text-sm font-semibold text-ink">
                   Smart Insights
-                </h3>
+                </h2>
               </div>
               <InsightsList
                 psych={psych}
@@ -340,9 +352,9 @@ export function HomeView() {
         <StaggerItem>
           <Card className="h-full">
             <CardContent className="flex h-full flex-col p-5">
-              <h3 className="mb-4 font-display text-sm font-semibold text-ink">
+              <h2 className="mb-4 font-display text-sm font-semibold text-ink">
                 Quick Actions
-              </h3>
+              </h2>
               <div className="flex flex-1 flex-col gap-2.5">
                 <QuickAction
                   icon={ScanSearch}
@@ -380,9 +392,9 @@ export function HomeView() {
         <StaggerItem className="lg:col-span-2">
           <Card className="h-full">
             <CardContent className="p-5">
-              <h3 className="mb-4 font-display text-sm font-semibold text-ink">
+              <h2 className="mb-4 font-display text-sm font-semibold text-ink">
                 Protection Timeline
-              </h3>
+              </h2>
               <ProtectionTimeline createdAt={psych.createdAt} alerts={alerts} />
             </CardContent>
           </Card>

@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { StaggerContainer, StaggerItem, Kinetic, FadeIn } from "@/components/ui/motion";
+import { greenGlow } from "@/lib/motion-presets";
 import { cn } from "@/lib/utils";
 import { SectionHeader, PulseDot } from "@/components/ui/dashboard";
 import { NativeShieldPanel } from "./native-shield-panel";
@@ -69,10 +70,13 @@ export function ShieldsView() {
           return (
             <StaggerItem key={shield.key}>
               <Kinetic>
-                <Card className={cn(
-                  "relative overflow-hidden transition-all duration-300",
-                  active ? "border-green/20 shadow-lg shadow-green/5" : "border-white/[0.06]"
-                )}>
+                <Card
+                  className={cn(
+                    "relative overflow-hidden transition-all duration-300",
+                    active ? "border-green/20 shadow-lg shadow-green/5" : "border-white/[0.06]"
+                  )}
+                  {...(active ? greenGlow : {})}
+                >
                   <div className={cn("absolute inset-0 bg-gradient-to-br opacity-40", shield.gradient)} />
                   <div className="relative">
                     <CardHeader className="pb-3">

@@ -7,7 +7,16 @@ const Card = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn("glass rounded-2xl text-ink", className)}
+    className={cn(
+      "rounded-2xl border border-white/[0.08] bg-white/[0.04] backdrop-blur-sm",
+      "shadow-[0_4px_24px_-4px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.04)]",
+      "transition-all duration-300 ease-out",
+      "hover:shadow-[0_8px_40px_-8px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.06)]",
+      "hover:border-white/[0.12]",
+      "hover:translate-y-[-1px]",
+      "text-ink",
+      className
+    )}
     {...props}
   />
 ));

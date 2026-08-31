@@ -17,7 +17,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { StaggerContainer, StaggerItem, Kinetic, FadeIn } from "@/components/ui/motion";
+import { StaggerContainer, StaggerItem, Kinetic, FadeIn, Expandable } from "@/components/ui/motion";
 import { SectionHeader, EmptyState } from "@/components/ui/dashboard";
 import { cn } from "@/lib/utils";
 import { getShieldStates } from "@/features/shields/shields-view";
@@ -381,7 +381,13 @@ export function ActivityView() {
       ) : (
         <StaggerContainer className="relative space-y-0">
           {/* Timeline line */}
-          <div className="absolute left-[19px] top-0 bottom-0 w-px bg-gradient-to-b from-green/30 via-cyan/20 to-transparent" />
+          <motion.div
+            className="absolute left-[19px] top-0 bottom-0 w-px bg-gradient-to-b from-green/30 via-cyan/20 to-transparent"
+            initial={{ scaleY: 0 }}
+            animate={{ scaleY: 1 }}
+            transition={{ duration: 0.8, ease: [0.25, 0.46, 0.45, 0.94] }}
+            style={{ transformOrigin: "top" }}
+          />
 
           <AnimatePresence>
             {filtered.map((event) => {
@@ -424,26 +430,16 @@ export function ActivityView() {
                             </Button>
                           </div>
 
-                          <AnimatePresence>
-                            {isExpanded && (
-                              <motion.div
-                                initial={{ height: 0, opacity: 0 }}
-                                animate={{ height: "auto", opacity: 1 }}
-                                exit={{ height: 0, opacity: 0 }}
-                                transition={{ duration: 0.2 }}
-                                className="overflow-hidden"
-                              >
-                                <div className="mt-3 grid grid-cols-2 gap-2 border-t border-white/[0.06] pt-3 sm:grid-cols-3">
-                                  {Object.entries(event.details).map(([key, val]) => (
-                                    <div key={key}>
-                                      <p className="text-[10px] uppercase tracking-wider text-ink-faint">{key}</p>
-                                      <p className="text-xs font-medium text-ink-muted">{val}</p>
-                                    </div>
-                                  ))}
+                          <Expandable open={isExpanded}>
+                            <div className="mt-3 grid grid-cols-2 gap-2 border-t border-white/[0.06] pt-3 sm:grid-cols-3">
+                              {Object.entries(event.details).map(([key, val]) => (
+                                <div key={key}>
+                                  <p className="text-[10px] uppercase tracking-wider text-ink-faint">{key}</p>
+                                  <p className="text-xs font-medium text-ink-muted">{val}</p>
                                 </div>
-                              </motion.div>
-                            )}
-                          </AnimatePresence>
+                              ))}
+                            </div>
+                          </Expandable>
                         </CardContent>
                       </Card>
                     </Kinetic>

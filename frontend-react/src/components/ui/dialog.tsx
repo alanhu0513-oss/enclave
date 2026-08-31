@@ -27,27 +27,28 @@ const DialogContent = React.forwardRef<
   <DialogPrimitive.Portal>
     <DialogPrimitive.Overlay asChild>
       <motion.div
-        className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm"
+        className="fixed inset-0 z-50 bg-black/70 backdrop-blur-md"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
+        transition={{ duration: 0.2, ease: "easeOut" }}
       />
     </DialogPrimitive.Overlay>
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <DialogPrimitive.Content asChild ref={ref} {...props}>
         <motion.div
-          initial={{ opacity: 0, scale: 0.96, y: 16 }}
+          initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.96, y: 16 }}
-          transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+          exit={{ opacity: 0, scale: 0.95, y: 20 }}
+          transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
           className={cn(
-            "glass-strong relative z-50 w-full max-w-lg overflow-hidden rounded-2xl shadow-2xl",
+            "glass-strong relative z-50 w-full max-w-lg overflow-hidden rounded-2xl shadow-[0_24px_80px_-12px_rgba(0,0,0,0.6)]",
             className
           )}
         >
           {children}
           <DialogPrimitive.Close
-            className="absolute right-4 top-4 rounded-md p-1 text-ink-faint transition-colors hover:bg-white/10 hover:text-ink focus:outline-none"
+            className="absolute right-4 top-4 rounded-md p-1.5 text-ink-faint transition-all duration-200 hover:bg-white/10 hover:text-ink hover:rotate-90 focus:outline-none"
           >
             <X className="h-4 w-4" />
             <span className="sr-only">Close</span>

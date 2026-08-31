@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { StaggerContainer, StaggerItem } from "@/components/ui/motion";
+import { StaggerContainer, StaggerItem, Kinetic, FadeIn } from "@/components/ui/motion";
 import { generateScanReport } from "./pdf-export";
 import { exportAlertsCSV } from "./csv-export";
 
@@ -83,74 +83,78 @@ export function ReportsView() {
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-cyan/15 text-cyan">
-            <FileText className="h-5 w-5" />
+      <FadeIn>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-cyan/15 text-cyan">
+              <FileText className="h-5 w-5" />
+            </div>
+            <div>
+              <h2 className="font-display text-xl font-bold text-ink">Reports & Analytics</h2>
+              <p className="text-sm text-ink-muted">Generate and schedule detailed security reports</p>
+            </div>
           </div>
-          <div>
-            <h2 className="font-display text-xl font-bold text-ink">Reports & Analytics</h2>
-            <p className="text-sm text-ink-muted">Generate and schedule detailed security reports</p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={!userData?.alerts?.length}
+              onClick={() => {
+                try {
+                  generateScanReport(userData);
+                  toast({ title: "PDF exported", variant: "success" });
+                } catch (e: any) {
+                  toast({ title: "Export failed", body: e.message, variant: "error" });
+                }
+              }}
+            >
+              <FileText className="h-3.5 w-3.5" />
+              Export PDF
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={!userData?.alerts?.length}
+              onClick={() => {
+                try {
+                  exportAlertsCSV(userData?.alerts || []);
+                  toast({ title: "CSV exported", variant: "success" });
+                } catch (e: any) {
+                  toast({ title: "Export failed", body: e.message, variant: "error" });
+                }
+              }}
+            >
+              <Download className="h-3.5 w-3.5" />
+              Export CSV
+            </Button>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={!userData?.alerts?.length}
-            onClick={() => {
-              try {
-                generateScanReport(userData);
-                toast({ title: "PDF exported", variant: "success" });
-              } catch (e: any) {
-                toast({ title: "Export failed", body: e.message, variant: "error" });
-              }
-            }}
-          >
-            <FileText className="h-3.5 w-3.5" />
-            Export PDF
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={!userData?.alerts?.length}
-            onClick={() => {
-              try {
-                exportAlertsCSV(userData?.alerts || []);
-                toast({ title: "CSV exported", variant: "success" });
-              } catch (e: any) {
-                toast({ title: "Export failed", body: e.message, variant: "error" });
-              }
-            }}
-          >
-            <Download className="h-3.5 w-3.5" />
-            Export CSV
-          </Button>
-        </div>
-      </div>
+      </FadeIn>
 
       {/* Report type cards */}
       <StaggerContainer className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {Object.entries(types).map(([key, meta]: any) => (
           <StaggerItem key={key}>
-            <Card className="h-full">
-              <CardHeader>
-                <div className="mb-2 flex h-9 w-9 items-center justify-center rounded-lg bg-cyan/15 text-cyan">
-                  <FileText className="h-4 w-4" />
-                </div>
-                <CardTitle className="text-sm">{meta.name}</CardTitle>
-                <CardDescription>{meta.description}</CardDescription>
-              </CardHeader>
-              <CardContent className="flex gap-2">
-                <Button variant="glass" size="sm" className="flex-1" disabled={generating === key} onClick={() => generate(key)}>
-                  {generating === key ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
-                  Generate
-                </Button>
-                <Button variant="outline" size="sm" disabled={busy} onClick={() => scheduleWeekly(key)}>
-                  <CalendarClock className="h-3.5 w-3.5" />
-                </Button>
-              </CardContent>
-            </Card>
+            <Kinetic>
+              <Card className="h-full">
+                <CardHeader>
+                  <div className="mb-2 flex h-9 w-9 items-center justify-center rounded-lg bg-cyan/15 text-cyan">
+                    <FileText className="h-4 w-4" />
+                  </div>
+                  <CardTitle className="text-sm">{meta.name}</CardTitle>
+                  <CardDescription>{meta.description}</CardDescription>
+                </CardHeader>
+                <CardContent className="flex gap-2">
+                  <Button variant="glass" size="sm" className="flex-1" disabled={generating === key} onClick={() => generate(key)}>
+                    {generating === key ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
+                    Generate
+                  </Button>
+                  <Button variant="outline" size="sm" disabled={busy} onClick={() => scheduleWeekly(key)}>
+                    <CalendarClock className="h-3.5 w-3.5" />
+                  </Button>
+                </CardContent>
+              </Card>
+            </Kinetic>
           </StaggerItem>
         ))}
       </StaggerContainer>

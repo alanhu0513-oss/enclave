@@ -155,9 +155,9 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
           </div>
 
           <div className="hidden items-center gap-8 md:flex">
-            <a href="#features" className="text-sm text-gray-400 transition-colors hover:text-white">Features</a>
-            <a href="#pricing" className="text-sm text-gray-400 transition-colors hover:text-white">Pricing</a>
-            <a href="#testimonials" className="text-sm text-gray-400 transition-colors hover:text-white">Testimonials</a>
+            <a href="#features" className="text-sm text-gray-300 transition-colors hover:text-white">Features</a>
+            <a href="#pricing" className="text-sm text-gray-300 transition-colors hover:text-white">Pricing</a>
+            <a href="#testimonials" className="text-sm text-gray-300 transition-colors hover:text-white">Testimonials</a>
           </div>
 
           <div className="flex items-center gap-3">
@@ -169,6 +169,7 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
             </Button>
             <button
               className="md:hidden text-gray-400"
+              aria-label="Toggle navigation menu"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
               {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -495,24 +496,24 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
               <p className="mt-3 text-sm text-gray-500">AI-powered identity protection for everyone.</p>
             </div>
             <div>
-              <h4 className="mb-3 text-sm font-semibold">Product</h4>
-              <ul className="space-y-2 text-sm text-gray-500">
+              <h3 className="mb-3 text-sm font-semibold">Product</h3>
+              <ul className="space-y-2 text-sm text-gray-300">
                 <li><a href="#features" className="hover:text-white transition-colors">Features</a></li>
                 <li><a href="#pricing" className="hover:text-white transition-colors">Pricing</a></li>
                 <li><a href="https://enclave-production-d818.up.railway.app/api-docs" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">API Docs</a></li>
               </ul>
             </div>
             <div>
-              <h4 className="mb-3 text-sm font-semibold">Company</h4>
-              <ul className="space-y-2 text-sm text-gray-500">
+              <h3 className="mb-3 text-sm font-semibold">Company</h3>
+              <ul className="space-y-2 text-sm text-gray-300">
                 <li><a href="#" className="hover:text-white transition-colors">About</a></li>
                 <li><a href="#" className="hover:text-white transition-colors">Blog</a></li>
                 <li><a href="#" className="hover:text-white transition-colors">Careers</a></li>
               </ul>
             </div>
             <div>
-              <h4 className="mb-3 text-sm font-semibold">Legal</h4>
-              <ul className="space-y-2 text-sm text-gray-500">
+              <h3 className="mb-3 text-sm font-semibold">Legal</h3>
+              <ul className="space-y-2 text-sm text-gray-300">
                 <li><a href="/privacy" className="hover:text-white transition-colors">Privacy Policy</a></li>
                 <li><a href="/terms" className="hover:text-white transition-colors">Terms of Service</a></li>
                 <li><a href="/dmca" className="hover:text-white transition-colors">DMCA Policy</a></li>

@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from "react";
+import { motion } from "motion/react";
 import {
   DollarSign,
   Camera,
@@ -42,6 +43,7 @@ import {
   Kinetic,
   FadeIn,
 } from "@/components/ui/motion";
+import { AnimatedCounter } from "@/components/ui/animated-counter";
 import { cn } from "@/lib/utils";
 
 type BountyTab = "victim" | "hunter";
@@ -840,9 +842,13 @@ function HunterMode({
                   </thead>
                   <tbody>
                     {leaderboard.map((entry, i) => (
-                      <tr
+                      <motion.tr
                         key={entry.hunterId}
                         className="border-b border-white/[0.04] last:border-0"
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: i * 0.1, duration: 0.3 }}
+                        whileHover={{ backgroundColor: "rgba(255, 255, 255, 0.03)" }}
                       >
                         <td className="py-3 pr-4">
                           <span
@@ -864,18 +870,18 @@ function HunterMode({
                           {entry.hunterId.slice(0, 12)}...
                         </td>
                         <td className="py-3 pr-4 text-right text-ink-muted">
-                          {entry.scans}
+                          <AnimatedCounter value={entry.scans} duration={1} />
                         </td>
                         <td className="py-3 pr-4 text-right text-cyan">
-                          {entry.matches}
+                          <AnimatedCounter value={entry.matches} duration={1} />
                         </td>
                         <td className="py-3 pr-4 text-right text-green">
-                          {entry.confirmed}
+                          <AnimatedCounter value={entry.confirmed} duration={1} />
                         </td>
                         <td className="py-3 text-right font-medium text-green">
-                          ${entry.earnings.toLocaleString()}
+                          $<AnimatedCounter value={entry.earnings} duration={1.5} />
                         </td>
-                      </tr>
+                      </motion.tr>
                     ))}
                   </tbody>
                 </table>

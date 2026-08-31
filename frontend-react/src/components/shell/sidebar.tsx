@@ -144,6 +144,7 @@ export function Sidebar({
             <button
               onClick={onToggleCollapsed}
               title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
               className={cn(
                 "rounded-lg p-1.5 text-ink-faint transition-colors hover:bg-white/[0.07] hover:text-ink",
                 effectiveCollapsed ? "hidden" : ""
@@ -171,11 +172,14 @@ export function Sidebar({
                   onClose?.();
                 }}
                 title={effectiveCollapsed ? item.label : undefined}
+                aria-label={effectiveCollapsed ? item.label : undefined}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "group relative flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium transition-all duration-200",
+                  "group relative flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium transition-all duration-200 ease-out",
                   effectiveCollapsed && "justify-center px-2",
-                  active ? "text-ink" : "text-ink-muted hover:text-ink"
+                  active
+                    ? "text-ink bg-white/[0.06] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
+                    : "text-ink-muted hover:text-ink hover:bg-white/[0.04]"
                 )}
               >
                 {active && (
@@ -186,16 +190,16 @@ export function Sidebar({
                   />
                 )}
                 {active && (
-                  <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-full bg-gradient-to-b from-green to-cyan" />
+                  <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-full bg-gradient-to-b from-green to-cyan shadow-[0_0_8px_rgba(0,255,136,0.4)]" />
                 )}
                 <Icon
                   className={cn(
-                    "relative z-10 h-[18px] w-[18px] shrink-0 transition-colors",
+                    "relative z-10 h-[18px] w-[18px] shrink-0 transition-colors duration-200",
                     active ? "text-green" : "text-ink-faint group-hover:text-ink-muted"
                   )}
                 />
                 {!effectiveCollapsed && (
-                  <span className="relative z-10 whitespace-nowrap">{item.label}</span>
+                  <span className="relative z-10 whitespace-nowrap text-shadow-sm">{item.label}</span>
                 )}
                 {item.id === "alerts" && unread > 0 && (
                   <span className="absolute right-2 top-1/2 z-10 flex h-4 min-w-4 -translate-y-1/2 items-center justify-center rounded-full bg-red px-1 text-[10px] font-bold text-white">
@@ -213,6 +217,7 @@ export function Sidebar({
             <div className="flex flex-col items-center gap-2">
               <button
                 onClick={() => setPlanModalOpen(true)}
+                aria-label="Open plan details"
                 className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-green to-cyan text-xs font-bold text-black transition-all hover:scale-105"
               >
                 {initials}
@@ -220,6 +225,7 @@ export function Sidebar({
               <button
                 onClick={lock}
                 title="Lock Vault"
+                aria-label="Lock vault"
                 className="rounded-lg p-2 text-ink-faint transition-colors hover:bg-white/[0.07] hover:text-ink"
               >
                 <Lock className="h-4 w-4" />
@@ -229,6 +235,7 @@ export function Sidebar({
             <div className="flex items-center gap-3 rounded-xl px-2 py-2">
               <button
                 onClick={() => setPlanModalOpen(true)}
+                aria-label="Open plan details"
                 className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-green to-cyan text-xs font-bold text-black transition-all hover:scale-105"
               >
                 {initials}
@@ -244,6 +251,7 @@ export function Sidebar({
               <button
                 onClick={lock}
                 title="Lock Vault"
+                aria-label="Lock vault"
                 className="rounded-lg p-2 text-ink-faint transition-colors hover:bg-white/[0.07] hover:text-ink"
               >
                 <Lock className="h-4 w-4" />

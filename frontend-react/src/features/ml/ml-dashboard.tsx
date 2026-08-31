@@ -13,7 +13,8 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { StaggerContainer, StaggerItem } from "@/components/ui/motion";
+import { StaggerContainer, StaggerItem, Kinetic, FadeIn } from "@/components/ui/motion";
+import { buttonPulse, glowPulse } from "@/lib/motion-presets";
 import { SectionHeader, EmptyState } from "@/components/ui/dashboard";
 import { api } from "@/lib/api";
 
@@ -108,11 +109,13 @@ export function MLDashboard() {
       animate={{ opacity: 1 }}
       className="space-y-6 p-6"
     >
-      <SectionHeader
-        icon={Brain}
-        title="ML Command Center"
-        description="Model versioning, benchmarks & A/B testing"
-      />
+      <FadeIn>
+        <SectionHeader
+          icon={Brain}
+          title="ML Command Center"
+          description="Model versioning, benchmarks & A/B testing"
+        />
+      </FadeIn>
 
       <div className="grid grid-cols-3 gap-4">
         {[
@@ -151,61 +154,68 @@ export function MLDashboard() {
         <StaggerContainer className="space-y-4">
           {models.map((model) => (
             <StaggerItem key={model.id}>
-              <Card className="bg-white/5 border-white/10 hover:bg-white/[0.07] transition-colors">
-                <CardContent className="p-5">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3">
-                        <h3 className="text-lg font-semibold text-white">{model.name}</h3>
-                        <Badge className={getStatusColor(model.status)}>{model.status}</Badge>
-                        <Badge className="bg-white/5 text-white/60 border-white/10">{model.type}</Badge>
-                      </div>
-                      <p className="text-sm text-white/60 mt-1">Dataset: {model.dataset}</p>
+              <Kinetic>
+                <Card
+                  className="bg-white/5 border-white/10 hover:bg-white/[0.07] transition-colors"
+                  {...(model.status === "production" ? glowPulse : {})}
+                >
+                  <CardContent className="p-5">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3">
+                          <h3 className="text-lg font-semibold text-white">{model.name}</h3>
+                          <Badge className={getStatusColor(model.status)}>{model.status}</Badge>
+                          <Badge className="bg-white/5 text-white/60 border-white/10">{model.type}</Badge>
+                        </div>
+                        <p className="text-sm text-white/60 mt-1">Dataset: {model.dataset}</p>
 
-                      <div className="grid grid-cols-4 gap-4 mt-4">
-                        {[
-                          { label: "Accuracy", value: `${(model.accuracy * 100).toFixed(1)}%`, icon: Target },
-                          { label: "F1 Score", value: `${(model.f1Score * 100).toFixed(1)}%`, icon: TrendingUp },
-                          { label: "Parameters", value: model.parameters, icon: Activity },
-                          { label: "Inference", value: model.inferenceTime, icon: Clock },
-                        ].map((metric) => (
-                          <div key={metric.label} className="flex items-center gap-2">
-                            <metric.icon className="w-3 h-3 text-white/40" />
-                            <div>
-                              <p className="text-xs text-white/40">{metric.label}</p>
-                              <p className="text-sm font-medium text-white">{metric.value}</p>
+                        <div className="grid grid-cols-4 gap-4 mt-4">
+                          {[
+                            { label: "Accuracy", value: `${(model.accuracy * 100).toFixed(1)}%`, icon: Target },
+                            { label: "F1 Score", value: `${(model.f1Score * 100).toFixed(1)}%`, icon: TrendingUp },
+                            { label: "Parameters", value: model.parameters, icon: Activity },
+                            { label: "Inference", value: model.inferenceTime, icon: Clock },
+                          ].map((metric) => (
+                            <div key={metric.label} className="flex items-center gap-2">
+                              <metric.icon className="w-3 h-3 text-white/40" />
+                              <div>
+                                <p className="text-xs text-white/40">{metric.label}</p>
+                                <p className="text-sm font-medium text-white">{metric.value}</p>
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2">
+                        {model.status !== "production" && (
+                          <motion.div {...buttonPulse}>
+                            <Button
+                              onClick={() => deployModel(model.id)}
+                              size="sm"
+                              className="bg-emerald-500 text-black hover:bg-emerald-600"
+                            >
+                              <Rocket className="w-3 h-3 mr-1" />
+                              Deploy
+                            </Button>
+                          </motion.div>
+                        )}
+                        {model.status === "production" && (
+                          <Button
+                            onClick={() => rollbackModel(model.id)}
+                            size="sm"
+                            variant="outline"
+                            className="border-white/10 text-white/60"
+                          >
+                            <RotateCcw className="w-3 h-3 mr-1" />
+                            Rollback
+                          </Button>
+                        )}
                       </div>
                     </div>
-
-                    <div className="flex gap-2">
-                      {model.status !== "production" && (
-                        <Button
-                          onClick={() => deployModel(model.id)}
-                          size="sm"
-                          className="bg-emerald-500 text-black hover:bg-emerald-600"
-                        >
-                          <Rocket className="w-3 h-3 mr-1" />
-                          Deploy
-                        </Button>
-                      )}
-                      {model.status === "production" && (
-                        <Button
-                          onClick={() => rollbackModel(model.id)}
-                          size="sm"
-                          variant="outline"
-                          className="border-white/10 text-white/60"
-                        >
-                          <RotateCcw className="w-3 h-3 mr-1" />
-                          Rollback
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              </Kinetic>
             </StaggerItem>
           ))}
         </StaggerContainer>

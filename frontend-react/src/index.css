@@ -21,10 +21,10 @@
   --color-surface-3: #16202f;
   --color-surface-4: #1d2938;
 
-  /* ink */
+  /* ink — WCAG AA contrast on dark surfaces */
   --color-ink: #e7ecf3;
-  --color-ink-muted: #9aa7b8;
-  --color-ink-faint: #5c6a7c;
+  --color-ink-muted: #a3b1c2;
+  --color-ink-faint: #6b7a8d;
 
   --shadow-glow-green: 0 0 24px rgba(0, 255, 136, 0.35);
   --shadow-glow-cyan: 0 0 24px rgba(0, 191, 255, 0.35);
@@ -32,6 +32,19 @@
 
   --radius-xl: 1rem;
   --radius-2xl: 1.25rem;
+  --radius-4xl: 2rem;
+
+  /* Extended spacing */
+  --spacing-18: 4.5rem;
+  --spacing-88: 22rem;
+  --spacing-128: 32rem;
+
+  /* Extra-small type */
+  --font-size-2xs: 0.625rem;
+  --line-height-2xs: 0.875rem;
+
+  /* Tooltip shadow */
+  --shadow-tooltip: 0 8px 24px -4px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.06);
 }
 
 :root {
@@ -54,9 +67,23 @@ body {
   color: var(--color-ink);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
   overflow-x: hidden;
 }
+
+/* Heading hierarchy */
+h1 { @apply text-3xl font-bold tracking-tight; }
+h2 { @apply text-2xl font-semibold tracking-tight; }
+h3 { @apply text-xl font-semibold; }
+h4 { @apply text-lg font-medium; }
+
+/* Body text */
+p { @apply text-[15px] leading-relaxed; color: color-mix(in oklab, var(--color-ink) 70%, transparent); }
+
+/* Small text */
+small { @apply text-sm; color: color-mix(in oklab, var(--color-ink) 50%, transparent); }
 
 /* Ambient background treatment */
 .vault-bg {

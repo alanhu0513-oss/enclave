@@ -1,4 +1,4 @@
-import { Bell, Menu, Search, ShieldCheck } from "lucide-react";
+import { Bell, Menu, Search, ShieldCheck, ChevronRight } from "lucide-react";
 import { motion } from "motion/react";
 import { useApp, type TabId } from "@/lib/app-context";
 
@@ -43,7 +43,7 @@ export function Topbar({
   const { tab, unread } = useApp();
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-white/[0.06] bg-surface-0/70 px-4 backdrop-blur-xl md:px-6">
+    <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-white/[0.06] bg-surface-0/80 px-4 backdrop-blur-xl md:px-6">
       <button
         onClick={onMenu}
         className="rounded-lg p-2 text-ink-muted transition-colors hover:bg-white/[0.07] hover:text-ink md:hidden"
@@ -61,15 +61,21 @@ export function Topbar({
         >
           <ShieldCheck className="h-4 w-4 text-green" />
         </motion.span>
-        <motion.h1
-          key={tab}
-          initial={{ opacity: 0, y: 4 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.2 }}
-          className="font-display text-[15px] font-semibold tracking-tight text-ink"
-        >
-          {TITLES[tab]}
-        </motion.h1>
+
+        {/* Breadcrumb navigation */}
+        <nav aria-label="Breadcrumb" className="flex items-center gap-1.5">
+          <span className="text-xs text-ink-faint">Enclave</span>
+          <ChevronRight className="h-3 w-3 text-ink-faint/50" />
+          <motion.h1
+            key={tab}
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.2 }}
+            className="font-display text-[15px] font-semibold tracking-tight text-ink"
+          >
+            {TITLES[tab]}
+          </motion.h1>
+        </nav>
       </div>
 
       <div className="flex-1" />
@@ -77,11 +83,12 @@ export function Topbar({
       {/* Command palette trigger */}
       <button
         onClick={onOpenCommand}
-        className="group hidden h-10 w-[240px] items-center gap-2 rounded-lg border border-white/10 bg-white/[0.03] px-3 text-sm text-ink-faint transition-all duration-200 hover:border-green/30 hover:bg-white/[0.05] hover:text-ink-muted md:flex"
+        aria-label="Search and commands"
+        className="group hidden h-10 w-[240px] items-center gap-2 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 text-sm text-ink-faint transition-all duration-200 hover:border-green/30 hover:bg-white/[0.05] hover:text-ink-muted md:flex"
       >
         <Search className="h-4 w-4 transition-colors group-hover:text-green" />
         <span>Search & commands...</span>
-        <kbd className="ml-auto rounded border border-white/10 bg-white/[0.05] px-1.5 py-0.5 font-mono text-[10px]">
+        <kbd className="ml-auto rounded border border-white/[0.08] bg-white/[0.05] px-1.5 py-0.5 font-mono text-[10px]">
           ⌘K
         </kbd>
       </button>
@@ -90,7 +97,7 @@ export function Topbar({
       <button
         onClick={onOpenNotifications}
         className="relative rounded-lg p-2 text-ink-muted transition-colors hover:bg-white/[0.07] hover:text-ink"
-        aria-label="Notifications"
+        aria-label={`Notifications${unread > 0 ? ` (${unread} unread)` : ""}`}
       >
         <Bell className="h-5 w-5" />
         {unread > 0 && (

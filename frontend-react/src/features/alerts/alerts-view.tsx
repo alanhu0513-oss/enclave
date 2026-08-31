@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StaggerContainer, StaggerItem, Kinetic, FadeIn } from "@/components/ui/motion";
+import { redGlow } from "@/lib/motion-presets";
 import { SectionHeader, EmptyState } from "@/components/ui/dashboard";
 import { confidenceColor, confidenceLabel, timeAgo } from "@/lib/utils";
 import { TakedownTimeline } from "./takedown-timeline";
@@ -165,6 +166,7 @@ export function AlertsView() {
                         "relative overflow-hidden transition-all duration-300 " +
                         (isCritical ? "border-red/30 shadow-lg shadow-red/5" : "border-white/[0.06] hover:border-white/[0.12]")
                       }
+                      {...(isCritical ? redGlow : {})}
                     >
                       {isCritical && (
                         <div className="absolute inset-0 bg-gradient-to-r from-red/5 to-transparent" />

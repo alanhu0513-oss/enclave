@@ -17,6 +17,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { StaggerContainer, StaggerItem, Kinetic, FadeIn, SPRING } from "@/components/ui/motion";
+import { greenGlow } from "@/lib/motion-presets";
 import { cn } from "@/lib/utils";
 
 interface InsurancePlan {
@@ -185,11 +186,19 @@ export function InsuranceView() {
           {PLANS.map((plan) => (
             <StaggerItem key={plan.id}>
               <Kinetic>
-                <Card className={cn(
-                  "relative transition-shadow",
-                  currentPlan === plan.id && "border-green/30 shadow-lg shadow-green/10",
-                  plan.id === "pro" && "border-cyan/20"
-                )}>
+                <motion.div
+                  whileHover={{ rotateY: 5, rotateX: -5 }}
+                  transition={SPRING}
+                  style={{ perspective: 1000 }}
+                >
+                  <Card
+                    className={cn(
+                      "relative transition-shadow",
+                      currentPlan === plan.id && "border-green/30 shadow-lg shadow-green/10",
+                      plan.id === "pro" && "border-cyan/20"
+                    )}
+                    {...(currentPlan === plan.id ? greenGlow : {})}
+                  >
                   {plan.id === "pro" && (
                     <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                       <Badge variant="cyan" className="px-3">
@@ -232,7 +241,8 @@ export function InsuranceView() {
                       {currentPlan === plan.id ? "Current Plan" : "Activate"}
                     </Button>
                   </CardContent>
-                </Card>
+                    </Card>
+                  </motion.div>
               </Kinetic>
             </StaggerItem>
           ))}

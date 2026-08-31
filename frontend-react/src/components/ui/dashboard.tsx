@@ -81,7 +81,7 @@ export function SectionHeader({ icon: Icon, title, description, action }: {
           <Icon className="h-6 w-6" />
         </motion.div>
         <div>
-          <h1 className="font-display text-2xl font-bold text-ink">{title}</h1>
+          <h2 className="font-display text-2xl font-bold text-ink">{title}</h2>
           {description && <p className="text-sm text-ink-muted">{description}</p>}
         </div>
       </div>

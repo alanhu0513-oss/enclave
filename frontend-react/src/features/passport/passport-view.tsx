@@ -20,6 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { SectionHeader, GradientCard, StatusBadge } from "@/components/ui/dashboard";
 import { StaggerContainer, StaggerItem, Kinetic, FadeIn } from "@/components/ui/motion";
+import { glowPulse } from "@/lib/motion-presets";
 import { cn } from "@/lib/utils";
 
 interface Passport {
@@ -195,10 +196,16 @@ export function PassportView() {
           {/* Passport Card */}
           <FadeIn delay={0.1}>
             <Kinetic>
-              <Card className="relative overflow-hidden border-cyan/20">
-                <div className="absolute inset-0 bg-gradient-to-br from-cyan/5 via-transparent to-green/5" />
-                <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-cyan/[0.04] blur-3xl" />
-                <CardContent className="relative pt-6">
+              <motion.div
+                initial={{ opacity: 0, rotateX: -15 }}
+                animate={{ opacity: 1, rotateX: 0 }}
+                transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
+                style={{ perspective: 1000 }}
+              >
+                <Card className="relative overflow-hidden border-cyan/20" {...glowPulse}>
+                  <div className="absolute inset-0 bg-gradient-to-br from-cyan/5 via-transparent to-green/5" />
+                  <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-cyan/[0.04] blur-3xl" />
+                  <CardContent className="relative pt-6">
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-4">
                       <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan/20 to-green/20 text-cyan">
@@ -239,7 +246,8 @@ export function PassportView() {
                     </div>
                   </div>
                 </CardContent>
-              </Card>
+                </Card>
+              </motion.div>
             </Kinetic>
           </FadeIn>
 
@@ -258,13 +266,18 @@ export function PassportView() {
                 <CardContent className="space-y-4">
                   {qrData ? (
                     <div className="flex flex-col items-center gap-3">
-                      <div className="flex h-40 w-40 items-center justify-center rounded-xl border border-white/[0.06] bg-white p-2">
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] }}
+                        className="flex h-40 w-40 items-center justify-center rounded-xl border border-white/[0.06] bg-white p-2"
+                      >
                         <img
                           src={`data:image/png;base64,${qrData}`}
                           alt="Passport QR Code"
                           className="h-full w-full"
                         />
-                      </div>
+                      </motion.div>
                       <p className="text-xs text-ink-muted">Expires in 5 minutes</p>
                       <Button variant="ghost" size="sm" onClick={handleGenerateQR} disabled={qrLoading}>
                         <RotateCcw className="h-3.5 w-3.5 mr-1" />

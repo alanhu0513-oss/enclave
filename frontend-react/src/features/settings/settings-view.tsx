@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { motion } from "motion/react";
 import {
   User,
   Save,
@@ -308,20 +309,20 @@ function NotificationPrefs() {
             <p className="text-sm font-medium text-ink">Email alerts</p>
             <p className="text-xs text-ink-muted">Receive threat alerts and takedown updates via email</p>
           </div>
-          <button
+          <motion.button
             onClick={toggleEmail}
             className={cn(
               "relative h-6 w-11 rounded-full transition-colors",
               emailEnabled ? "bg-green" : "bg-white/10"
             )}
+            whileTap={{ scale: 0.95 }}
           >
-            <span
-              className={cn(
-                "absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform",
-                emailEnabled ? "left-[22px]" : "left-0.5"
-              )}
+            <motion.span
+              className="absolute top-0.5 h-5 w-5 rounded-full bg-white"
+              animate={{ left: emailEnabled ? 22 : 2 }}
+              transition={{ type: "spring", stiffness: 500, damping: 30 }}
             />
-          </button>
+          </motion.button>
         </div>
 
         {recentNotifs.length > 0 && (

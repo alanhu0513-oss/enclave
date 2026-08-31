@@ -20,7 +20,7 @@ const FEATURES = [
   {
     icon: ScanSearch,
     title: "Deepfake Detection",
-    desc: "ML models analyze images, audio, and video to catch manipulation before it spreads.",
+    desc: "ML models analyze images, audio, and video to catch manipulation before it spreads. Not keyword matching — actual neural network inference on every frame.",
     color: "cyan",
   },
   {
@@ -114,7 +114,7 @@ const TESTIMONIALS = [
   {
     name: "Sarah Chen",
     role: "Content Creator",
-    text: "Found deepfakes of me on 3 different sites within hours. The auto-takedown saved me weeks of work.",
+    text: "Found deepfakes of me on 3 different sites within hours. The auto-takedown saved me weeks of work. I didn't have to file a single form myself.",
     rating: 5,
   },
   {
@@ -130,6 +130,20 @@ const TESTIMONIALS = [
     rating: 5,
   },
 ];
+
+const COLOR_MAP: Record<string, string> = {
+  cyan: "text-cyan",
+  purple: "text-purple",
+  green: "text-green",
+  amber: "text-amber",
+};
+
+const BG_MAP: Record<string, string> = {
+  cyan: "bg-cyan/10",
+  purple: "bg-purple/10",
+  green: "bg-green/10",
+  amber: "bg-amber/10",
+};
 
 export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
   const { user } = useAuth();
@@ -151,7 +165,7 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-green">
               <Shield className="h-4 w-4 text-black" />
             </div>
-            <span className="font-display text-lg font-bold tracking-tight">Enclave</span>
+            <span className="font-display text-lg font-bold" style={{ letterSpacing: "-0.02em" }}>Enclave</span>
           </div>
 
           <div className="hidden items-center gap-8 md:flex">
@@ -216,7 +230,8 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.05 }}
-                className="font-display text-4xl font-bold leading-[1.1] tracking-tight md:text-6xl"
+                className="font-display text-4xl font-bold leading-[1.1] md:text-6xl"
+                style={{ letterSpacing: "-0.03em" }}
               >
                 Your face is{" "}
                 <span className="text-green">yours</span>.
@@ -253,7 +268,7 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
                 </Button>
               </motion.div>
 
-              {/* Stats — inline, not centered grid */}
+              {/* Stats — inline with left border accent */}
               <motion.div
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -261,15 +276,15 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
                 className="mt-12 flex gap-8 border-t border-white/[0.06] pt-8"
               >
                 {STATS.map((stat) => (
-                  <div key={stat.label}>
-                    <p className="font-display text-2xl font-bold">{stat.value}</p>
+                  <div key={stat.label} className="pl-3 border-l-2 border-green/20">
+                    <p className="font-display text-2xl font-bold" style={{ letterSpacing: "-0.02em" }}>{stat.value}</p>
                     <p className="mt-0.5 text-xs text-[#71717a]">{stat.label}</p>
                   </div>
                 ))}
               </motion.div>
             </div>
 
-            {/* Right: visual element — not a gradient blob */}
+            {/* Right: visual element */}
             <motion.div
               initial={{ opacity: 0, scale: 0.96 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -277,9 +292,8 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
               className="hidden lg:block"
             >
               <div className="relative">
-                {/* Abstract shape — not a glow */}
                 <div className="absolute -inset-8 rounded-3xl bg-white/[0.02] blur-sm" />
-                <div className="relative rounded-2xl border border-white/[0.06] bg-[#18181b] p-8">
+                <div className="relative grain rounded-2xl border border-white/[0.06] bg-[#18181b] p-8">
                   {/* Mock UI card */}
                   <div className="flex items-center gap-3 mb-6">
                     <div className="h-3 w-3 rounded-full bg-green" />
@@ -325,11 +339,11 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
         </div>
       </main>
 
-      {/* Features — left-aligned header, not centered */}
+      {/* Features — broken grid, no scroll animation */}
       <section id="features" className="py-24 px-6">
         <div className="mx-auto max-w-6xl">
           <div className="mb-12">
-            <h2 className="font-display text-3xl font-bold tracking-tight md:text-4xl">
+            <h2 className="font-display text-3xl font-bold md:text-4xl" style={{ letterSpacing: "-0.025em" }}>
               What we actually do
             </h2>
             <p className="mt-3 max-w-lg text-[15px] text-[#a1a1aa]">
@@ -337,75 +351,97 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
             </p>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {FEATURES.map((f, i) => {
-              const Icon = f.icon;
-              const colorMap: Record<string, string> = {
-                cyan: "text-cyan",
-                purple: "text-purple",
-                green: "text-green",
-                amber: "text-amber",
-              };
+          {/* Feature 1: full-width horizontal */}
+          <div className="mb-4">
+            {(() => {
+              const Icon = FEATURES[0].icon;
               return (
-                <motion.div
+                <div className="group flex items-start gap-5 rounded-xl border border-white/[0.06] bg-white/[0.02] p-6 transition-colors hover:bg-white/[0.04] hover:border-white/[0.1]">
+                  <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${BG_MAP[FEATURES[0].color]}`}>
+                    <Icon className={`h-6 w-6 ${COLOR_MAP[FEATURES[0].color]}`} />
+                  </div>
+                  <div>
+                    <h3 className="font-display text-lg font-semibold" style={{ letterSpacing: "-0.02em" }}>{FEATURES[0].title}</h3>
+                    <p className="mt-1.5 text-[15px] leading-relaxed text-[#a1a1aa] max-w-2xl">{FEATURES[0].desc}</p>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+
+          {/* Features 2-3: 2-column */}
+          <div className="grid gap-4 md:grid-cols-2 mb-4">
+            {FEATURES.slice(1, 3).map((f) => {
+              const Icon = f.icon;
+              return (
+                <div
                   key={f.title}
-                  initial={{ opacity: 0, y: 12 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.35, delay: i * 0.05 }}
-                  viewport={{ once: true }}
                   className="group rounded-xl border border-white/[0.06] bg-white/[0.02] p-5 transition-colors hover:bg-white/[0.04] hover:border-white/[0.1]"
                 >
-                  <Icon className={`mb-3 h-5 w-5 ${colorMap[f.color]}`} />
+                  <Icon className={`mb-3 h-5 w-5 ${COLOR_MAP[f.color]}`} />
                   <h3 className="font-display text-base font-semibold">{f.title}</h3>
                   <p className="mt-1.5 text-sm leading-relaxed text-[#a1a1aa]">{f.desc}</p>
-                </motion.div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Features 4-6: 3-column */}
+          <div className="grid gap-4 md:grid-cols-3">
+            {FEATURES.slice(3, 6).map((f) => {
+              const Icon = f.icon;
+              return (
+                <div
+                  key={f.title}
+                  className="group rounded-xl border border-white/[0.06] bg-white/[0.02] p-5 transition-colors hover:bg-white/[0.04] hover:border-white/[0.1]"
+                >
+                  <Icon className={`mb-3 h-5 w-5 ${COLOR_MAP[f.color]}`} />
+                  <h3 className="font-display text-base font-semibold">{f.title}</h3>
+                  <p className="mt-1.5 text-sm leading-relaxed text-[#a1a1aa]">{f.desc}</p>
+                </div>
               );
             })}
           </div>
         </div>
       </section>
 
-      {/* How it works — horizontal steps */}
+      {/* How it works — vertical timeline */}
       <section className="py-24 px-6 border-t border-white/[0.04]">
         <div className="mx-auto max-w-6xl">
           <div className="mb-12">
-            <h2 className="font-display text-3xl font-bold tracking-tight md:text-4xl">
+            <h2 className="font-display text-3xl font-bold md:text-4xl" style={{ letterSpacing: "-0.025em" }}>
               Three steps
             </h2>
           </div>
 
-          <div className="grid gap-8 md:grid-cols-3">
+          <div className="relative max-w-xl">
+            {/* Vertical line */}
+            <div className="absolute left-[15px] top-0 bottom-0 w-px bg-white/[0.08]" />
+
             {[
               { step: "1", title: "Enroll your face", desc: "Upload a photo. We create a biometric hash in seconds." },
               { step: "2", title: "We scan everywhere", desc: "Surface web, social media, paste sites, dark web. Continuously." },
               { step: "3", title: "We act", desc: "Instant alerts. Automatic takedowns. Evidence preserved." },
-            ].map((item, i) => (
-              <motion.div
-                key={item.step}
-                initial={{ opacity: 0, y: 12 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.35, delay: i * 0.08 }}
-                viewport={{ once: true }}
-                className="flex gap-4"
-              >
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-sm font-bold text-[#71717a]">
+            ].map((item) => (
+              <div key={item.step} className="relative flex gap-5 pb-10 last:pb-0">
+                <div className="relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 border-[#111113] bg-white/[0.06] text-sm font-bold text-[#71717a]">
                   {item.step}
                 </div>
-                <div>
+                <div className="pt-1">
                   <h3 className="font-display text-base font-semibold">{item.title}</h3>
                   <p className="mt-1 text-sm text-[#a1a1aa]">{item.desc}</p>
                 </div>
-              </motion.div>
+              </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Pricing — clean, not flashy */}
+      {/* Pricing — static, no animation */}
       <section id="pricing" className="py-24 px-6 border-t border-white/[0.04]">
         <div className="mx-auto max-w-6xl">
           <div className="mb-12">
-            <h2 className="font-display text-3xl font-bold tracking-tight md:text-4xl">
+            <h2 className="font-display text-3xl font-bold md:text-4xl" style={{ letterSpacing: "-0.025em" }}>
               Pricing
             </h2>
             <p className="mt-3 text-[15px] text-[#a1a1aa]">
@@ -414,14 +450,10 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
           </div>
 
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-            {TIERS.map((tier, i) => (
-              <motion.div
+            {TIERS.map((tier) => (
+              <div
                 key={tier.name}
-                initial={{ opacity: 0, y: 12 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.35, delay: i * 0.05 }}
-                viewport={{ once: true }}
-                className={`relative rounded-xl border p-5 transition-colors ${
+                className={`relative grain rounded-xl border p-5 transition-colors ${
                   tier.popular
                     ? "border-green/30 bg-green/[0.04]"
                     : "border-white/[0.06] bg-white/[0.02] hover:border-white/[0.1]"
@@ -434,7 +466,7 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
                 )}
                 <h3 className="font-display text-base font-semibold">{tier.name}</h3>
                 <div className="mt-3 flex items-baseline gap-1">
-                  <span className="font-display text-3xl font-bold">{tier.price}</span>
+                  <span className="font-display text-3xl font-bold" style={{ letterSpacing: "-0.02em" }}>{tier.price}</span>
                   <span className="text-xs text-[#71717a]">{tier.period}</span>
                 </div>
                 <p className="mt-2 text-xs text-[#a1a1aa]">{tier.desc}</p>
@@ -454,69 +486,91 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
                 >
                   {tier.cta}
                 </Button>
-              </motion.div>
+              </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Testimonials — understated */}
+      {/* Testimonials — asymmetric: first card larger */}
       <section id="testimonials" className="py-24 px-6 border-t border-white/[0.04]">
         <div className="mx-auto max-w-6xl">
           <div className="mb-12">
-            <h2 className="font-display text-3xl font-bold tracking-tight md:text-4xl">
+            <h2 className="font-display text-3xl font-bold md:text-4xl" style={{ letterSpacing: "-0.025em" }}>
               What people say
             </h2>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-3">
-            {TESTIMONIALS.map((t, i) => (
-              <motion.div
-                key={t.name}
-                initial={{ opacity: 0, y: 12 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.35, delay: i * 0.05 }}
-                viewport={{ once: true }}
-                className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5"
-              >
-                <div className="mb-2 flex gap-0.5">
-                  {Array.from({ length: t.rating }).map((_, j) => (
-                    <Star key={j} className="h-3.5 w-3.5 fill-amber text-amber" />
-                  ))}
+          <div className="grid gap-4 md:grid-cols-5">
+            {/* First testimonial: larger, spans 3 cols */}
+            <div className="md:col-span-3 grain rounded-xl border border-white/[0.06] bg-white/[0.02] p-6">
+              <div className="mb-3 flex gap-0.5">
+                {Array.from({ length: TESTIMONIALS[0].rating }).map((_, j) => (
+                  <Star key={j} className="h-4 w-4 fill-amber text-amber" />
+                ))}
+              </div>
+              <p className="text-base leading-relaxed text-[#d4d4d8]">&ldquo;{TESTIMONIALS[0].text}&rdquo;</p>
+              <div className="mt-5 flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/[0.06] text-sm font-bold">
+                  {TESTIMONIALS[0].name[0]}
                 </div>
-                <p className="text-sm leading-relaxed text-[#d4d4d8]">&ldquo;{t.text}&rdquo;</p>
-                <div className="mt-4 flex items-center gap-2.5">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/[0.06] text-xs font-bold">
-                    {t.name[0]}
+                <div>
+                  <p className="text-sm font-medium">{TESTIMONIALS[0].name}</p>
+                  <p className="text-xs text-[#71717a]">{TESTIMONIALS[0].role}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Testimonials 2-3: stacked in 2 cols */}
+            <div className="md:col-span-2 flex flex-col gap-4">
+              {TESTIMONIALS.slice(1, 3).map((t) => (
+                <div
+                  key={t.name}
+                  className="grain flex-1 rounded-xl border border-white/[0.06] bg-white/[0.02] p-5"
+                >
+                  <div className="mb-2 flex gap-0.5">
+                    {Array.from({ length: t.rating }).map((_, j) => (
+                      <Star key={j} className="h-3.5 w-3.5 fill-amber text-amber" />
+                    ))}
                   </div>
-                  <div>
-                    <p className="text-sm font-medium">{t.name}</p>
-                    <p className="text-xs text-[#71717a]">{t.role}</p>
+                  <p className="text-sm leading-relaxed text-[#d4d4d8]">&ldquo;{t.text}&rdquo;</p>
+                  <div className="mt-4 flex items-center gap-2.5">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/[0.06] text-xs font-bold">
+                      {t.name[0]}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">{t.name}</p>
+                      <p className="text-xs text-[#71717a]">{t.role}</p>
+                    </div>
                   </div>
                 </div>
-              </motion.div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
       </section>
 
-      {/* CTA — simple, not glowy */}
+      {/* CTA — asymmetric, not centered */}
       <section className="py-24 px-6 border-t border-white/[0.04]">
-        <div className="mx-auto max-w-2xl text-center">
-          <h2 className="font-display text-3xl font-bold tracking-tight md:text-4xl">
-            Protect your identity
-          </h2>
-          <p className="mt-4 text-[15px] text-[#a1a1aa]">
-            Free to start. No credit card required.
-          </p>
-          <Button
-            size="lg"
-            onClick={handleGetStarted}
-            className="mt-8 bg-green text-black font-medium px-8"
-          >
-            Get Started
-            <ArrowRight className="ml-1.5 h-4 w-4" />
-          </Button>
+        <div className="mx-auto max-w-6xl">
+          <div className="flex flex-col items-start gap-6 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h2 className="font-display text-3xl font-bold md:text-4xl" style={{ letterSpacing: "-0.025em" }}>
+                Protect your identity
+              </h2>
+              <p className="mt-3 text-[15px] text-[#a1a1aa]">
+                Free to start. No credit card required.
+              </p>
+            </div>
+            <Button
+              size="lg"
+              onClick={handleGetStarted}
+              className="bg-green text-black font-medium px-8 shrink-0"
+            >
+              Get Started
+              <ArrowRight className="ml-1.5 h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </section>
 

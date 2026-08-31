@@ -12,7 +12,6 @@ import {
   Star,
   Menu,
   X,
-  Sparkles,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
@@ -20,38 +19,38 @@ import { Button } from "@/components/ui/button";
 const FEATURES = [
   {
     icon: ScanSearch,
-    title: "AI Deepfake Detection",
-    desc: "Advanced ML models analyze images, audio, and video to detect manipulation with 95%+ accuracy.",
+    title: "Deepfake Detection",
+    desc: "ML models analyze images, audio, and video to catch manipulation before it spreads.",
     color: "cyan",
   },
   {
     icon: Radar,
-    title: "24/7 Dark Web Monitoring",
-    desc: "Continuous scanning across surface web, Reddit, paste sites, dark web, and social media.",
+    title: "Dark Web Monitoring",
+    desc: "Continuous scanning across surface web, Reddit, paste sites, and hidden forums.",
     color: "purple",
   },
   {
     icon: Bell,
-    title: "Instant Threat Alerts",
-    desc: "Real-time push notifications, email alerts, and in-app warnings the moment a threat is detected.",
+    title: "Threat Alerts",
+    desc: "Real-time push notifications and email the moment something is found.",
     color: "green",
   },
   {
     icon: Shield,
-    title: "Auto Takedown & DMCA",
-    desc: "Automatic takedown notices with 48-hour escalation, evidence preservation, and lifecycle tracking.",
+    title: "Auto Takedown",
+    desc: "Automatic DMCA notices with 48-hour escalation and evidence preservation.",
     color: "amber",
   },
   {
     icon: Lock,
-    title: "Watermark & Rights Shield",
-    desc: "Invisible watermarks and C2PA content credentials prove ownership and deter theft.",
+    title: "Content Watermarking",
+    desc: "Invisible watermarks and C2PA credentials prove ownership and deter theft.",
     color: "cyan",
   },
   {
     icon: Eye,
-    title: "Multi-Face Analysis",
-    desc: "Detect and compare multiple faces in images against your enrolled biometric profile.",
+    title: "Face Analysis",
+    desc: "Detect and compare multiple faces against your enrolled biometric profile.",
     color: "purple",
   },
 ];
@@ -61,7 +60,7 @@ const TIERS = [
     name: "Free",
     price: "$0",
     period: "forever",
-    desc: "Get started with basic protection",
+    desc: "Basic protection to get started",
     features: ["3 scans/month", "Surface web only", "Basic alerts", "Community support"],
     cta: "Start Free",
     popular: false,
@@ -115,13 +114,13 @@ const TESTIMONIALS = [
   {
     name: "Sarah Chen",
     role: "Content Creator",
-    text: "Enclave found deepfakes of me on 3 different sites within hours of scanning. The auto-takedown saved me weeks of work.",
+    text: "Found deepfakes of me on 3 different sites within hours. The auto-takedown saved me weeks of work.",
     rating: 5,
   },
   {
     name: "Marcus Rodriguez",
     role: "Privacy Advocate",
-    text: "Finally a tool that takes identity protection seriously. The dark web monitoring is incredible.",
+    text: "Finally a tool that takes identity protection seriously. The dark web monitoring is something else.",
     rating: 5,
   },
   {
@@ -143,32 +142,33 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
   }
 
   return (
-    <div className="min-h-screen bg-[#04060a] text-white">
+    <div className="min-h-screen bg-[#111113] text-[#fafaf9]">
+      <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-[100] focus:bg-green focus:text-black focus:px-4 focus:py-2">Skip to content</a>
       {/* Navigation */}
-      <nav className="fixed top-0 z-50 w-full border-b border-white/5 bg-[#04060a]/80 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-green to-cyan">
-              <Shield className="h-5 w-5 text-black" />
+      <nav className="fixed top-0 z-50 w-full border-b border-white/[0.06] bg-[#111113]/90 backdrop-blur-md">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-green">
+              <Shield className="h-4 w-4 text-black" />
             </div>
-            <span className="font-display text-xl font-bold">Enclave</span>
+            <span className="font-display text-lg font-bold tracking-tight">Enclave</span>
           </div>
 
           <div className="hidden items-center gap-8 md:flex">
-            <a href="#features" className="text-sm text-gray-300 transition-colors hover:text-white">Features</a>
-            <a href="#pricing" className="text-sm text-gray-300 transition-colors hover:text-white">Pricing</a>
-            <a href="#testimonials" className="text-sm text-gray-300 transition-colors hover:text-white">Testimonials</a>
+            <a href="#features" className="text-sm text-[#a1a1aa] transition-colors hover:text-[#fafaf9]">Features</a>
+            <a href="#pricing" className="text-sm text-[#a1a1aa] transition-colors hover:text-[#fafaf9]">Pricing</a>
+            <a href="#testimonials" className="text-sm text-[#a1a1aa] transition-colors hover:text-[#fafaf9]">Testimonials</a>
           </div>
 
           <div className="flex items-center gap-3">
             <Button variant="ghost" onClick={handleGetStarted} className="hidden md:flex">
               Sign In
             </Button>
-            <Button onClick={handleGetStarted} className="bg-gradient-to-r from-green to-cyan text-black font-semibold">
-              Get Started Free
+            <Button onClick={handleGetStarted} className="bg-green text-black font-medium">
+              Get Started
             </Button>
             <button
-              className="md:hidden text-gray-400"
+              className="md:hidden text-[#a1a1aa]"
               aria-label="Toggle navigation menu"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
@@ -184,141 +184,180 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: "auto", opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
-              className="overflow-hidden border-t border-white/5 md:hidden"
+              className="overflow-hidden border-t border-white/[0.06] md:hidden"
             >
               <div className="space-y-2 px-6 py-4">
-                <a href="#features" className="block py-2 text-sm text-gray-400">Features</a>
-                <a href="#pricing" className="block py-2 text-sm text-gray-400">Pricing</a>
-                <a href="#testimonials" className="block py-2 text-sm text-gray-400">Testimonials</a>
+                <a href="#features" className="block py-2 text-sm text-[#a1a1aa]">Features</a>
+                <a href="#pricing" className="block py-2 text-sm text-[#a1a1aa]">Pricing</a>
+                <a href="#testimonials" className="block py-2 text-sm text-[#a1a1aa]">Testimonials</a>
               </div>
             </motion.div>
           )}
         </AnimatePresence>
       </nav>
 
-      {/* Hero Section */}
-      <section className="relative flex min-h-screen items-center justify-center overflow-hidden px-6 pt-20">
-        {/* Animated background */}
-        <div className="absolute inset-0">
-          <div className="absolute left-1/2 top-1/2 h-[600px] w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-green/5 blur-[120px]" />
-          <div className="absolute right-0 top-0 h-[400px] w-[400px] rounded-full bg-cyan/5 blur-[100px]" />
-          <div className="absolute bottom-0 left-0 h-[400px] w-[400px] rounded-full bg-purple/5 blur-[100px]" />
-          {/* Grid overlay */}
-          <div
-            className="absolute inset-0 opacity-[0.03]"
-            style={{
-              backgroundImage: `linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)`,
-              backgroundSize: "60px 60px",
-            }}
-          />
-        </div>
+      {/* Hero — asymmetric, grounded */}
+      <main id="main-content" className="relative min-h-screen flex items-center px-6 pt-20">
+        <div className="mx-auto max-w-6xl w-full">
+          <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
+            {/* Left: copy */}
+            <div>
+              <motion.div
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+              >
+                <p className="mb-4 text-sm font-medium tracking-wide uppercase text-[#71717a]">
+                  Identity Protection
+                </p>
+              </motion.div>
 
-        <div className="relative z-10 mx-auto max-w-5xl text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-          >
-            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-gray-400">
-              <Sparkles className="h-4 w-4 text-cyan" />
-              AI-Powered Identity Protection
+              <motion.h1
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.05 }}
+                className="font-display text-4xl font-bold leading-[1.1] tracking-tight md:text-6xl"
+              >
+                Your face is{" "}
+                <span className="text-green">yours</span>.
+                <br />
+                Keep it that way.
+              </motion.h1>
+
+              <motion.p
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.1 }}
+                className="mt-6 max-w-lg text-[15px] leading-relaxed text-[#a1a1aa]"
+              >
+                Detect deepfakes, monitor the dark web, and take down
+                unauthorized use of your identity. Built with real ML models, not marketing.
+              </motion.p>
+
+              <motion.div
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.15 }}
+                className="mt-8 flex flex-wrap items-center gap-3"
+              >
+                <Button
+                  size="lg"
+                  onClick={handleGetStarted}
+                  className="bg-green text-black font-medium px-6"
+                >
+                  Start Free
+                  <ArrowRight className="ml-1.5 h-4 w-4" />
+                </Button>
+                <Button variant="outline" size="lg" className="border-white/10">
+                  See How It Works
+                </Button>
+              </motion.div>
+
+              {/* Stats — inline, not centered grid */}
+              <motion.div
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.2 }}
+                className="mt-12 flex gap-8 border-t border-white/[0.06] pt-8"
+              >
+                {STATS.map((stat) => (
+                  <div key={stat.label}>
+                    <p className="font-display text-2xl font-bold">{stat.value}</p>
+                    <p className="mt-0.5 text-xs text-[#71717a]">{stat.label}</p>
+                  </div>
+                ))}
+              </motion.div>
             </div>
-          </motion.div>
 
-          <motion.h1
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.1 }}
-            className="font-display text-5xl font-bold leading-tight tracking-tight md:text-7xl"
-          >
-            Your Identity.{" "}
-            <span className="bg-gradient-to-r from-green via-cyan to-purple bg-clip-text text-transparent">
-              Protected.
-            </span>
-          </motion.h1>
-
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            className="mx-auto mt-6 max-w-2xl text-lg text-gray-400"
-          >
-            Detect deepfakes, monitor the dark web, and automatically take down
-            unauthorized use of your identity — all powered by advanced AI.
-          </motion.p>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.3 }}
-            className="mt-10 flex flex-wrap items-center justify-center gap-4"
-          >
-            <Button
-              size="lg"
-              onClick={handleGetStarted}
-              className="bg-gradient-to-r from-green to-cyan px-8 text-black font-semibold shadow-lg shadow-green/20 transition-all hover:shadow-green/40"
+            {/* Right: visual element — not a gradient blob */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+              className="hidden lg:block"
             >
-              Start Protecting Free
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-            <Button variant="outline" size="lg" className="border-white/10">
-              Watch Demo
-            </Button>
-          </motion.div>
-
-          {/* Stats */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.4 }}
-            className="mt-20 grid grid-cols-2 gap-8 md:grid-cols-4"
-          >
-            {STATS.map((stat) => (
-              <div key={stat.label}>
-                <p className="font-display text-3xl font-bold text-white">{stat.value}</p>
-                <p className="mt-1 text-sm text-gray-400">{stat.label}</p>
+              <div className="relative">
+                {/* Abstract shape — not a glow */}
+                <div className="absolute -inset-8 rounded-3xl bg-white/[0.02] blur-sm" />
+                <div className="relative rounded-2xl border border-white/[0.06] bg-[#18181b] p-8">
+                  {/* Mock UI card */}
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="h-3 w-3 rounded-full bg-green" />
+                    <div className="h-3 w-3 rounded-full bg-amber" />
+                    <div className="h-3 w-3 rounded-full bg-red" />
+                  </div>
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3 rounded-lg bg-white/[0.03] p-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-cyan/10">
+                        <ScanSearch className="h-5 w-5 text-cyan" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="h-3 w-24 rounded bg-white/10" />
+                        <div className="mt-1.5 h-2 w-36 rounded bg-white/5" />
+                      </div>
+                      <div className="text-xs font-medium text-green">Safe</div>
+                    </div>
+                    <div className="flex items-center gap-3 rounded-lg bg-white/[0.03] p-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-red/10">
+                        <Radar className="h-5 w-5 text-red" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="h-3 w-20 rounded bg-white/10" />
+                        <div className="mt-1.5 h-2 w-28 rounded bg-white/5" />
+                      </div>
+                      <div className="text-xs font-medium text-red">Threat</div>
+                    </div>
+                    <div className="flex items-center gap-3 rounded-lg bg-white/[0.03] p-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green/10">
+                        <Shield className="h-5 w-5 text-green" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="h-3 w-28 rounded bg-white/10" />
+                        <div className="mt-1.5 h-2 w-32 rounded bg-white/5" />
+                      </div>
+                      <div className="text-xs font-medium text-green">Protected</div>
+                    </div>
+                  </div>
+                </div>
               </div>
-            ))}
-          </motion.div>
+            </motion.div>
+          </div>
         </div>
-      </section>
+      </main>
 
-      {/* Features */}
-      <section id="features" className="relative py-32 px-6">
-        <div className="mx-auto max-w-7xl">
-          <div className="mb-16 text-center">
-            <h2 className="font-display text-4xl font-bold md:text-5xl">
-              Everything you need to{" "}
-              <span className="text-cyan">stay safe</span>
+      {/* Features — left-aligned header, not centered */}
+      <section id="features" className="py-24 px-6">
+        <div className="mx-auto max-w-6xl">
+          <div className="mb-12">
+            <h2 className="font-display text-3xl font-bold tracking-tight md:text-4xl">
+              What we actually do
             </h2>
-            <p className="mx-auto mt-4 max-w-2xl text-gray-400">
-              From AI detection to automatic takedowns, Enclave provides comprehensive identity protection.
+            <p className="mt-3 max-w-lg text-[15px] text-[#a1a1aa]">
+              No buzzwords. Six core capabilities, each backed by real infrastructure.
             </p>
           </div>
 
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {FEATURES.map((f, i) => {
               const Icon = f.icon;
               const colorMap: Record<string, string> = {
-                cyan: "from-cyan/20 to-cyan/5 text-cyan",
-                purple: "from-purple/20 to-purple/5 text-purple",
-                green: "from-green/20 to-green/5 text-green",
-                amber: "from-amber/20 to-amber/5 text-amber",
+                cyan: "text-cyan",
+                purple: "text-purple",
+                green: "text-green",
+                amber: "text-amber",
               };
               return (
                 <motion.div
                   key={f.title}
-                  initial={{ opacity: 0, y: 20 }}
+                  initial={{ opacity: 0, y: 12 }}
                   whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: i * 0.1 }}
+                  transition={{ duration: 0.35, delay: i * 0.05 }}
                   viewport={{ once: true }}
-                  className="group rounded-2xl border border-white/5 bg-white/[0.02] p-6 transition-all hover:border-white/10 hover:bg-white/[0.04]"
+                  className="group rounded-xl border border-white/[0.06] bg-white/[0.02] p-5 transition-colors hover:bg-white/[0.04] hover:border-white/[0.1]"
                 >
-                  <div className={`mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br ${colorMap[f.color]}`}>
-                    <Icon className="h-6 w-6" />
-                  </div>
-                  <h3 className="font-display text-lg font-bold">{f.title}</h3>
-                  <p className="mt-2 text-sm text-gray-400">{f.desc}</p>
+                  <Icon className={`mb-3 h-5 w-5 ${colorMap[f.color]}`} />
+                  <h3 className="font-display text-base font-semibold">{f.title}</h3>
+                  <p className="mt-1.5 text-sm leading-relaxed text-[#a1a1aa]">{f.desc}</p>
                 </motion.div>
               );
             })}
@@ -326,86 +365,91 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
         </div>
       </section>
 
-      {/* How it works */}
-      <section className="relative py-32 px-6">
-        <div className="mx-auto max-w-5xl">
-          <div className="mb-16 text-center">
-            <h2 className="font-display text-4xl font-bold md:text-5xl">
-              How it <span className="text-green">works</span>
+      {/* How it works — horizontal steps */}
+      <section className="py-24 px-6 border-t border-white/[0.04]">
+        <div className="mx-auto max-w-6xl">
+          <div className="mb-12">
+            <h2 className="font-display text-3xl font-bold tracking-tight md:text-4xl">
+              Three steps
             </h2>
           </div>
 
           <div className="grid gap-8 md:grid-cols-3">
             {[
-              { step: "01", title: "Enroll your face", desc: "Upload a photo to create your biometric profile in seconds." },
-              { step: "02", title: "We scan the web", desc: "Our AI crawls surface web, social media, paste sites, and the dark web." },
-              { step: "03", title: "We protect you", desc: "Get instant alerts and automatic takedowns for any threats found." },
+              { step: "1", title: "Enroll your face", desc: "Upload a photo. We create a biometric hash in seconds." },
+              { step: "2", title: "We scan everywhere", desc: "Surface web, social media, paste sites, dark web. Continuously." },
+              { step: "3", title: "We act", desc: "Instant alerts. Automatic takedowns. Evidence preserved." },
             ].map((item, i) => (
               <motion.div
                 key={item.step}
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 12 }}
                 whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: i * 0.15 }}
+                transition={{ duration: 0.35, delay: i * 0.08 }}
                 viewport={{ once: true }}
-                className="relative text-center"
+                className="flex gap-4"
               >
-                <div className="mb-4 font-display text-6xl font-bold text-gray-600" aria-hidden="true">{item.step}</div>
-                <h3 className="font-display text-xl font-bold">{item.title}</h3>
-                <p className="mt-2 text-sm text-gray-400">{item.desc}</p>
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-sm font-bold text-[#71717a]">
+                  {item.step}
+                </div>
+                <div>
+                  <h3 className="font-display text-base font-semibold">{item.title}</h3>
+                  <p className="mt-1 text-sm text-[#a1a1aa]">{item.desc}</p>
+                </div>
               </motion.div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Pricing */}
-      <section id="pricing" className="relative py-32 px-6">
-        <div className="mx-auto max-w-7xl">
-          <div className="mb-16 text-center">
-            <h2 className="font-display text-4xl font-bold md:text-5xl">
-              Simple, <span className="text-amber">transparent</span> pricing
+      {/* Pricing — clean, not flashy */}
+      <section id="pricing" className="py-24 px-6 border-t border-white/[0.04]">
+        <div className="mx-auto max-w-6xl">
+          <div className="mb-12">
+            <h2 className="font-display text-3xl font-bold tracking-tight md:text-4xl">
+              Pricing
             </h2>
-            <p className="mx-auto mt-4 max-w-2xl text-gray-400">
-              Start free. Upgrade when you need more protection.
+            <p className="mt-3 text-[15px] text-[#a1a1aa]">
+              Start free. Upgrade when you need more.
             </p>
           </div>
 
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-5">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
             {TIERS.map((tier, i) => (
               <motion.div
                 key={tier.name}
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 12 }}
                 whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: i * 0.1 }}
+                transition={{ duration: 0.35, delay: i * 0.05 }}
                 viewport={{ once: true }}
-                className={`relative rounded-2xl border p-6 transition-all ${
+                className={`relative rounded-xl border p-5 transition-colors ${
                   tier.popular
-                    ? "border-cyan/40 bg-cyan/[0.03] shadow-lg shadow-cyan/10"
-                    : "border-white/5 bg-white/[0.02] hover:border-white/10"
+                    ? "border-green/30 bg-green/[0.04]"
+                    : "border-white/[0.06] bg-white/[0.02] hover:border-white/[0.1]"
                 }`}
               >
                 {tier.popular && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-cyan px-3 py-1 text-xs font-bold text-black">
-                    Most Popular
+                  <div className="absolute -top-2.5 left-4 rounded bg-green px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-black">
+                    Popular
                   </div>
                 )}
-                <h3 className="font-display text-lg font-bold">{tier.name}</h3>
-                <div className="mt-4 flex items-baseline gap-1">
-                  <span className="font-display text-4xl font-bold">{tier.price}</span>
-                  <span className="text-sm text-gray-400">{tier.period}</span>
+                <h3 className="font-display text-base font-semibold">{tier.name}</h3>
+                <div className="mt-3 flex items-baseline gap-1">
+                  <span className="font-display text-3xl font-bold">{tier.price}</span>
+                  <span className="text-xs text-[#71717a]">{tier.period}</span>
                 </div>
-                <p className="mt-2 text-sm text-gray-400">{tier.desc}</p>
-                <ul className="mt-6 space-y-2">
+                <p className="mt-2 text-xs text-[#a1a1aa]">{tier.desc}</p>
+                <ul className="mt-4 space-y-1.5">
                   {tier.features.map((f) => (
-                    <li key={f} className="flex items-center gap-2 text-sm text-gray-300">
-                      <CheckCircle2 className="h-4 w-4 shrink-0 text-green" />
+                    <li key={f} className="flex items-center gap-1.5 text-xs text-[#d4d4d8]">
+                      <CheckCircle2 className="h-3 w-3 shrink-0 text-green/70" />
                       {f}
                     </li>
                   ))}
                 </ul>
                 <Button
-                  className={`mt-6 w-full ${tier.popular ? "bg-gradient-to-r from-green to-cyan text-black font-semibold" : ""}`}
+                  className={`mt-5 w-full text-xs ${tier.popular ? "bg-green text-black font-medium" : ""}`}
                   variant={tier.popular ? "default" : "outline"}
+                  size="sm"
                   onClick={handleGetStarted}
                 >
                   {tier.cta}
@@ -416,38 +460,38 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
         </div>
       </section>
 
-      {/* Testimonials */}
-      <section id="testimonials" className="relative py-32 px-6">
-        <div className="mx-auto max-w-5xl">
-          <div className="mb-16 text-center">
-            <h2 className="font-display text-4xl font-bold md:text-5xl">
-              Trusted by <span className="text-purple">thousands</span>
+      {/* Testimonials — understated */}
+      <section id="testimonials" className="py-24 px-6 border-t border-white/[0.04]">
+        <div className="mx-auto max-w-6xl">
+          <div className="mb-12">
+            <h2 className="font-display text-3xl font-bold tracking-tight md:text-4xl">
+              What people say
             </h2>
           </div>
 
-          <div className="grid gap-6 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-3">
             {TESTIMONIALS.map((t, i) => (
               <motion.div
                 key={t.name}
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 12 }}
                 whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: i * 0.1 }}
+                transition={{ duration: 0.35, delay: i * 0.05 }}
                 viewport={{ once: true }}
-                className="rounded-2xl border border-white/5 bg-white/[0.02] p-6"
+                className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5"
               >
-                <div className="mb-3 flex gap-1">
+                <div className="mb-2 flex gap-0.5">
                   {Array.from({ length: t.rating }).map((_, j) => (
-                    <Star key={j} className="h-4 w-4 fill-amber text-amber" />
+                    <Star key={j} className="h-3.5 w-3.5 fill-amber text-amber" />
                   ))}
                 </div>
-                <p className="text-sm text-gray-300">&ldquo;{t.text}&rdquo;</p>
-                <div className="mt-4 flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/[0.06] text-sm font-bold">
+                <p className="text-sm leading-relaxed text-[#d4d4d8]">&ldquo;{t.text}&rdquo;</p>
+                <div className="mt-4 flex items-center gap-2.5">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/[0.06] text-xs font-bold">
                     {t.name[0]}
                   </div>
                   <div>
                     <p className="text-sm font-medium">{t.name}</p>
-                    <p className="text-xs text-gray-400">{t.role}</p>
+                    <p className="text-xs text-[#71717a]">{t.role}</p>
                   </div>
                 </div>
               </motion.div>
@@ -456,73 +500,42 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="relative py-32 px-6">
-        <div className="mx-auto max-w-4xl text-center">
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="h-[400px] w-[400px] rounded-full bg-green/10 blur-[100px]" />
-          </div>
-          <div className="relative z-10">
-            <h2 className="font-display text-4xl font-bold md:text-5xl">
-              Ready to protect your identity?
-            </h2>
-            <p className="mx-auto mt-4 max-w-xl text-gray-400">
-              Join thousands of people who trust Enclave to keep their identity safe.
-              Start free — no credit card required.
-            </p>
-            <Button
-              size="lg"
-              onClick={handleGetStarted}
-              className="mt-8 bg-gradient-to-r from-green to-cyan px-10 text-black font-semibold shadow-lg shadow-green/20"
-            >
-              Get Started Free
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-          </div>
+      {/* CTA — simple, not glowy */}
+      <section className="py-24 px-6 border-t border-white/[0.04]">
+        <div className="mx-auto max-w-2xl text-center">
+          <h2 className="font-display text-3xl font-bold tracking-tight md:text-4xl">
+            Protect your identity
+          </h2>
+          <p className="mt-4 text-[15px] text-[#a1a1aa]">
+            Free to start. No credit card required.
+          </p>
+          <Button
+            size="lg"
+            onClick={handleGetStarted}
+            className="mt-8 bg-green text-black font-medium px-8"
+          >
+            Get Started
+            <ArrowRight className="ml-1.5 h-4 w-4" />
+          </Button>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-white/5 py-16 px-6">
-        <div className="mx-auto max-w-7xl">
-          <div className="grid gap-8 md:grid-cols-4">
-            <div>
-              <div className="flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-green to-cyan">
-                  <Shield className="h-4 w-4 text-black" />
-                </div>
-                <span className="font-display text-lg font-bold">Enclave</span>
-              </div>
-              <p className="mt-3 text-sm text-gray-400">AI-powered identity protection for everyone.</p>
+      {/* Footer — minimal */}
+      <footer className="border-t border-white/[0.06] py-12 px-6">
+        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-6 md:flex-row">
+          <div className="flex items-center gap-2">
+            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-green">
+              <Shield className="h-3.5 w-3.5 text-black" />
             </div>
-            <div>
-              <h3 className="mb-3 text-sm font-semibold">Product</h3>
-              <ul className="space-y-2 text-sm text-gray-300">
-                <li><a href="#features" className="hover:text-white transition-colors">Features</a></li>
-                <li><a href="#pricing" className="hover:text-white transition-colors">Pricing</a></li>
-                <li><a href="https://enclave-production-d818.up.railway.app/api-docs" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">API Docs</a></li>
-              </ul>
-            </div>
-            <div>
-              <h3 className="mb-3 text-sm font-semibold">Company</h3>
-              <ul className="space-y-2 text-sm text-gray-300">
-                <li><a href="#" className="hover:text-white transition-colors">About</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Blog</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Careers</a></li>
-              </ul>
-            </div>
-            <div>
-              <h3 className="mb-3 text-sm font-semibold">Legal</h3>
-              <ul className="space-y-2 text-sm text-gray-300">
-                <li><a href="/privacy" className="hover:text-white transition-colors">Privacy Policy</a></li>
-                <li><a href="/terms" className="hover:text-white transition-colors">Terms of Service</a></li>
-                <li><a href="/dmca" className="hover:text-white transition-colors">DMCA Policy</a></li>
-              </ul>
-            </div>
+            <span className="font-display text-sm font-bold">Enclave</span>
           </div>
-          <div className="mt-12 border-t border-white/5 pt-8 text-center text-sm text-gray-400">
-            &copy; {new Date().getFullYear()} Enclave. All rights reserved.
+          <div className="flex gap-6 text-xs text-[#a1a1aa]">
+            <a href="/privacy" className="hover:text-[#fafaf9] transition-colors">Privacy</a>
+            <a href="/terms" className="hover:text-[#fafaf9] transition-colors">Terms</a>
+            <a href="/dmca" className="hover:text-[#fafaf9] transition-colors">DMCA</a>
+            <a href="https://enclave-production-d818.up.railway.app/api-docs" target="_blank" rel="noopener noreferrer" className="hover:text-[#fafaf9] transition-colors">API</a>
           </div>
+          <p className="text-xs text-[#52525b]">&copy; {new Date().getFullYear()} Enclave</p>
         </div>
       </footer>
     </div>

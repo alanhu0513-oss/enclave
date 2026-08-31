@@ -190,7 +190,7 @@ export function Sidebar({
                   />
                 )}
                 {active && (
-                  <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-full bg-gradient-to-b from-green to-cyan shadow-[0_0_8px_rgba(0,255,136,0.4)]" />
+                  <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-full bg-green" />
                 )}
                 <Icon
                   className={cn(

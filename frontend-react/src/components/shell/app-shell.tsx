@@ -87,7 +87,7 @@ export function AppShell() {
   }, []);
 
   return (
-    <div className="relative min-h-screen bg-[#04060a]">
+    <div className="relative min-h-screen bg-[#111113]">
       <a href="#main-content" className="skip-link">Skip to main content</a>
       <SeoJsonLd />
       <HaikeiBackground />

@@ -7,6 +7,7 @@ const morgan = require('morgan');
 const path = require('path');
 const rateLimit = require('express-rate-limit');
 const { error } = require('./utils/response');
+const { securityHeaders, sanitizeInput } = require('./middleware/security');
 
 // ─── Env Validation ───
 process.env.PORT = process.env.PORT || '3000';
@@ -139,11 +140,26 @@ app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' },
   contentSecurityPolicy: false
 }));
+app.use(securityHeaders);
+app.use(sanitizeInput);
 app.use(cors({
-  origin: process.env.CORS_ORIGIN
-    ? process.env.CORS_ORIGIN.split(',')
-    : ['http://localhost:3000', 'http://localhost:4000', 'https://enclave-react.vercel.app'],
-  credentials: true
+  origin: function (origin, callback) {
+    const allowedOrigins = [
+      "https://enclave-react.vercel.app",
+      "http://localhost:5173",
+      "http://localhost:3000",
+      "http://localhost:4000",
+    ];
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  maxAge: 86400,
 }));
 app.use(morgan('dev'));
 app.use('/api', globalLimiter);

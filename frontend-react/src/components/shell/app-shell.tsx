@@ -37,6 +37,9 @@ const SettingsView = lazy(() => import("@/features/settings/settings-view").then
 const ThreatIntelView = lazy(() => import("@/features/threat-intel/threat-intel-view").then((m) => ({ default: m.ThreatIntelView })));
 const EducationView = lazy(() => import("@/features/education/education-view").then((m) => ({ default: m.EducationView })));
 const BugBountyView = lazy(() => import("@/features/bug-bounty/bug-bounty-view").then((m) => ({ default: m.BugBountyView })));
+const BlogView = lazy(() => import("@/features/blog/blog-view").then((m) => ({ default: m.BlogView })));
+const ComparisonView = lazy(() => import("@/features/comparison/comparison-view").then((m) => ({ default: m.ComparisonView })));
+const DemoView = lazy(() => import("@/features/demo/demo-view").then((m) => ({ default: m.DemoView })));
 
 const COLLAPSE_KEY = "enclave_sidebar_collapsed";
 
@@ -85,6 +88,7 @@ export function AppShell() {
 
   return (
     <div className="relative min-h-screen bg-[#04060a]">
+      <a href="#main-content" className="skip-link">Skip to main content</a>
       <SeoJsonLd />
       <HaikeiBackground />
 
@@ -101,6 +105,7 @@ export function AppShell() {
         <div className="flex flex-1">
           <Sidebar collapsed={collapsed} onToggleCollapsed={toggleCollapsed} />
           <main
+            id="main-content"
             className="relative z-10 flex-1 overflow-visible px-4 pb-24 pt-6 md:px-8 md:pt-8"
             role="main"
           >
@@ -127,6 +132,9 @@ export function AppShell() {
                 {tab === "threat-intel" && <ThreatIntelView />}
                 {tab === "education" && <EducationView />}
                 {tab === "bug-bounty" && <BugBountyView />}
+                {tab === "blog" && <BlogView />}
+                {tab === "comparison" && <ComparisonView />}
+                {tab === "demo" && <DemoView />}
               </Suspense>
             </FadeIn>
           </main>

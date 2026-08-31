@@ -23,6 +23,8 @@ import {
   Globe,
   GraduationCap,
   Bug,
+  BookOpen,
+  Play,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useApp, type TabId } from "@/lib/app-context";
@@ -49,6 +51,9 @@ const BASE_NAV: { id: TabId; label: string; icon: typeof Home; plans?: string[] 
   { id: "activity", label: "Activity", icon: Activity },
   { id: "threat-intel", label: "Threat Intel", icon: Globe },
   { id: "education", label: "Education", icon: GraduationCap },
+  { id: "blog", label: "Blog", icon: BookOpen },
+  { id: "comparison", label: "Compare", icon: Shield },
+  { id: "demo", label: "Demo", icon: Play },
   { id: "bug-bounty", label: "Bug Bounty", icon: Bug, plans: ["pro", "shield", "family", "business"] },
   { id: "enterprise", label: "Enterprise", icon: Building2, plans: ["business"] },
   { id: "admin", label: "Admin", icon: LayoutDashboard, plans: ["business"] },
@@ -154,7 +159,7 @@ export function Sidebar({
         </div>
 
         {/* Nav */}
-        <nav className="mt-2 flex flex-1 flex-col gap-1 px-3">
+        <nav role="navigation" aria-label="Main navigation" className="mt-2 flex flex-1 flex-col gap-1 px-3">
           {NAV.map((item) => {
             const Icon = item.icon;
             const active = tab === item.id;
@@ -166,6 +171,7 @@ export function Sidebar({
                   onClose?.();
                 }}
                 title={effectiveCollapsed ? item.label : undefined}
+                aria-current={active ? "page" : undefined}
                 className={cn(
                   "group relative flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium transition-all duration-200",
                   effectiveCollapsed && "justify-center px-2",

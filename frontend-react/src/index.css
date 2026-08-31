@@ -122,21 +122,6 @@ body {
 }
 ::-webkit-scrollbar-thumb:hover { background: var(--color-ink-faint); }
 
-/* Accessible focus indicators — high-contrast, visible on dark background */
-:focus {
-  outline: none;
-}
-:focus-visible {
-  outline: 2px solid var(--color-green);
-  outline-offset: 2px;
-}
-input:focus-visible,
-textarea:focus-visible,
-select:focus-visible {
-  outline: 2px solid var(--color-green);
-  outline-offset: 1px;
-}
-
 /* Lighten placeholder for readable contrast */
 ::placeholder {
   color: #8b98ab;
@@ -182,11 +167,47 @@ select:focus-visible {
 }
 .float-y { animation: float-y 6s ease-in-out infinite; }
 
-/* Reduce motion */
+/* Accessibility: Focus ring */
+:focus-visible {
+  outline: 2px solid rgb(0, 212, 255);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
-    animation-duration: 0.001ms !important;
+    animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 0.001ms !important;
+    transition-duration: 0.01ms !important;
   }
+}
+
+/* Screen reader only */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* Skip to main content */
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  background: #00d4ff;
+  color: #000;
+  padding: 8px 16px;
+  z-index: 100;
+  transition: top 0.2s;
+}
+
+.skip-link:focus {
+  top: 0;
 }

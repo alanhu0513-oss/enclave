@@ -24,7 +24,10 @@ export type TabId =
   | "settings"
   | "threat-intel"
   | "education"
-  | "bug-bounty";
+  | "bug-bounty"
+  | "blog"
+  | "comparison"
+  | "demo";
 
 interface Toast {
   id: number;

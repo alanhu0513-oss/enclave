@@ -29,6 +29,9 @@ const TITLES: Record<TabId, string> = {
   settings: "Vault Settings",
   "threat-intel": "Threat Intelligence",
   education: "Education Center",
+  blog: "Blog & Insights",
+  comparison: "Why Enclave?",
+  demo: "See It In Action",
   "bug-bounty": "Bug Bounty",
 };
 

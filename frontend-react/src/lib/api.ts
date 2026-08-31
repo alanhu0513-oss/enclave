@@ -218,6 +218,18 @@ export const api = {
   getBountyLeaderboard: () => apiFetch("/bounty/leaderboard"),
   getBountyStats: () => apiFetch("/bounty/stats"),
 
+  // Bug Bounty Platform
+  getVulnerabilities: (params?: { severity?: string; status?: string }) => {
+    const query = new URLSearchParams(params as any).toString();
+    return apiFetch(`/bug-bounty/vulnerabilities${query ? `?${query}` : ""}`);
+  },
+  submitVulnerability: (data: { title: string; severity: string; description: string; impact?: string; remediation?: string; proofOfConcept?: string }) => post("/bug-bounty/vulnerabilities", data),
+  updateVulnerability: (vulnId: string, data: { status?: string; bounty?: number }) => apiFetch(`/bug-bounty/vulnerabilities/${vulnId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) }),
+  getBugBountyLeaderboard: () => apiFetch("/bug-bounty/leaderboard"),
+  getBugBountyTiers: () => apiFetch("/bug-bounty/tiers"),
+  getHallOfFame: () => apiFetch("/bug-bounty/hall-of-fame"),
+  getDisclosurePolicy: () => apiFetch("/bug-bounty/policy"),
+
   // Passport
   getPassport: () => apiFetch("/passport"),
   enrollPassport: () => post("/passport/enroll"),
@@ -387,6 +399,32 @@ export const api = {
   getABTests: () => apiFetch("/ml/ab-tests"),
   createABTest: (data: { name: string; modelA: string; modelB: string; trafficSplit?: number }) => post("/ml/ab-tests", data),
   deleteABTest: (testId: string) => apiFetch(`/ml/ab-tests/${testId}`, { method: "DELETE" }),
+
+  // Threat Intelligence
+  getThreatIOCs: (params?: { type?: string; threat?: string; severity?: string; region?: string }) => {
+    const query = new URLSearchParams(params as any).toString();
+    return apiFetch(`/threat-intel/iocs${query ? `?${query}` : ""}`);
+  },
+  reportIOC: (data: { type: string; value: string; threat: string; severity?: string; region?: string }) =>
+    post("/threat-intel/iocs", data),
+  corroborateIOC: (iocId: string) =>
+    post(`/threat-intel/iocs/${iocId}/corroborate`),
+  getThreatHeatmap: () => apiFetch("/threat-intel/heatmap"),
+  getThreatFeed: (format?: string) =>
+    apiFetch(`/threat-intel/feed${format ? `?format=${format}` : ""}`),
+  getReputation: (userId: string) =>
+    apiFetch(`/threat-intel/reputation/${userId}`),
+
+  // Education
+  getTutorials: (params?: { category?: string; difficulty?: string }) => {
+    const query = new URLSearchParams(params as any).toString();
+    return apiFetch(`/education/tutorials${query ? `?${query}` : ""}`);
+  },
+  getTutorial: (tutorialId: string) => apiFetch(`/education/tutorials/${tutorialId}`),
+  submitQuiz: (tutorialId: string, answers: number[]) => post(`/education/tutorials/${tutorialId}/quiz`, { answers }),
+  getCertifications: () => apiFetch("/education/certifications"),
+  getEducationProgress: () => apiFetch("/education/progress"),
+  getBlogPosts: () => apiFetch("/education/blog"),
 
   // Health
   getHealth: () => apiFetch("/health"),

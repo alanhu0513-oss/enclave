@@ -34,6 +34,9 @@ const EstateView = lazy(() => import("@/features/estate/estate-view").then((m) =
 const MLDashboard = lazy(() => import("@/features/ml/ml-dashboard").then((m) => ({ default: m.MLDashboard })));
 const ActivityView = lazy(() => import("@/features/activity/activity-view").then((m) => ({ default: m.ActivityView })));
 const SettingsView = lazy(() => import("@/features/settings/settings-view").then((m) => ({ default: m.SettingsView })));
+const ThreatIntelView = lazy(() => import("@/features/threat-intel/threat-intel-view").then((m) => ({ default: m.ThreatIntelView })));
+const EducationView = lazy(() => import("@/features/education/education-view").then((m) => ({ default: m.EducationView })));
+const BugBountyView = lazy(() => import("@/features/bug-bounty/bug-bounty-view").then((m) => ({ default: m.BugBountyView })));
 
 const COLLAPSE_KEY = "enclave_sidebar_collapsed";
 
@@ -121,6 +124,9 @@ export function AppShell() {
                 {tab === "ml" && <MLDashboard />}
                 {tab === "activity" && <ActivityView />}
                 {tab === "settings" && <SettingsView />}
+                {tab === "threat-intel" && <ThreatIntelView />}
+                {tab === "education" && <EducationView />}
+                {tab === "bug-bounty" && <BugBountyView />}
               </Suspense>
             </FadeIn>
           </main>

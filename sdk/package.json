@@ -1,0 +1,21 @@
+{
+  "name": "enclave-sdk",
+  "version": "1.0.0",
+  "description": "Enclave JavaScript SDK - Deepfake detection API client",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "jest"
+  },
+  "dependencies": {
+    "node-fetch": "^3.3.0",
+    "form-data": "^4.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.0",
+    "@types/node": "^20.0.0"
+  },
+  "keywords": ["deepfake", "detection", "sdk", "security", "ai", "api"],
+  "license": "MIT"
+}

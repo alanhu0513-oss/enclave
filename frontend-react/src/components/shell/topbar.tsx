@@ -27,6 +27,9 @@ const TITLES: Record<TabId, string> = {
   ml: "ML Command Center",
   activity: "Activity Timeline",
   settings: "Vault Settings",
+  "threat-intel": "Threat Intelligence",
+  education: "Education Center",
+  "bug-bounty": "Bug Bounty",
 };
 
 export function Topbar({

@@ -20,6 +20,9 @@ import {
   Heart,
   Brain,
   Activity,
+  Globe,
+  GraduationCap,
+  Bug,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useApp, type TabId } from "@/lib/app-context";
@@ -44,6 +47,9 @@ const BASE_NAV: { id: TabId; label: string; icon: typeof Home; plans?: string[] 
   { id: "estate", label: "Estate", icon: Heart, plans: ["pro", "shield", "family", "business"] },
   { id: "ml", label: "ML Command", icon: Brain, plans: ["pro", "shield", "family", "business"] },
   { id: "activity", label: "Activity", icon: Activity },
+  { id: "threat-intel", label: "Threat Intel", icon: Globe },
+  { id: "education", label: "Education", icon: GraduationCap },
+  { id: "bug-bounty", label: "Bug Bounty", icon: Bug, plans: ["pro", "shield", "family", "business"] },
   { id: "enterprise", label: "Enterprise", icon: Building2, plans: ["business"] },
   { id: "admin", label: "Admin", icon: LayoutDashboard, plans: ["business"] },
   { id: "settings", label: "Settings", icon: Settings },

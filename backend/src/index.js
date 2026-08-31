@@ -194,6 +194,9 @@ const estateRoutes = require('./routes/estate');
 const ssoRoutes = require('./routes/sso');
 const apiPlatformRoutes = require('./routes/api-platform');
 const mlRoutes = require('./routes/ml');
+const threatIntelRoutes = require('./routes/threat-intel');
+const educationRoutes = require('./routes/education');
+const bugBountyRoutes = require('./routes/bug-bounty');
 
 app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/biometrics', biometricsRoutes);
@@ -224,6 +227,9 @@ app.use('/api/estate', estateRoutes);
 app.use('/api/sso', ssoRoutes);
 app.use('/api/platform', apiPlatformRoutes);
 app.use('/api/ml', mlRoutes);
+app.use('/api/threat-intel', threatIntelRoutes);
+app.use('/api/education', educationRoutes);
+app.use('/api/bug-bounty', bugBountyRoutes);
 
 app.get('/api/health', async (req, res) => {
   const health = {

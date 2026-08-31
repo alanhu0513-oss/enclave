@@ -112,37 +112,38 @@
 ---
 
 ## PHASE 4 — Enterprise & Scale (2-3 weeks)
-> Revenue-generating features
+> Enterprise customers & infrastructure
 
-### 4.1 Enterprise SSO
-- [ ] SAML 2.0 integration
-- [ ] OIDC support
-- [ ] SCIM user provisioning
-- [ ] Admin console for user management
+### 4.1 Enterprise Features
+- [x] SAML/OIDC SSO integration
+- [x] SCIM user provisioning
 - [ ] Custom audit log retention
-- [ ] Dedicated support channel setup
+- [ ] Dedicated support channel
+- [ ] SLA guarantees (99.9% uptime)
+- [ ] Custom branding (white-label option)
 
 ### 4.2 API Platform
-- [ ] API key management dashboard
-- [ ] Usage analytics per key
-- [ ] Webhook configuration UI
+- [x] API key management dashboard
+- [x] Usage analytics per key
+- [x] Webhook configuration
 - [ ] SDK generation (Python, Node, Go)
 - [ ] Postman collection
-- [ ] Rate limit dashboard per key
+- [x] Rate limit dashboard
 
 ### 4.3 Mobile Apps
-- [ ] iOS app (Capacitor build)
-- [ ] Android app (Capacitor build)
+- [x] iOS app (Capacitor build)
+- [x] Android app (Capacitor build)
 - [ ] Push notification optimization
 - [ ] Offline mode for cached scans
-- [ ] Biometric unlock
+- [x] Biometric unlock
 - [ ] App Store / Play Store submission
 
 ### 4.4 Advanced ML
-- [ ] Custom model training pipeline
+- [ ] Custom model training on user data (opt-in)
 - [ ] Transfer learning for new deepfake types
-- [ ] Model versioning and A/B testing
-- [ ] Accuracy benchmarks dashboard
+- [ ] Federated learning across users
+- [x] Model versioning and A/B testing
+- [x] Accuracy benchmarks dashboard
 - [ ] User-contributed training data (opt-in)
 
 ---

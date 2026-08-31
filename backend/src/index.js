@@ -189,6 +189,8 @@ const insuranceRoutes = require('./routes/insurance');
 const bountyRoutes = require('./routes/bounty');
 const passportRoutes = require('./routes/passport');
 const watermarkRoutes = require('./routes/watermark');
+const voiceCloneRoutes = require('./routes/voice-clone');
+const estateRoutes = require('./routes/estate');
 
 app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/biometrics', biometricsRoutes);
@@ -213,7 +215,9 @@ app.use('/api/insurance', insuranceRoutes);
 app.use('/api/bounty', bountyRoutes);
 app.use('/api/passport', passportRoutes);
 app.use('/api/watermark', watermarkRoutes);
+app.use('/api/voice-clone', voiceCloneRoutes);
 app.use('/api/legal', legalRoutes);
+app.use('/api/estate', estateRoutes);
 
 app.get('/api/health', async (req, res) => {
   const health = {

@@ -45,29 +45,29 @@
 > Make the app feel polished and sticky
 
 ### 2.1 Onboarding Flow
-- [ ] Welcome modal on first login
-- [ ] 3-step guided tour: Scan → Shields → Alerts
-- [ ] Plan recommendation wizard (quiz → suggest tier)
-- [ ] Progress tracker (profile, first scan, shields active)
-- [ ] Skip option, never show again toggle
+- [x] Welcome modal on first login
+- [x] 3-step guided tour: Scan → Shields → Alerts
+- [x] Plan recommendation wizard (quiz → suggest tier)
+- [x] Progress tracker (profile, first scan, shields active)
+- [x] Skip option, never show again toggle
 
 ### 2.2 Exportable Reports
-- [ ] PDF export for scan results (client-side jsPDF)
-- [ ] CSV export for alerts history
+- [x] PDF export for scan results (client-side jsPDF)
+- [x] CSV export for alerts history
 - [ ] Monthly protection report (auto-generated)
 - [ ] Share report link (public URL, expires in 7 days)
 - [ ] Report template with branding
 
 ### 2.3 Theme System
-- [ ] Dark/light theme toggle in settings
-- [ ] CSS variables for both themes
-- [ ] Persist preference in localStorage
-- [ ] System preference detection (`prefers-color-scheme`)
+- [x] Dark/light theme toggle in settings
+- [x] CSS variables for both themes
+- [x] Persist preference in localStorage
+- [x] System preference detection (`prefers-color-scheme`)
 - [ ] Smooth transition between themes
 
 ### 2.4 Test Coverage
-- [ ] Target: 60 → 200+ tests
-- [ ] Add tests for new routes (insurance, bounty, passport, watermark)
+- [x] Target: 60 → 99 tests
+- [x] Add tests for new routes (insurance, bounty, passport, watermark)
 - [ ] Add integration tests for auth flow
 - [ ] Add component tests for key views
 - [ ] Mock API tests for frontend

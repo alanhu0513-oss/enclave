@@ -18,6 +18,8 @@ export type TabId =
   | "insurance"
   | "passport"
   | "bounty"
+  | "estate"
+  | "activity"
   | "settings";
 
 interface Toast {

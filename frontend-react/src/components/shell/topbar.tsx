@@ -23,6 +23,8 @@ const TITLES: Record<TabId, string> = {
   insurance: "Deepfake Insurance",
   passport: "Identity Passport",
   bounty: "Deepfake Bounty",
+  estate: "Digital Estate",
+  activity: "Activity Timeline",
   settings: "Vault Settings",
 };
 

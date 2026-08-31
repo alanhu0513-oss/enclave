@@ -30,6 +30,8 @@ const ShieldDashboard = lazy(() => import("@/features/shield/shield-dashboard").
 const InsuranceView = lazy(() => import("@/features/insurance/insurance-view").then((m) => ({ default: m.InsuranceView })));
 const PassportView = lazy(() => import("@/features/passport/passport-view").then((m) => ({ default: m.PassportView })));
 const BountyView = lazy(() => import("@/features/bounty/bounty-view").then((m) => ({ default: m.BountyView })));
+const EstateView = lazy(() => import("@/features/estate/estate-view").then((m) => ({ default: m.EstateView })));
+const ActivityView = lazy(() => import("@/features/activity/activity-view").then((m) => ({ default: m.ActivityView })));
 const SettingsView = lazy(() => import("@/features/settings/settings-view").then((m) => ({ default: m.SettingsView })));
 
 const COLLAPSE_KEY = "enclave_sidebar_collapsed";
@@ -114,6 +116,8 @@ export function AppShell() {
                 {tab === "insurance" && <InsuranceView />}
                 {tab === "passport" && <PassportView />}
                 {tab === "bounty" && <BountyView />}
+                {tab === "estate" && <EstateView />}
+                {tab === "activity" && <ActivityView />}
                 {tab === "settings" && <SettingsView />}
               </Suspense>
             </FadeIn>

@@ -154,6 +154,19 @@ export const api = {
     return form("/detect/video", fd);
   },
 
+  // Voice Clone Detection
+  analyzeVoiceClone: (file: File) => {
+    const fd = new FormData();
+    fd.append("audio", file);
+    return form("/voice-clone/analyze", fd);
+  },
+  batchAnalyzeVoice: (files: File[]) => {
+    const fd = new FormData();
+    files.forEach((f) => fd.append("audio", f));
+    return form("/voice-clone/batch", fd);
+  },
+  getVoiceCloneStats: () => apiFetch("/voice-clone/stats"),
+
   // Alerts
   getAlerts: () => apiFetch<Alert[]>(`/alerts`),
   scanUrl: (url: string) => post("/alerts/scan/url", { url }),
@@ -326,6 +339,19 @@ export const api = {
   getReferralStats: () => apiFetch("/referrals/stats"),
   applyReferral: (code: string) => post("/referrals/apply", { code }),
   claimReferralReward: () => post("/referrals/claim"),
+
+  // Estate
+  getEstateProfiles: () => apiFetch("/estate"),
+  enrollEstate: (data: { deceasedName: string; relationship: string; dateOfDeath?: string; email?: string; notes?: string }) =>
+    post("/estate/enroll", data),
+  removeEstate: (estateId: string) =>
+    apiFetch(`/estate/${estateId}`, { method: "DELETE" }),
+  getEstateTakedowns: (estateId: string) =>
+    apiFetch(`/estate/${estateId}/takedowns`),
+  initiateEstateTakedown: (estateId: string, data: { url: string; description?: string; type?: string }) =>
+    post(`/estate/${estateId}/takedown`, data),
+  memorializeEstate: (estateId: string, data: { platform: string; profileUrl: string }) =>
+    post(`/estate/${estateId}/memorialize`, data),
 
   // Health
   getHealth: () => apiFetch("/health"),

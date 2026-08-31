@@ -48,7 +48,7 @@ export function BugBountyView() {
     try {
       const [vulnsRes, lbRes] = await Promise.all([
         api.getVulnerabilities(),
-        api.getBountyLeaderboard(),
+        api.getBugBountyLeaderboard(),
       ]);
       setVulns(vulnsRes.vulnerabilities || []);
       setLeaderboard(lbRes.leaderboard || []);

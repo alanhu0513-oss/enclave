@@ -13,6 +13,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { StaggerContainer, StaggerItem } from "@/components/ui/motion";
+import { useApp } from "@/lib/app-context";
 import { SectionHeader } from "@/components/ui/dashboard";
 
 const competitors = [
@@ -132,6 +133,7 @@ const featureLabels: Record<string, string> = {
 };
 
 export function ComparisonView() {
+  const { setTab } = useApp();
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6 p-6">
       <SectionHeader icon={Shield} title="Why Enclave?" description="Compare us with the competition" />
@@ -218,7 +220,7 @@ export function ComparisonView() {
           <CardContent className="p-6 text-center">
             <h3 className="text-xl font-bold text-white mb-2">Ready to protect yourself?</h3>
             <p className="text-white/60 mb-4">Start for free, no credit card required.</p>
-            <Button className="bg-cyan-500 text-black font-semibold">
+            <Button className="bg-cyan-500 text-black font-semibold" onClick={() => setTab('home')}>
               <Zap className="w-4 h-4 mr-2" />
               Get Started Free
             </Button>

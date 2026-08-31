@@ -68,13 +68,23 @@ export function MLDashboard() {
   };
 
   const deployModel = async (modelId: string) => {
-    await api.deployMLModel(modelId);
-    loadData();
+    try {
+      await api.deployMLModel(modelId);
+    } catch (e) {
+      console.error("Deploy failed:", e);
+    } finally {
+      loadData();
+    }
   };
 
   const rollbackModel = async (modelId: string) => {
-    await api.rollbackMLModel(modelId);
-    loadData();
+    try {
+      await api.rollbackMLModel(modelId);
+    } catch (e) {
+      console.error("Rollback failed:", e);
+    } finally {
+      loadData();
+    }
   };
 
   const getStatusColor = (status: string) => {

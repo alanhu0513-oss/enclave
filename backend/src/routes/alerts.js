@@ -309,15 +309,11 @@ router.post('/watermark/embed', upload.single('image'), async (req, res) => {
   try {
     if (!req.file) return error(res, 'Image file required', 400);
     filePath = req.file.path;
-    const payload = {
-      userId: req.user.userId,
-      ts: Date.now(),
-      copyright: req.body.copyright || 'Enclave Vault',
-    };
     const input = fs.readFileSync(filePath);
     let outBuffer;
     try {
-      outBuffer = watermark.embedWatermark(input, payload);
+      const result = await watermark.embedWatermark(input, req.user.userId);
+      outBuffer = result.buffer;
     } catch (we) {
       return error(res, we.message, 400);
     }
@@ -331,7 +327,7 @@ router.post('/watermark/embed', upload.single('image'), async (req, res) => {
       document_type: 'watermark', file_path: outPath,
       created_at: new Date().toISOString()
     });
-    const verified = watermark.verifyWatermark(outBuffer);
+    const verified = await watermark.verifyWatermark(outBuffer, req.user.userId);
     return success(res, {
       filePath: outPath,
       url: `/uploads/temp/${outName}`,

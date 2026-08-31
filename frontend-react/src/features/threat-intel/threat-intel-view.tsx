@@ -13,8 +13,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { StaggerContainer, StaggerItem } from "@/components/ui/motion";
-import { SectionHeader } from "@/components/ui/dashboard";
 import { api } from "@/lib/api";
+import { SectionHeader } from "@/components/ui/dashboard";
 
 interface IOC {
   id: string;
@@ -46,6 +46,10 @@ export function ThreatIntelView() {
   const [activeTab, setActiveTab] = useState<"feed" | "heatmap" | "report">("feed");
   const [filterSeverity, setFilterSeverity] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [reportType, setReportType] = useState("ip");
+  const [reportValue, setReportValue] = useState("");
+  const [reportThreat, setReportThreat] = useState("");
+  const [reporting, setReporting] = useState(false);
 
   useEffect(() => { loadData(); }, []);
 
@@ -207,7 +211,18 @@ export function ThreatIntelView() {
             <AlertTriangle className="w-10 h-10 text-amber-400 mx-auto mb-3" />
             <h3 className="text-lg font-semibold text-white">Report an IOC</h3>
             <p className="text-sm text-white/60 mt-1">Submit indicators of compromise to the community database</p>
-            <Button className="mt-4 bg-cyan-500 text-black" onClick={() => {}}>Report IOC</Button>
+            <Button className="mt-4 bg-cyan-500 text-black" disabled={reporting || !reportValue || !reportThreat} onClick={async () => {
+              setReporting(true);
+              try {
+                await api.reportIOC({ type: reportType, value: reportValue, threat: reportThreat, severity: 'medium' });
+                setReportValue('');
+                setReportThreat('');
+              } catch (e) {
+                console.error('Failed to report IOC:', e);
+              } finally {
+                setReporting(false);
+              }
+            }}>{reporting ? 'Reporting...' : 'Report IOC'}</Button>
           </CardContent>
         </Card>
       )}

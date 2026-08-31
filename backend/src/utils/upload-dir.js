@@ -16,4 +16,10 @@ const configured = process.env.UPLOAD_DIR || './uploads';
 const fallback = ensureWritable(path.join(os.tmpdir(), 'enclave-uploads'));
 const UPLOAD_DIR = ensureWritable(path.resolve(configured)) || fallback || './uploads';
 
+// Ensure all required subdirectories exist
+const SUBDIRS = ['faces', 'voices', 'signatures', 'temp', 'pdfs', 'evidence', 'takedowns', 'misc'];
+for (const sub of SUBDIRS) {
+  ensureWritable(path.join(UPLOAD_DIR, sub));
+}
+
 module.exports = { UPLOAD_DIR };

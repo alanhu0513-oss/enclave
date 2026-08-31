@@ -98,9 +98,15 @@ export function NotificationsPanel({
                   <div
                     key={n.id}
                     className={cn(
-                      "flex gap-3 border-b border-white/[0.05] px-4 py-3 transition-colors hover:bg-white/[0.03]",
+                      "flex gap-3 border-b border-white/[0.05] px-4 py-3 transition-colors hover:bg-white/[0.03] cursor-pointer",
                       !n.read && "bg-green/[0.03]"
                     )}
+                    onClick={async () => {
+                      if (!n.read) {
+                        try { await api.markNotificationRead(n.id); } catch (_) {}
+                        refresh();
+                      }
+                    }}
                   >
                     <span
                       className={cn(

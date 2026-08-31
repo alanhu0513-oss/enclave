@@ -317,7 +317,7 @@ export function InsightsView() {
                       {r.created_at ? new Date(r.created_at).toLocaleDateString() : ""}
                     </p>
                   </div>
-                  <a href="#" onClick={(e) => e.preventDefault()} className="text-cyan hover:text-green">
+                  <a href="#" onClick={(e) => { e.preventDefault(); window.open(api.getBaseUrl() + "/reports/" + r.id + "/download", '_blank'); }} className="text-cyan hover:text-green">
                     <Download className="h-4 w-4" />
                   </a>
                 </motion.div>

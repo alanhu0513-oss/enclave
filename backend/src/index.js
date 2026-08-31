@@ -8,6 +8,7 @@ const path = require('path');
 const rateLimit = require('express-rate-limit');
 const { error } = require('./utils/response');
 const { securityHeaders, sanitizeInput } = require('./middleware/security');
+const { UPLOAD_DIR } = require('./utils/upload-dir');
 
 // ─── Env Validation ───
 process.env.PORT = process.env.PORT || '3000';
@@ -179,7 +180,7 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs, {
   customCss: '.swagger-ui .topbar { display: none }',
   customSiteTitle: 'Enclave API Documentation',
 }));
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+app.use('/uploads', express.static(UPLOAD_DIR));
 
 const authRoutes = require('./routes/auth');
 const biometricsRoutes = require('./routes/biometrics');

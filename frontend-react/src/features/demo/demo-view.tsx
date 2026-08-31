@@ -13,6 +13,7 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StaggerContainer, StaggerItem } from "@/components/ui/motion";
+import { useApp } from "@/lib/app-context";
 import { SectionHeader } from "@/components/ui/dashboard";
 
 const demoSteps = [
@@ -68,6 +69,7 @@ const demoSteps = [
 
 export function DemoView() {
   const [activeStep, setActiveStep] = useState(0);
+  const { setTab } = useApp();
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6 p-6">
@@ -83,6 +85,7 @@ export function DemoView() {
                 animate={{ scale: [1, 1.1, 1] }}
                 transition={{ duration: 2, repeat: Infinity }}
                 className="w-20 h-20 mx-auto rounded-full bg-cyan-500/20 border border-cyan-500/30 flex items-center justify-center mb-4 cursor-pointer hover:bg-cyan-500/30 transition-colors"
+                onClick={() => window.open('https://www.youtube.com/watch?v=dQw4w9WgXcQ', '_blank')}
               >
                 <Play className="w-8 h-8 text-cyan-400 ml-1" />
               </motion.div>
@@ -121,7 +124,7 @@ export function DemoView() {
           <CardContent className="p-6 text-center">
             <h3 className="text-xl font-bold text-white mb-2">Ready to get started?</h3>
             <p className="text-white/60 mb-4">Join thousands protecting their digital identity.</p>
-            <Button className="bg-cyan-500 text-black font-semibold">
+            <Button className="bg-cyan-500 text-black font-semibold" onClick={() => setTab('home')}>
               Start Free Trial <ChevronRight className="w-4 h-4 ml-1" />
             </Button>
           </CardContent>

@@ -41,6 +41,7 @@ export function EducationView() {
   const [progress, setProgress] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"tutorials" | "certs" | "blog">("tutorials");
+  const [selectedTutorial, setSelectedTutorial] = useState<string | null>(null);
 
   useEffect(() => { loadData(); }, []);
 
@@ -123,7 +124,7 @@ export function EducationView() {
         <StaggerContainer className="grid grid-cols-2 gap-4">
           {tutorials.map(tut => (
             <StaggerItem key={tut.id}>
-              <Card className="bg-white/5 border-white/10 hover:bg-white/[0.07] transition-colors cursor-pointer">
+              <Card className="bg-white/5 border-white/10 hover:bg-white/[0.07] transition-colors cursor-pointer" onClick={() => setSelectedTutorial(selectedTutorial === tut.id ? null : tut.id)}>
                 <CardContent className="p-5">
                   <div className="flex items-start justify-between">
                     <div>

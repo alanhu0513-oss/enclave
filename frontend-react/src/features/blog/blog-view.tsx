@@ -78,6 +78,7 @@ const categories = ["All", "Threats", "Case Study", "Research", "AI", "Guide"];
 export function BlogView() {
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
+  const [expandedPost, setExpandedPost] = useState<string | null>(null);
 
   const filteredPosts = blogPosts.filter(post => {
     if (selectedCategory !== "All" && post.category !== selectedCategory) return false;
@@ -109,8 +110,8 @@ export function BlogView() {
                   <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{featuredPost.readTime}</span>
                   <span>{featuredPost.date}</span>
                 </div>
-                <Button className="mt-4 bg-cyan-500 text-black">
-                  Read More <ArrowRight className="w-4 h-4 ml-1" />
+                <Button className="mt-4 bg-cyan-500 text-black" onClick={() => setExpandedPost(expandedPost === featuredPost.id ? null : featuredPost.id)}>
+                  {expandedPost === featuredPost.id ? 'Show Less' : 'Read More'} <ArrowRight className="w-4 h-4 ml-1" />
                 </Button>
               </CardContent>
             </div>
@@ -137,7 +138,7 @@ export function BlogView() {
       <StaggerContainer className="grid grid-cols-2 gap-4">
         {regularPosts.map(post => (
           <StaggerItem key={post.id}>
-            <Card className="bg-white/5 border-white/10 hover:bg-white/[0.07] transition-colors cursor-pointer h-full">
+            <Card className="bg-white/5 border-white/10 hover:bg-white/[0.07] transition-colors cursor-pointer h-full" onClick={() => setExpandedPost(expandedPost === post.id ? null : post.id)}>
               <div className="h-32 bg-gradient-to-br from-white/5 to-white/10 flex items-center justify-center">
                 <BookOpen className="w-8 h-8 text-white/20" />
               </div>

@@ -67,6 +67,20 @@ async function notifyNewAlert(user, alert) {
       created_at: new Date().toISOString(),
     });
     results.inApp = notifId;
+
+    // Emit to event bus for WebSocket push
+    try {
+      const { emitNotificationCreated } = require('./event-bus');
+      emitNotificationCreated(user.id, {
+        id: notifId,
+        type: 'new_alert',
+        title: 'New threat detected',
+        body: `A potential deepfake was found on ${hostname}. Confidence: ${alert.confidence}%`,
+        data: { alertId: alert.id, sourceUrl: alert.source_url },
+        read: false,
+        created_at: new Date().toISOString(),
+      });
+    } catch (_) {}
   } catch (e) {
     console.warn('[Notify] In-app notification failed:', e.message);
   }

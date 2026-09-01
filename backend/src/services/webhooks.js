@@ -185,5 +185,33 @@ module.exports = {
   toggleWebhook,
   dispatchEvent,
   verifySignature,
-  signPayload
 };
+
+/* ─── Event Bus → Webhook Bridge ─── */
+try {
+  const { bus, Events } = require('./event-bus');
+
+  bus.on(Events.ALERT_CREATED, ({ userId, alert }) => {
+    dispatchEvent('alert.new', { userId, alert }).catch(() => {});
+  });
+
+  bus.on(Events.ALERT_RESOLVED, ({ userId, alertId }) => {
+    dispatchEvent('alert.resolved', { userId, alertId }).catch(() => {});
+  });
+
+  bus.on(Events.SCAN_COMPLETED, ({ userId, scanType, result }) => {
+    dispatchEvent('scan.completed', { userId, scanType, result }).catch(() => {});
+  });
+
+  bus.on(Events.TAKEDOWN_INITIATED, ({ userId, takedown }) => {
+    dispatchEvent('takedown.initiated', { userId, takedown }).catch(() => {});
+  });
+
+  bus.on(Events.TAKEDOWN_COMPLETED, ({ userId, takedown }) => {
+    dispatchEvent('takedown.completed', { userId, takedown }).catch(() => {});
+  });
+
+  bus.on(Events.USAGE_LIMIT_REACHED, ({ userId, data }) => {
+    dispatchEvent('usage.limit_reached', { userId, ...data }).catch(() => {});
+  });
+} catch (_) {}

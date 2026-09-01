@@ -451,7 +451,7 @@ async function monitorCycle(userId, tier) {
   if (newAlertCount > 0 && user) {
     try {
       const notifTbl = await table('notifications');
-      await notifTbl.insert({
+      const monitorNotif = {
         id: uuidv4(),
         user_id: userId,
         type: 'monitoring_cycle',
@@ -460,7 +460,12 @@ async function monitorCycle(userId, tier) {
         data: JSON.stringify({ sourcesRun: enabledIds.length, findings: findings.length, newAlerts: newAlertCount }),
         read: false,
         created_at: new Date().toISOString(),
-      });
+      };
+      await notifTbl.insert(monitorNotif);
+      try {
+        const { emitNotificationCreated } = require('./event-bus');
+        emitNotificationCreated(userId, monitorNotif);
+      } catch (_) {}
       if (user.email && user.email_notifications !== false) {
         await notifications.sendEmail(
           user.email,

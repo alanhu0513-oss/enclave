@@ -287,7 +287,46 @@ async function start() {
   } catch (e) {
     console.warn('[DIGEST] scheduler init warning:', e.message);
   }
-  app.listen(PORT, () => {
+
+  // ─── HTTP + WebSocket Server ───
+  const http = require('http');
+  const server = http.createServer(app);
+
+  // Attach WebSocket server
+  try {
+    const ws = require('./services/websocket');
+    ws.init(server);
+    console.log('[WS] WebSocket attached to HTTP server');
+  } catch (e) {
+    console.warn('[WS] WebSocket init failed:', e.message);
+  }
+
+  // Initialize job queue workers
+  try {
+    const { getQueue, QUEUES, JobTypes, createWorker } = require('./services/queue');
+    const crawler = require('./services/crawler');
+
+    // Deep scan worker
+    createWorker(QUEUES.DEEP_SCAN, async (job) => {
+      const { userId, userName } = job.data;
+      const { emitScanProgress, emitScanCompleted, emitScanFailed } = require('./services/event-bus');
+      emitScanProgress(userId, job.id, { stage: 'started', percent: 0 });
+      try {
+        const results = await crawler.scanCycle(userId, userName);
+        emitScanCompleted(userId, 'deep', results);
+        return results;
+      } catch (e) {
+        emitScanFailed(userId, 'deep', e);
+        throw e;
+      }
+    }, { concurrency: 2 });
+
+    console.log('[QUEUE] Workers initialized');
+  } catch (e) {
+    console.warn('[QUEUE] Worker init warning:', e.message);
+  }
+
+  server.listen(PORT, () => {
     console.log(`Enclave API running on http://localhost:${PORT}`);
   });
 }

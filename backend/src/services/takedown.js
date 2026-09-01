@@ -528,7 +528,7 @@ async function updateTakedownStatus(takedownId, userId, status, notes = '') {
 
       // In-app notification
       const notifications = await table('notifications');
-      await notifications.insert({
+      const takedownNotif = {
         id: uuidv4(),
         user_id: userId,
         type: 'takedown_update',
@@ -537,7 +537,12 @@ async function updateTakedownStatus(takedownId, userId, status, notes = '') {
         data: JSON.stringify({ takedownId, status, alertId: takedown.alert_id }),
         read: false,
         created_at: new Date().toISOString(),
-      });
+      };
+      await notifications.insert(takedownNotif);
+      try {
+        const { emitNotificationCreated } = require('./event-bus');
+        emitNotificationCreated(userId, takedownNotif);
+      } catch (_) {}
 
       // Email notification
       if (user.email && user.email_notifications !== false) {

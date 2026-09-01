@@ -122,6 +122,13 @@ router.post('/scan/url', async (req, res) => {
     const alert = await alerts.find({ id });
     await usage.incrementUsage(req.user.userId, 'scan');
     notifyOnThreat(req.user.userId, alert, confidence);
+
+    // Emit alert created event
+    try {
+      const { emitAlertCreated } = require('../services/event-bus');
+      emitAlertCreated(req.user.userId, alert);
+    } catch (_) {}
+
     return success(res, { ...toJson(alert), detection }, 'URL scanned');
   } catch (e) {
     return error(res, e.message);
@@ -195,9 +202,25 @@ router.post('/deep-scan', async (req, res) => {
     const users = await table('users');
     const user = await users.find({ id: req.user.userId });
     const userName = user?.full_name || 'unknown';
-    const results = await crawler.scanCycle(req.user.userId, userName);
-    await usage.incrementUsage(req.user.userId, 'deep_scan');
-    return success(res, { count: results.length, alerts: results }, 'Deep scan completed');
+
+    // Start deep scan asynchronously via job queue
+    try {
+      const { getQueue, QUEUES } = require('../services/queue');
+      const { emitScanStarted } = require('../services/event-bus');
+      const scanQueue = getQueue(QUEUES.DEEP_SCAN);
+      const scanJob = await scanQueue.add('deep-scan-user', {
+        userId: req.user.userId,
+        userName,
+      });
+      emitScanStarted(req.user.userId, 'deep', { scanId: scanJob.id });
+      await usage.incrementUsage(req.user.userId, 'deep_scan');
+      return success(res, { scanId: scanJob.id, status: 'started' }, 'Deep scan started');
+    } catch (e) {
+      // Fallback to synchronous if queue unavailable
+      const results = await crawler.scanCycle(req.user.userId, userName);
+      await usage.incrementUsage(req.user.userId, 'deep_scan');
+      return success(res, { count: results.length, alerts: results }, 'Deep scan completed');
+    }
   } catch (e) {
     return error(res, e.message);
   }
@@ -211,6 +234,13 @@ router.patch('/:id/whitelist', async (req, res) => {
       { status: 'RESOLVED_SAFE' }
     );
     if (!updated) return error(res, 'Alert not found', 404);
+
+    // Emit alert resolved event
+    try {
+      const { emitAlertResolved } = require('../services/event-bus');
+      emitAlertResolved(req.user.userId, req.params.id);
+    } catch (_) {}
+
     return success(res, { id: req.params.id, status: 'RESOLVED_SAFE' }, 'Alert whitelisted');
   } catch (e) {
     return error(res, e.message);

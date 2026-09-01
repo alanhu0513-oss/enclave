@@ -127,9 +127,14 @@ const estateRoutes = require('./routes/estate');
 const ssoRoutes = require('./routes/sso');
 const apiPlatformRoutes = require('./routes/api-platform');
 const mlRoutes = require('./routes/ml');
+const whitelabelRoutes = require('./routes/whitelabel');
 const threatIntelRoutes = require('./routes/threat-intel');
 const educationRoutes = require('./routes/education');
 const bugBountyRoutes = require('./routes/bug-bounty');
+const { authenticateApiKey } = require('./middleware/api-key-auth');
+
+// API key authentication (runs before JWT auth on all /api routes)
+app.use('/api', authenticateApiKey);
 
 app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/biometrics', biometricsRoutes);
@@ -163,6 +168,7 @@ app.use('/api/ml', mlRoutes);
 app.use('/api/threat-intel', threatIntelRoutes);
 app.use('/api/education', educationRoutes);
 app.use('/api/bug-bounty', bugBountyRoutes);
+app.use('/api/whitelabel', whitelabelRoutes);
 
 app.get('/api/health', async (req, res) => {
   const health = {

@@ -321,7 +321,8 @@ describe('Protected Routes', () => {
       .set('Authorization', `Bearer ${token}`);
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
-    expect(typeof res.body.data.count).toBe('number');
+    // Deep scan is now async — returns scanId + status
+    expect(res.body.data.scanId || res.body.data.count).toBeDefined();
   }, 30000);
 });
 

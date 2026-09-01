@@ -16,7 +16,7 @@ const VALID_TABLES = new Set([
   'estate_profiles', 'estate_takedowns', 'memorial_requests', 'tutorial_completions',
   'education_tutorials', 'education_certs', 'blog_posts', 'bug_bounty_vulns',
   'bug_bounty_leaderboard', 'ioc_indicators', 'shield_stats', 'voice_analyses',
-  'insurance_plans', 'identity_passports', 'organizations', 'org_invites',
+  'insurance_plans', 'identity_passports', 'organizations', 'org_invites', 'org_members',
 ]);
 
 function validateTableName(name) {

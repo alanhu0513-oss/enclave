@@ -846,3 +846,53 @@ CREATE TABLE IF NOT EXISTS identity_passports (
 
 CREATE INDEX IF NOT EXISTS idx_identity_passports_user ON identity_passports(user_id);
 CREATE INDEX IF NOT EXISTS idx_identity_passports_status ON identity_passports(status);
+
+-- ─── Enterprise: Organizations ───
+CREATE TABLE IF NOT EXISTS organizations (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  owner_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  plan TEXT DEFAULT 'free',
+  invite_code TEXT UNIQUE,
+  sso_enabled BOOLEAN DEFAULT FALSE,
+  sso_provider TEXT,
+  sso_config JSONB DEFAULT '{}',
+  settings JSONB DEFAULT '{}',
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_organizations_owner ON organizations(owner_id);
+CREATE INDEX IF NOT EXISTS idx_organizations_invite_code ON organizations(invite_code);
+
+CREATE TABLE IF NOT EXISTS org_members (
+  id TEXT PRIMARY KEY,
+  org_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  role TEXT DEFAULT 'member',
+  invited_by TEXT,
+  joined_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  UNIQUE(org_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_org_members_org ON org_members(org_id);
+CREATE INDEX IF NOT EXISTS idx_org_members_user ON org_members(user_id);
+
+CREATE TABLE IF NOT EXISTS org_invites (
+  id TEXT PRIMARY KEY,
+  org_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  email TEXT NOT NULL,
+  role TEXT DEFAULT 'member',
+  code TEXT UNIQUE NOT NULL,
+  invited_by TEXT NOT NULL,
+  accepted BOOLEAN DEFAULT FALSE,
+  expires_at TIMESTAMP WITH TIME ZONE,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_org_invites_org ON org_invites(org_id);
+CREATE INDEX IF NOT EXISTS idx_org_invites_code ON org_invites(code);
+CREATE INDEX IF NOT EXISTS idx_org_invites_email ON org_invites(email);
+
+-- Add org_id to audit_logs for org-scoped logging
+ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS org_id TEXT;

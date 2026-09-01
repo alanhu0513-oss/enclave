@@ -364,15 +364,19 @@ router.post('/video', videoUpload.single('video'), async (req, res) => {
       fs.mkdirSync(tempDir, { recursive: true });
 
       // Try ffmpeg frame extraction (3 frames: start, middle, end)
-      const { execSync } = require('child_process');
+      const { execFileSync } = require('child_process');
       const videoPath = req.file.path;
-      const duration = parseInt(execSync(`ffprobe -v error -show_entries format=duration -of csv=p=0 "${videoPath}" 2>/dev/null || echo "0"`).toString().trim()) || 10;
+      let duration = 10;
+      try {
+        const durOut = execFileSync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', videoPath], { timeout: 10000 }).toString().trim();
+        duration = parseInt(durOut) || 10;
+      } catch (_) {}
 
       const timestamps = [1, Math.floor(duration / 2), Math.max(1, duration - 2)];
       for (let i = 0; i < timestamps.length; i++) {
         const framePath = path.join(tempDir, `frame-${i}.jpg`);
         try {
-          execSync(`ffmpeg -y -ss ${timestamps[i]} -i "${videoPath}" -frames:v 1 -q:v 2 "${framePath}" 2>/dev/null`);
+          execFileSync('ffmpeg', ['-y', '-ss', String(timestamps[i]), '-i', videoPath, '-frames:v', '1', '-q:v', '2', framePath], { timeout: 15000, stdio: 'ignore' });
           const frameBuffer = fs.readFileSync(framePath);
           const detectResult = await mlClient.detectImage(frameBuffer, 'image/jpeg', `video-frame-${i}`);
           frames.push({

@@ -4,6 +4,27 @@
  * Falls back to JSON file storage if PG is unavailable.
  */
 
+const VALID_TABLES = new Set([
+  'users', 'faceprints', 'voiceprints', 'signatures', 'alerts', 'documents',
+  'auth_attempts', 'scan_sessions', 'notifications', 'takedowns', 'usage_tracking',
+  'referrals', 'referral_redemptions', 'family_members', 'email_digests',
+  'threat_shares', 'threat_votes', 'forum_posts', 'forum_votes',
+  'otdb_api_keys', 'webhooks', 'white_label', 'sso_configurations', 'sso_states',
+  'reports', 'report_schedules', 'monitoring_state', 'partners', 'partner_conversions',
+  'api_keys', 'api_usage_logs', 'audit_logs', 'ml_models', 'ml_benchmarks',
+  'ab_tests', 'bounty_profiles', 'hunter_scans', 'insurance_policies', 'insurance_claims',
+  'estate_profiles', 'estate_takedowns', 'memorial_requests', 'tutorial_completions',
+  'education_tutorials', 'education_certs', 'blog_posts', 'bug_bounty_vulns',
+  'bug_bounty_leaderboard', 'ioc_indicators', 'shield_stats', 'voice_analyses',
+  'insurance_plans', 'identity_passports', 'organizations', 'org_invites',
+]);
+
+function validateTableName(name) {
+  if (typeof name !== 'string' || !VALID_TABLES.has(name)) {
+    throw new Error(`Invalid table name: "${name}"`);
+  }
+}
+
 const path = require('path');
 const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
@@ -38,6 +59,7 @@ function createJsonEngine() {
     engine: 'json',
     async query() { throw new Error('JSON engine does not support SQL queries'); },
     async table(name) {
+      validateTableName(name);
       const db = load();
       if (!db[name]) db[name] = [];
       const tbl = db[name];
@@ -108,6 +130,7 @@ function createPgEngine() {
       finally { client.release(); }
     },
     async table(name) {
+      validateTableName(name);
       return {
         all: async () => this.query(`SELECT * FROM ${name}`),
         find: async (conditions) => {

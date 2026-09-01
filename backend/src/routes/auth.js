@@ -1,4 +1,5 @@
 const express = require('express');
+const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
@@ -19,6 +20,14 @@ const router = express.Router();
 const passwordResetCodes = new Map();
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function validatePasswordComplexity(pw) {
+  if (pw.length < 8 || pw.length > 128) return 'Password must be 8–128 characters';
+  if (!/[A-Z]/.test(pw)) return 'Password must contain at least one uppercase letter';
+  if (!/[a-z]/.test(pw)) return 'Password must contain at least one lowercase letter';
+  if (!/[0-9]/.test(pw)) return 'Password must contain at least one number';
+  return null;
+}
 
 /**
  * @swagger
@@ -58,6 +67,8 @@ router.post('/register', async (req, res) => {
     if (typeof password !== 'string' || password.length < 8 || password.length > 128) {
       return error(res, 'Password must be 8–128 characters', 400);
     }
+    const pwError = validatePasswordComplexity(password);
+    if (pwError) return error(res, pwError, 400);
     if (typeof fullName !== 'string' || fullName.trim().length < 1 || fullName.length > 100) {
       return error(res, 'Full name must be 1–100 characters', 400);
     }
@@ -144,7 +155,7 @@ router.post('/forgot-password', async (req, res) => {
       return success(res, null, 'If that email is registered, a reset code has been sent.');
     }
 
-    const code = String(Math.floor(100000 + Math.random() * 900000));
+    const code = String(crypto.randomInt(10000000, 99999999));
     const expires = Date.now() + 15 * 60 * 1000;
     passwordResetCodes.set(email.toLowerCase(), { code, expires, userId: user.id });
 
@@ -171,6 +182,8 @@ router.post('/reset-password', async (req, res) => {
     const { email, code, newPassword } = req.body;
     if (!email || !code || !newPassword) return error(res, 'Email, code, and new password required', 400);
     if (newPassword.length < 8) return error(res, 'Password must be at least 8 characters', 400);
+    const pwErr1 = validatePasswordComplexity(newPassword);
+    if (pwErr1) return error(res, pwErr1, 400);
 
     const key = email.toLowerCase();
     const stored = passwordResetCodes.get(key);
@@ -278,6 +291,8 @@ router.post('/change-password', authenticate, async (req, res) => {
     const { currentPassword, newPassword } = req.body;
     if (!currentPassword || !newPassword) return error(res, 'Current and new password required', 400);
     if (newPassword.length < 8) return error(res, 'Password must be at least 8 characters', 400);
+    const pwErr2 = validatePasswordComplexity(newPassword);
+    if (pwErr2) return error(res, pwErr2, 400);
 
     const users = await table('users');
     const user = await users.find({ id: req.user.userId });

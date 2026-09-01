@@ -1,4 +1,5 @@
 const express = require('express');
+const crypto = require('crypto');
 const { v4: uuidv4 } = require('uuid');
 const { authenticate } = require('../middleware/auth');
 const { success, error } = require('../utils/response');
@@ -20,7 +21,7 @@ router.post('/', async (req, res) => {
     const user = await users.find({ id: req.user.userId });
 
     const orgId = uuidv4();
-    const inviteCode = Math.random().toString(36).slice(2, 10).toUpperCase();
+    const inviteCode = crypto.randomBytes(8).toString('hex').toUpperCase();
 
     await orgs.insert({
       id: orgId,
@@ -165,11 +166,11 @@ router.post('/:id/invite', async (req, res) => {
     }
 
     const { email, role } = req.body;
-    if (!email) return error(res, 'Email required', 400);
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email))) return error(res, 'Valid email required', 400);
     const validRoles = ['admin', 'member', 'viewer'];
     const assignRole = validRoles.includes(role) ? role : 'member';
 
-    const inviteCode = Math.random().toString(36).slice(2, 10).toUpperCase();
+    const inviteCode = crypto.randomBytes(8).toString('hex').toUpperCase();
     await invites.insert({
       id: uuidv4(),
       org_id: org.id,

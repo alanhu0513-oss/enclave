@@ -250,6 +250,20 @@ CREATE TABLE IF NOT EXISTS webhooks (
   updated_at TIMESTAMP WITH TIME ZONE
 );
 
+CREATE TABLE IF NOT EXISTS webhook_delivery_logs (
+  id TEXT PRIMARY KEY DEFAULT ('whdel_' || replace(cast(gen_random_uuid() as text), '-', '')),
+  webhook_id TEXT NOT NULL REFERENCES webhooks(id) ON DELETE CASCADE,
+  event TEXT NOT NULL,
+  payload TEXT,
+  status_code INTEGER,
+  success BOOLEAN DEFAULT FALSE,
+  error_message TEXT,
+  latency_ms INTEGER,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_webhook_delivery_webhook ON webhook_delivery_logs(webhook_id, created_at DESC);
+
 CREATE TABLE IF NOT EXISTS white_label (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,

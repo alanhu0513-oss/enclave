@@ -219,9 +219,60 @@ router.post("/webhooks/:webhookId/test", async (req, res) => {
       return error(res, "Webhook not found", 404);
     }
 
-    await whTbl.update({ id: webhookId }, { last_triggered_at: new Date().toISOString() });
+    // Actually dispatch a test payload
+    const webhooks = require("../services/webhooks");
+    const crypto = require("crypto");
+    const payload = {
+      event: "webhook.test",
+      timestamp: new Date().toISOString(),
+      data: {
+        message: "This is a test webhook delivery from Enclave",
+        webhook_id: webhookId,
+        user_id: userId,
+      },
+    };
 
-    return success(res, { message: "Test webhook sent" });
+    let deliverySuccess = false;
+    let statusCode = null;
+    let errorMsg = null;
+
+    try {
+      const url = webhook.url;
+      const secret = webhook.secret || "";
+      const body = JSON.stringify(payload);
+      const signature = crypto.createHmac("sha256", secret).update(body).digest("hex");
+
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10000);
+
+      const resp = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Enclave-Signature": `sha256=${signature}`,
+          "X-Enclave-Event": "webhook.test",
+        },
+        body,
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+
+      statusCode = resp.status;
+      deliverySuccess = resp.ok;
+    } catch (e) {
+      errorMsg = e.message;
+    }
+
+    await whTbl.update({ id: webhookId }, {
+      last_triggered_at: new Date().toISOString(),
+      ...(deliverySuccess ? {} : { failure_count: (webhook.failure_count || 0) + 1 }),
+    });
+
+    return success(res, {
+      message: deliverySuccess ? "Test webhook delivered" : "Test webhook failed",
+      status_code: statusCode,
+      error: errorMsg,
+    });
   } catch (e) {
     return error(res, e.message, 500);
   }
@@ -233,16 +284,68 @@ router.get("/rate-limits", async (req, res) => {
     const userId = req.user.userId;
     const keysTbl = await table("api_keys");
     const keys = await keysTbl.filter({ user_id: userId });
+    const usageTbl = await table("api_usage_logs");
 
-    const limits = keys.map(k => ({
-      keyId: k.id,
-      name: k.name,
-      rateLimit: k.rate_limit || 100,
-      currentUsage: 0,
-      status: "ok",
+    const now = Date.now();
+    const oneMinuteAgo = new Date(now - 60000).toISOString();
+
+    const limits = await Promise.all(keys.map(async (k) => {
+      let currentUsage = 0;
+      try {
+        const logs = await usageTbl.filter({ api_key_id: k.id });
+        currentUsage = (Array.isArray(logs) ? logs : []).filter(
+          l => l.created_at && new Date(l.created_at) > new Date(oneMinuteAgo)
+        ).length;
+      } catch (_) {}
+
+      const rateLimit = k.rate_limit || 100;
+      return {
+        keyId: k.id,
+        name: k.name,
+        rateLimit,
+        currentUsage,
+        remaining: Math.max(0, rateLimit - currentUsage),
+        status: currentUsage >= rateLimit ? "limited" : "ok",
+      };
     }));
 
     return success(res, { limits });
+  } catch (e) {
+    return error(res, e.message, 500);
+  }
+});
+
+// Webhook update
+router.put("/webhooks/:webhookId", authenticate, async (req, res) => {
+  try {
+    const { url, events, description } = req.body;
+    const tbl = await table("webhooks");
+    const webhook = await tbl.find({ id: req.params.webhookId });
+    if (!webhook || webhook.user_id !== req.user.userId) return error(res, "Webhook not found", 404);
+
+    const updates = {};
+    if (url) updates.url = url;
+    if (events) updates.events = JSON.stringify(events);
+    if (description !== undefined) updates.description = description;
+    updates.updated_at = new Date().toISOString();
+
+    await tbl.update({ id: req.params.webhookId }, updates);
+    return success(res, { message: "Webhook updated" });
+  } catch (e) {
+    return error(res, e.message, 500);
+  }
+});
+
+// Webhook delivery logs
+router.get("/webhooks/:webhookId/deliveries", authenticate, async (req, res) => {
+  try {
+    const tbl = await table("webhooks");
+    const webhook = await tbl.find({ id: req.params.webhookId });
+    if (!webhook || webhook.user_id !== req.user.userId) return error(res, "Webhook not found", 404);
+
+    const logs = await table("webhook_delivery_logs");
+    const deliveries = await logs.filter({ webhook_id: req.params.webhookId });
+    return success(res, { deliveries: (Array.isArray(deliveries) ? deliveries : []).slice(-50) });
   } catch (e) {
     return error(res, e.message, 500);
   }

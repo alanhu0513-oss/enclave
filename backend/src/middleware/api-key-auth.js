@@ -71,8 +71,37 @@ async function authenticateApiKey(req, res, next) {
         : keyRecord.permissions,
     };
 
+    // Enforce permissions based on HTTP method
+    const perms = req.apiKey.permissions || ['read'];
+    const method = req.method.toUpperCase();
+    const isWrite = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method);
+    const isAdmin = req.originalUrl.includes('/admin');
+
+    if (isWrite && !perms.includes('write') && !perms.includes('admin')) {
+      return res.status(403).json({ error: 'API key lacks write permission' });
+    }
+    if (isAdmin && !perms.includes('admin')) {
+      return res.status(403).json({ error: 'API key lacks admin permission' });
+    }
+
     // Also set user for downstream routes
     req.user = { userId: keyRecord.user_id };
+
+    // Capture response status for logging
+    const originalEnd = res.end;
+    res.end = function (...args) {
+      try {
+        table('api_usage_logs').then(logs => {
+          logs.filter({ api_key_id: keyRecord.id }).then(recent => {
+            const latest = Array.isArray(recent) ? recent.find(l => !l.status_code) : null;
+            if (latest) {
+              logs.update({ id: latest.id }, { status_code: res.statusCode });
+            }
+          });
+        }).catch(() => {});
+      } catch (_) {}
+      return originalEnd.apply(this, args);
+    };
 
     next();
   } catch (e) {

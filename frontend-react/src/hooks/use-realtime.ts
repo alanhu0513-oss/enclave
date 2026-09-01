@@ -6,7 +6,7 @@
 
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { api } from '../lib/api';
+import { api, getToken } from '../lib/api';
 
 interface RealtimeEvent {
   type: string;
@@ -37,7 +37,7 @@ export function useRealtime(options: UseRealtimeOptions = {}) {
   optionsRef.current = options;
 
   useEffect(() => {
-    const token = api.getToken();
+    const token = getToken();
     if (!token) return;
 
     const wsUrl = api.getBaseUrl() || window.location.origin;

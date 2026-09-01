@@ -1,68 +1,79 @@
-document.addEventListener("DOMContentLoaded", () => {
-  const toggle = document.getElementById("shieldToggle");
-  const statusDot = document.getElementById("statusDot");
-  const statusText = document.getElementById("statusText");
-  const scanCount = document.getElementById("scanCount");
-  const threatCount = document.getElementById("threatCount");
-  const blockCount = document.getElementById("blockCount");
-  const lastDetection = document.getElementById("lastDetection");
-  const sensBtns = document.querySelectorAll(".sens-btn");
+/* ─── ENCLAVE Video Call Shield — Popup ─── */
 
-  chrome.runtime.sendMessage({ type: "GET_STATUS" }, (res) => {
-    if (!res) return;
-    updateUI(res.active, res.sensitivity, res.stats, res.lastDetection);
-  });
+let settings = { sensitivity: 'medium', autoScan: true, audioAnalysis: true, faceMatching: true };
 
-  toggle.addEventListener("click", () => {
-    const isActive = toggle.classList.contains("on");
-    chrome.runtime.sendMessage({ type: "TOGGLE_SHIELD", active: !isActive }, (res) => {
-      if (res) updateUI(res.active);
-    });
-  });
+// Load state
+chrome.storage.local.get(['shieldActive', 'settings', 'stats', 'lastDetection', 'apiToken'], (data) => {
+  if (data.settings) settings = { ...settings, ...data.settings };
+  updateUI(data.shieldActive, data.stats, data.lastDetection, !!data.apiToken);
+});
 
-  sensBtns.forEach((btn) => {
-    btn.addEventListener("click", () => {
-      sensBtns.forEach((b) => b.classList.remove("active"));
-      btn.classList.add("active");
-      chrome.runtime.sendMessage({ type: "SET_SENSITIVITY", sensitivity: btn.dataset.level });
-    });
-  });
-
-  function updateUI(active, sensitivity, stats, lastDet) {
-    toggle.classList.toggle("on", active);
-    statusDot.classList.toggle("off", !active);
-    statusText.textContent = active ? "Active" : "Paused";
-    statusText.style.color = active ? "#00c896" : "#666";
-
-    if (stats) {
-      scanCount.textContent = stats.scans || 0;
-      threatCount.textContent = stats.threats || 0;
-      blockCount.textContent = stats.blocked || 0;
-    }
-
-    if (sensitivity) {
-      sensBtns.forEach((b) => {
-        b.classList.toggle("active", b.dataset.level === sensitivity);
+// Toggle shield
+document.getElementById('shieldToggle').addEventListener('click', () => {
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    if (tabs[0]) {
+      chrome.tabs.sendMessage(tabs[0].id, { type: 'TOGGLE_SHIELD' });
+      // Also send to background
+      chrome.runtime.sendMessage({ type: 'TOGGLE_SHIELD' }, (res) => {
+        updateToggleUI(res?.active);
       });
     }
-
-    if (lastDet && lastDet.time) {
-      const isDanger = lastDet.isDeepfake;
-      lastDetection.className = `last-detection ${isDanger ? "danger" : "safe"}`;
-      lastDetection.innerHTML = `
-        <div class="ld-header">
-          <span class="ld-icon">${isDanger ? "⚠️" : "🛡️"}</span>
-          <span class="ld-text">${isDanger ? "Threat detected" : "No threats detected"}</span>
-        </div>
-        <div class="ld-time">Confidence: ${(lastDet.confidence || 0).toFixed(1)}% · ${timeAgo(lastDet.time)}</div>
-      `;
-    }
-  }
-
-  function timeAgo(ts) {
-    const diff = Math.floor((Date.now() - ts) / 1000);
-    if (diff < 60) return `${diff}s ago`;
-    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-    return `${Math.floor(diff / 3600)}h ago`;
-  }
+  });
 });
+
+// Sensitivity selector
+document.getElementById('sensitivity').addEventListener('change', (e) => {
+  settings.sensitivity = e.target.value;
+  chrome.runtime.sendMessage({ type: 'UPDATE_SETTINGS', settings });
+});
+
+// Audio toggle
+document.getElementById('audioToggle')?.addEventListener('click', () => {
+  settings.audioAnalysis = !settings.audioAnalysis;
+  chrome.runtime.sendMessage({ type: 'UPDATE_SETTINGS', settings });
+  document.getElementById('audioToggle').classList.toggle('active', settings.audioAnalysis);
+});
+
+function updateUI(active, stats, lastDetection, hasToken) {
+  updateToggleUI(active);
+
+  if (stats) {
+    document.getElementById('scanCount').textContent = stats.scans || 0;
+    document.getElementById('threatCount').textContent = stats.threats || 0;
+  }
+
+  document.getElementById('sensitivity').value = settings.sensitivity || 'medium';
+
+  if (document.getElementById('audioToggle')) {
+    document.getElementById('audioToggle').classList.toggle('active', settings.audioAnalysis !== false);
+  }
+
+  // Last detection
+  const lastEl = document.getElementById('lastDetection');
+  if (lastDetection && lastEl) {
+    const ago = formatTimeAgo(lastDetection.time);
+    lastEl.querySelector('.ld-icon').textContent = lastDetection.isDeepfake ? '🚨' : '🛡️';
+    lastEl.querySelector('.ld-text').textContent = lastDetection.isDeepfake
+      ? `Deepfake: ${lastDetection.confidence}%`
+      : 'No threats detected';
+    lastEl.querySelector('.ld-time').textContent = ago;
+  }
+}
+
+function updateToggleUI(active) {
+  const toggle = document.getElementById('shieldToggle');
+  const dot = document.getElementById('statusDot');
+  const text = document.getElementById('statusText');
+  if (toggle) toggle.className = `toggle ${active ? 'on' : ''}`;
+  if (dot) dot.style.background = active ? '#00ff88' : '#ef4444';
+  if (text) text.textContent = active ? 'Active' : 'Paused';
+}
+
+function formatTimeAgo(timestamp) {
+  if (!timestamp) return 'Never';
+  const diff = Date.now() - timestamp;
+  if (diff < 60000) return 'Just now';
+  if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
+  if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
+  return `${Math.floor(diff / 86400000)}d ago`;
+}

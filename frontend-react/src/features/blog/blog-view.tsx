@@ -151,7 +151,7 @@ function BlogDetail({ post, onBack }: { post: BlogPost; onBack: () => void }) {
 
 export function BlogView() {
   const [posts, setPosts] = useState<BlogPost[]>(fallbackPosts);
-  const [loading, setLoading] = useState(true);
+  const [_loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedPost, setSelectedPost] = useState<BlogPost | null>(null);

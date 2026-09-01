@@ -11,6 +11,7 @@ import {
 } from "@/features/onboarding/onboarding-wizard";
 import { FeedbackWidget } from "@/features/feedback/feedback-widget";
 import { NpsSurvey } from "@/features/feedback/nps-survey";
+import { OfflineBanner } from "@/components/performance/offline-banner";
 import { FadeIn } from "@/components/ui/motion";
 import { updateSEO } from "@/lib/seo";
 import { SeoJsonLd } from "@/components/seo-json-ld";
@@ -146,6 +147,7 @@ export function AppShell() {
       {!hasCompletedOnboarding() && <OnboardingWizard />}
       <FeedbackWidget />
       <NpsSurvey />
+      <OfflineBanner />
     </div>
   );
 }

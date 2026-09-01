@@ -688,6 +688,18 @@ CREATE TABLE IF NOT EXISTS blog_posts (
   updated_at TIMESTAMP WITH TIME ZONE
 );
 
+CREATE TABLE IF NOT EXISTS newsletter_subscribers (
+  id TEXT PRIMARY KEY DEFAULT ('sub_' || replace(cast(gen_random_uuid() as text), '-', '')),
+  email TEXT UNIQUE NOT NULL,
+  subscribed_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  active BOOLEAN DEFAULT TRUE,
+  unsubscribed_at TIMESTAMP WITH TIME ZONE,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_newsletter_email ON newsletter_subscribers(email);
+CREATE INDEX IF NOT EXISTS idx_newsletter_active ON newsletter_subscribers(active);
+
 -- Bug Bounty
 CREATE TABLE IF NOT EXISTS bug_bounty_vulns (
   id TEXT PRIMARY KEY,

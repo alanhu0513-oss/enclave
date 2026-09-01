@@ -17,6 +17,7 @@ const VALID_TABLES = new Set([
   'education_tutorials', 'education_certs', 'blog_posts', 'bug_bounty_vulns',
   'bug_bounty_leaderboard', 'ioc_indicators', 'shield_stats', 'voice_analyses',
   'insurance_plans', 'identity_passports', 'organizations', 'org_invites', 'org_members',
+  'newsletter_subscribers',
 ]);
 
 function validateTableName(name) {

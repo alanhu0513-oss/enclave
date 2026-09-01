@@ -146,12 +146,81 @@ router.get("/progress", authenticate, async (req, res) => {
   }
 });
 
-router.get("/blog", authenticate, async (req, res) => {
+// Public blog endpoints (no auth — SEO crawlers need access)
+router.get("/blog", async (req, res) => {
   try {
     await ensureSeeded();
     const tbl = await table("blog_posts");
     const posts = await tbl.all();
     return success(res, { posts });
+  } catch (e) {
+    return error(res, e.message, 500);
+  }
+});
+
+router.get("/blog/:id", async (req, res) => {
+  try {
+    await ensureSeeded();
+    const tbl = await table("blog_posts");
+    const post = await tbl.find({ id: req.params.id });
+    if (!post) return error(res, "Post not found", 404);
+    return success(res, { post });
+  } catch (e) {
+    return error(res, e.message, 500);
+  }
+});
+
+// RSS Feed
+router.get("/rss", async (req, res) => {
+  try {
+    await ensureSeeded();
+    const tbl = await table("blog_posts");
+    const posts = await tbl.all();
+    const baseUrl = process.env.FRONTEND_URL || "https://enclave-react.vercel.app";
+
+    const items = (Array.isArray(posts) ? posts : []).map(p => `
+    <item>
+      <title><![CDATA[${p.title || ""}]]></title>
+      <link>${baseUrl}/blog/${p.id}</link>
+      <description><![CDATA[${p.excerpt || ""}]]></description>
+      <category>${p.category || "Threat Intelligence"}</category>
+      <pubDate>${p.published_at || p.date || new Date().toUTCString()}</pubDate>
+      <guid>${baseUrl}/blog/${p.id}</guid>
+    </item>`).join("\n");
+
+    const rss = `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+<channel>
+  <title>Enclave — Identity Protection Blog</title>
+  <link>${baseUrl}</link>
+  <description>Deepfake detection, identity theft prevention, and digital security insights.</description>
+  <language>en-us</language>
+  <lastBuildDate>${new Date().toUTCString()}</lastBuildDate>
+  <atom:link href="${baseUrl}/api/education/rss" rel="self" type="application/rss+xml"/>
+  ${items}
+</channel>
+</rss>`;
+
+    res.set("Content-Type", "application/rss+xml; charset=utf-8");
+    return res.send(rss);
+  } catch (e) {
+    return error(res, e.message, 500);
+  }
+});
+
+// Newsletter signup (public)
+router.post("/newsletter", async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return error(res, "Valid email required", 400);
+    }
+    const tbl = await table("newsletter_subscribers");
+    const existing = await tbl.find({ email });
+    if (existing) return success(res, { message: "Already subscribed" });
+
+    await tbl.create({ email, subscribed_at: new Date().toISOString(), active: true });
+    return success(res, { message: "Subscribed to newsletter" }, "OK", 201);
   } catch (e) {
     return error(res, e.message, 500);
   }

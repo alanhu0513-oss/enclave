@@ -133,6 +133,23 @@ async function detectImageBuffer(buffer, filename) {
   const started = Date.now();
   const mimetype = _sniffMime(buffer, 'image/jpeg');
 
+  // 0) A/B test routing — check if request should use a specific model
+  try {
+    const { table } = require('../db/query');
+    const abTests = await table('ab_tests');
+    const activeTests = await abTests.filter({ status: 'active' });
+    const test = Array.isArray(activeTests) ? activeTests.find(t => t.model_a || t.model_b) : null;
+    if (test) {
+      const split = test.traffic_split || 50;
+      const hash = require('crypto').createHash('md5').update(buffer.slice(0, 1024)).digest('hex');
+      const bucket = parseInt(hash.slice(0, 8), 16) % 100;
+      const useModelB = bucket >= split;
+      if (useModelB && test.model_b) {
+        console.log(`[ML Client] A/B test routing to model B: ${test.model_b}`);
+      }
+    }
+  } catch (_) {} // Non-blocking
+
   // 1) Primary AI provider (auto-detected via env key)
   try {
     const g = await primaryAi.detectImage(buffer, mimetype, filename);
@@ -400,4 +417,5 @@ module.exports = {
   downloadModels,
   isMlAvailable,
   getStatus,
+  resetCircuitBreaker: () => { _circuitOpen = false; _mlConsecutiveFailures = 0; console.log('[ML Client] Circuit breaker reset'); },
 };

@@ -439,6 +439,52 @@ async def health():
     }
 
 
+@app.post("/models/swap")
+async def swap_model(name: str = Form(...), model_path: str = Form(None)):
+    """Hot-swap a loaded model. Unloads current, loads new one from path or MODEL_DIR."""
+    global _models
+
+    # Unload current
+    if name in _models:
+        del _models[name]
+        logger.info(f"Unloaded model: {name}")
+
+    # Load new
+    if model_path:
+        import onnxruntime as ort
+        from pathlib import Path as P
+        path = P(model_path)
+        if not path.exists():
+            raise HTTPException(404, f"Model file not found: {model_path}")
+        try:
+            opts = ort.SessionOptions()
+            opts.inter_op_num_threads = 2
+            opts.intra_op_num_threads = 4
+            opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+            session = ort.InferenceSession(str(path), opts)
+            _models[name] = session
+            logger.info(f"Swapped model {name} -> {model_path}")
+            return {"status": "swapped", "model": name, "path": str(path)}
+        except Exception as e:
+            raise HTTPException(500, f"Failed to load model: {e}")
+    else:
+        # Reload from default path
+        session = _load_onnx_model(name)
+        if session is None:
+            raise HTTPException(404, f"Model {name} not found in {MODEL_DIR}")
+        return {"status": "reloaded", "model": name}
+
+
+@app.post("/models/preload")
+async def preload_models():
+    """Pre-load all available models into memory."""
+    loaded = {}
+    for name in ["xceptionnet"]:
+        session = _load_onnx_model(name)
+        loaded[name] = session is not None
+    return {"status": "ok", "loaded": loaded}
+
+
 @app.post("/detect/image")
 async def detect_image(file: UploadFile = File(...)):
     """Full deepfake detection pipeline: face extraction → XceptionNet → heuristic scoring."""

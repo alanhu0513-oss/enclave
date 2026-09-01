@@ -163,4 +163,37 @@ router.delete("/ab-tests/:testId", authenticate, async (req, res) => {
   }
 });
 
+// Circuit breaker reset
+router.post("/circuit-breaker/reset", authenticate, async (req, res) => {
+  try {
+    const mlClient = require("../services/ml-client");
+    mlClient.resetCircuitBreaker();
+    return success(res, { message: "Circuit breaker reset" });
+  } catch (e) {
+    return error(res, e.message, 500);
+  }
+});
+
+// Model swap (proxy to Python ML service)
+router.post("/models/:modelId/swap", authenticate, async (req, res) => {
+  try {
+    const ML_SERVICE_URL = process.env.ML_SERVICE_URL || "http://localhost:8001";
+    const { model_path } = req.body;
+    const FormData = require("form-data");
+    const form = new FormData();
+    form.append("name", req.params.modelId);
+    if (model_path) form.append("model_path", model_path);
+
+    const resp = await fetch(`${ML_SERVICE_URL}/models/swap`, {
+      method: "POST",
+      body: form,
+      headers: form.getHeaders(),
+    });
+    const data = await resp.json();
+    return success(res, data);
+  } catch (e) {
+    return error(res, e.message || "Model swap failed", 500);
+  }
+});
+
 module.exports = router;

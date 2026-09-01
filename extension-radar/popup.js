@@ -1,4 +1,4 @@
-let settings = { enabled: true, showBadge: true, sensitivity: 'medium' };
+let settings = { enabled: true, showBadge: true, sensitivity: 'medium', useApi: true };
 
 chrome.runtime.sendMessage({ type: 'GET_SETTINGS' }, (res) => {
   if (res) {
@@ -17,6 +17,7 @@ chrome.runtime.sendMessage({ type: 'GET_STATS' }, (res) => {
 function updateUI() {
   document.getElementById('enabledToggle').classList.toggle('active', settings.enabled);
   document.getElementById('badgeToggle').classList.toggle('active', settings.showBadge);
+  document.getElementById('apiToggle').classList.toggle('active', settings.useApi !== false);
   document.getElementById('sensitivity').value = settings.sensitivity || 'medium';
 }
 
@@ -28,6 +29,12 @@ document.getElementById('enabledToggle').addEventListener('click', () => {
 
 document.getElementById('badgeToggle').addEventListener('click', () => {
   settings.showBadge = !settings.showBadge;
+  chrome.runtime.sendMessage({ type: 'UPDATE_SETTINGS', settings });
+  updateUI();
+});
+
+document.getElementById('apiToggle').addEventListener('click', () => {
+  settings.useApi = settings.useApi === false ? true : false;
   chrome.runtime.sendMessage({ type: 'UPDATE_SETTINGS', settings });
   updateUI();
 });

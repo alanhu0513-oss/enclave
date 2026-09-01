@@ -180,8 +180,19 @@ app.get('/api/health', async (req, res) => {
       heapUsed: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
       heapTotal: Math.round(process.memoryUsage().heapTotal / 1024 / 1024),
       rss: Math.round(process.memoryUsage().rss / 1024 / 1024),
+      external: Math.round(process.memoryUsage().external / 1024 / 1024),
+    },
+    cpu: {
+      usage: process.cpuUsage(),
+      loadAvg: require('os').loadavg(),
+    },
+    system: {
+      platform: process.platform,
+      nodeVersion: process.version,
+      pid: process.pid,
     },
   };
+
   // DB health check
   try {
     const { getEngine } = require('./db/adapter');
@@ -191,6 +202,20 @@ app.get('/api/health', async (req, res) => {
     health.db = { status: 'error', message: e.message };
     health.status = 'degraded';
   }
+
+  // Redis health check
+  try {
+    const { getRedisConnection } = require('./services/queue');
+    const redis = getRedisConnection();
+    if (redis && redis.status === 'ready') {
+      health.redis = { status: 'ok' };
+    } else {
+      health.redis = { status: 'unavailable', fallback: 'in-memory' };
+    }
+  } catch {
+    health.redis = { status: 'unavailable', fallback: 'in-memory' };
+  }
+
   // ML service health
   try {
     const mlClient = require('./services/ml-client');
@@ -200,8 +225,79 @@ app.get('/api/health', async (req, res) => {
   } catch {
     health.ml = { status: 'unavailable' };
   }
+
+  // WebSocket health
+  try {
+    const websocket = require('./services/websocket');
+    health.websocket = { status: 'ok', connections: websocket.getConnectionCount?.() || 0 };
+  } catch {
+    health.websocket = { status: 'unavailable' };
+  }
+
+  // Event bus health
+  try {
+    const eventBus = require('./services/event-bus');
+    health.eventBus = { status: 'ok', listenerCount: eventBus.listenerCount?.('test') || 0 };
+  } catch {
+    health.eventBus = { status: 'unavailable' };
+  }
+
   const statusCode = health.status === 'ok' ? 200 : 503;
   res.status(statusCode).json(health);
+});
+
+// Metrics endpoint for monitoring dashboards
+app.get('/api/metrics', async (req, res) => {
+  try {
+    const { table } = require('./db/query');
+    const now = Date.now();
+    const oneHourAgo = new Date(now - 3600000).toISOString();
+    const oneDayAgo = new Date(now - 86400000).toISOString();
+
+    // Count records
+    let alertsTotal = 0, takedownsTotal = 0, usersTotal = 0, scansToday = 0;
+    try {
+      const alerts = await table('alerts');
+      const allAlerts = await alerts.all();
+      alertsTotal = Array.isArray(allAlerts) ? allAlerts.length : 0;
+    } catch (_) {}
+    try {
+      const takedowns = await table('takedowns');
+      const allTakedowns = await takedowns.all();
+      takedownsTotal = Array.isArray(allTakedowns) ? allTakedowns.length : 0;
+    } catch (_) {}
+    try {
+      const users = await table('users');
+      const allUsers = await users.all();
+      usersTotal = Array.isArray(allUsers) ? allUsers.length : 0;
+    } catch (_) {}
+    try {
+      const usage = await table('api_usage_logs');
+      const allUsage = await usage.all();
+      scansToday = Array.isArray(allUsage) ? allUsage.filter(l => l.created_at > oneDayAgo).length : 0;
+    } catch (_) {}
+
+    res.json({
+      timestamp: new Date().toISOString(),
+      uptime: Math.round(process.uptime()),
+      memory: {
+        heapUsedMB: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+        rssMB: Math.round(process.memoryUsage().rss / 1024 / 1024),
+      },
+      counts: {
+        alerts: alertsTotal,
+        takedowns: takedownsTotal,
+        users: usersTotal,
+        apiRequestsToday: scansToday,
+      },
+      errorRates: {
+        '4xx': _errorCounts['4xx'],
+        '5xx': _errorCounts['5xx'],
+      },
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // Serve frontend static files

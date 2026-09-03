@@ -1,6 +1,6 @@
 /* ─── Enclave Crawler Service ───
- * Proactive identity monitoring: text search (DuckDuckGo + Yandex),
- * dark web (Ahmia), reverse image analysis, face matching.
+ * Proactive identity monitoring: social media, dark web, paste sites,
+ * reverse image analysis, face matching.
  */
 
 const fs = require('fs');
@@ -133,6 +133,305 @@ async function search4chan(userName) {
       });
     }
   } catch {}
+  return results;
+}
+
+/* ─── Social Media Crawlers ─── */
+
+async function searchTwitter(userName) {
+  const results = [];
+  try {
+    const res = await fetchWithTimeout(
+      `https://html.duckduckgo.com/html/?q=site:twitter.com+OR+site:x.com+"${userName}"`,
+      10000
+    );
+    if (!res.ok) return [];
+    const html = await res.text();
+    const $ = cheerio.load(html);
+    $('.result, .web-result').each((i, el) => {
+      const title = $(el).find('h2, .result__title').text().trim();
+      let url = $(el).find('a').first().attr('href');
+      const snippet = $(el).find('.result__snippet').text().trim();
+      if (url) {
+        const match = url.match(/uddg=([^&]+)/);
+        if (match) url = decodeURIComponent(match[1]);
+        if (url.includes('twitter.com') || url.includes('x.com')) {
+          results.push({ title, url, snippet, source: 'twitter' });
+        }
+      }
+    });
+  } catch {}
+  return results;
+}
+
+async function searchInstagram(userName) {
+  const results = [];
+  try {
+    const res = await fetchWithTimeout(
+      `https://html.duckduckgo.com/html/?q=site:instagram.com+"${userName}"`,
+      10000
+    );
+    if (!res.ok) return [];
+    const html = await res.text();
+    const $ = cheerio.load(html);
+    $('.result, .web-result').each((i, el) => {
+      const title = $(el).find('h2, .result__title').text().trim();
+      let url = $(el).find('a').first().attr('href');
+      const snippet = $(el).find('.result__snippet').text().trim();
+      if (url) {
+        const match = url.match(/uddg=([^&]+)/);
+        if (match) url = decodeURIComponent(match[1]);
+        if (url.includes('instagram.com')) {
+          results.push({ title, url, snippet, source: 'instagram' });
+        }
+      }
+    });
+  } catch {}
+  return results;
+}
+
+async function searchTikTok(userName) {
+  const results = [];
+  try {
+    const res = await fetchWithTimeout(
+      `https://html.duckduckgo.com/html/?q=site:tiktok.com+"${userName}"`,
+      10000
+    );
+    if (!res.ok) return [];
+    const html = await res.text();
+    const $ = cheerio.load(html);
+    $('.result, .web-result').each((i, el) => {
+      const title = $(el).find('h2, .result__title').text().trim();
+      let url = $(el).find('a').first().attr('href');
+      const snippet = $(el).find('.result__snippet').text().trim();
+      if (url) {
+        const match = url.match(/uddg=([^&]+)/);
+        if (match) url = decodeURIComponent(match[1]);
+        if (url.includes('tiktok.com')) {
+          results.push({ title, url, snippet, source: 'tiktok' });
+        }
+      }
+    });
+  } catch {}
+  return results;
+}
+
+async function searchFacebook(userName) {
+  const results = [];
+  try {
+    const res = await fetchWithTimeout(
+      `https://html.duckduckgo.com/html/?q=site:facebook.com+"${userName}"`,
+      10000
+    );
+    if (!res.ok) return [];
+    const html = await res.text();
+    const $ = cheerio.load(html);
+    $('.result, .web-result').each((i, el) => {
+      const title = $(el).find('h2, .result__title').text().trim();
+      let url = $(el).find('a').first().attr('href');
+      const snippet = $(el).find('.result__snippet').text().trim();
+      if (url) {
+        const match = url.match(/uddg=([^&]+)/);
+        if (match) url = decodeURIComponent(match[1]);
+        if (url.includes('facebook.com')) {
+          results.push({ title, url, snippet, source: 'facebook' });
+        }
+      }
+    });
+  } catch {}
+  return results;
+}
+
+async function searchYouTube(userName) {
+  const results = [];
+  try {
+    const res = await fetchWithTimeout(
+      `https://html.duckduckgo.com/html/?q=site:youtube.com+"${userName}"+deepfake+OR+"face+swap"+OR+impersonation`,
+      10000
+    );
+    if (!res.ok) return [];
+    const html = await res.text();
+    const $ = cheerio.load(html);
+    $('.result, .web-result').each((i, el) => {
+      const title = $(el).find('h2, .result__title').text().trim();
+      let url = $(el).find('a').first().attr('href');
+      const snippet = $(el).find('.result__snippet').text().trim();
+      if (url) {
+        const match = url.match(/uddg=([^&]+)/);
+        if (match) url = decodeURIComponent(match[1]);
+        if (url.includes('youtube.com')) {
+          results.push({ title, url, snippet, source: 'youtube' });
+        }
+      }
+    });
+  } catch {}
+  return results;
+}
+
+async function searchLinkedIn(userName) {
+  const results = [];
+  try {
+    const res = await fetchWithTimeout(
+      `https://html.duckduckgo.com/html/?q=site:linkedin.com+"${userName}"`,
+      10000
+    );
+    if (!res.ok) return [];
+    const html = await res.text();
+    const $ = cheerio.load(html);
+    $('.result, .web-result').each((i, el) => {
+      const title = $(el).find('h2, .result__title').text().trim();
+      let url = $(el).find('a').first().attr('href');
+      const snippet = $(el).find('.result__snippet').text().trim();
+      if (url) {
+        const match = url.match(/uddg=([^&]+)/);
+        if (match) url = decodeURIComponent(match[1]);
+        if (url.includes('linkedin.com')) {
+          results.push({ title, url, snippet, source: 'linkedin' });
+        }
+      }
+    });
+  } catch {}
+  return results;
+}
+
+async function searchPinterest(userName) {
+  const results = [];
+  try {
+    const res = await fetchWithTimeout(
+      `https://html.duckduckgo.com/html/?q=site:pinterest.com+"${userName}"`,
+      10000
+    );
+    if (!res.ok) return [];
+    const html = await res.text();
+    const $ = cheerio.load(html);
+    $('.result, .web-result').each((i, el) => {
+      const title = $(el).find('h2, .result__title').text().trim();
+      let url = $(el).find('a').first().attr('href');
+      const snippet = $(el).find('.result__snippet').text().trim();
+      if (url) {
+        const match = url.match(/uddg=([^&]+)/);
+        if (match) url = decodeURIComponent(match[1]);
+        if (url.includes('pinterest.com')) {
+          results.push({ title, url, snippet, source: 'pinterest' });
+        }
+      }
+    });
+  } catch {}
+  return results;
+}
+
+async function searchTelegram(userName) {
+  const results = [];
+  try {
+    const res = await fetchWithTimeout(
+      `https://html.duckduckgo.com/html/?q=site:t.me+"${userName}"`,
+      10000
+    );
+    if (!res.ok) return [];
+    const html = await res.text();
+    const $ = cheerio.load(html);
+    $('.result, .web-result').each((i, el) => {
+      const title = $(el).find('h2, .result__title').text().trim();
+      let url = $(el).find('a').first().attr('href');
+      const snippet = $(el).find('.result__snippet').text().trim();
+      if (url) {
+        const match = url.match(/uddg=([^&]+)/);
+        if (match) url = decodeURIComponent(match[1]);
+        if (url.includes('t.me')) {
+          results.push({ title, url, snippet, source: 'telegram' });
+        }
+      }
+    });
+  } catch {}
+  return results;
+}
+
+/* ─── Dark Web Crawlers ─── */
+
+async function searchDarkWebForums(userName) {
+  const results = [];
+  const darkWebSources = [
+    { name: 'torum', url: `https://www.torum.com/search?q=${encodeURIComponent(userName)}` },
+    { name: 'dread', url: `http://dread2kutj.onion/search/${encodeURIComponent(userName)}` },
+    { name: 'exploit', url: `https://exploit.in/search?q=${encodeURIComponent(userName)}` },
+    { name: 'nulled', url: `https://nulled.to/search/?q=${encodeURIComponent(userName)}` },
+  ];
+
+  for (const source of darkWebSources) {
+    try {
+      const res = await fetchWithTimeout(source.url, 15000);
+      if (!res.ok) continue;
+      const html = await res.text();
+      const $ = cheerio.load(html);
+      $('a[href]').each((i, el) => {
+        const title = $(el).text().trim();
+        const url = $(el).attr('href');
+        if (title && url && title.length > 5) {
+          results.push({
+            title: title.slice(0, 100),
+            url: url.startsWith('http') ? url : `${source.url}/${url}`,
+            snippet: `Found on ${source.name}: ${title.slice(0, 100)}`,
+            source: source.name,
+            isDarkWeb: true,
+          });
+        }
+      });
+    } catch {}
+  }
+  return results;
+}
+
+async function searchTorHiddenServices(userName) {
+  const results = [];
+  try {
+    const res = await fetchWithTimeout(
+      `https://ahmia.fi/api/v1/search/?q=${encodeURIComponent(userName)}+deepfake`,
+      15000
+    );
+    if (!res.ok) return [];
+    const data = await res.json();
+    for (const item of (data.results || []).slice(0, 10)) {
+      results.push({
+        title: item.title || 'Untitled',
+        url: item.url || item.bitcoin_address || '',
+        snippet: item.description || '',
+        source: 'ahmia',
+        isOnion: true,
+      });
+    }
+  } catch {}
+  return results;
+}
+
+async function searchDarkPasteSites(userName) {
+  const results = [];
+  const pasteSites = [
+    { name: 'pastebox', url: 'https://pastebox.org/' },
+    { name: 'hastebin', url: 'https://hastebin.com/' },
+    { name: 'rentry', url: 'https://rentry.co/' },
+  ];
+
+  for (const site of pasteSites) {
+    try {
+      const res = await fetchWithTimeout(
+        `https://html.duckduckgo.com/html/?q=site:${new URL(site.url).hostname}+"${userName}"`,
+        10000
+      );
+      if (!res.ok) continue;
+      const html = await res.text();
+      const $ = cheerio.load(html);
+      $('.result, .web-result').each((i, el) => {
+        const title = $(el).find('h2').text().trim();
+        let url = $(el).find('a').first().attr('href');
+        const snippet = $(el).find('.result__snippet').text().trim();
+        if (url) {
+          const match = url.match(/uddg=([^&]+)/);
+          if (match) url = decodeURIComponent(match[1]);
+          results.push({ title, url, snippet, source: site.name });
+        }
+      });
+    } catch {}
+  }
   return results;
 }
 
@@ -414,60 +713,69 @@ async function searchDarkWebSources(userName) {
 
 /* Original combined search (backward compatible) */
 async function searchIdentity(userName) {
-  const [web, dark, reddit, pastebin, fourchan] = await Promise.all([
+  const [
+    web, dark, reddit, pastebin, fourchan,
+    twitter, instagram, tiktok, facebook, youtube, linkedin, pinterest, telegram,
+    darkForums, torHidden, darkPaste,
+  ] = await Promise.all([
     searchWebEngines(userName),
     searchDarkWebSources(userName),
     searchReddit(userName),
     searchPastebin(userName),
     search4chan(userName),
+    searchTwitter(userName),
+    searchInstagram(userName),
+    searchTikTok(userName),
+    searchFacebook(userName),
+    searchYouTube(userName),
+    searchLinkedIn(userName),
+    searchPinterest(userName),
+    searchTelegram(userName),
+    searchDarkWebForums(userName),
+    searchTorHiddenServices(userName),
+    searchDarkPasteSites(userName),
   ]);
 
   const allResults = [...web, ...dark];
 
-  // Process Reddit results
-  for (const r of reddit) {
-    if (!r.url || scannedUrls.has(r.url)) continue;
-    scannedUrls.set(r.url, { timestamp: Date.now(), engine: 'reddit' });
-    allResults.push({
-      sourceUrl: r.url,
-      confidence: 55,
-      mediaType: 'social',
-      matchedOn: `reddit: r/${r.subreddit} | score: ${r.score}`,
-      notes: `Found on Reddit: ${r.title}`,
-      timestamp: new Date().toISOString(),
-      engine: 'reddit',
-    });
-  }
+  // Helper to add results
+  const addResults = (items, engine, mediaType, confidence, formatNote) => {
+    for (const r of items) {
+      if (!r.url || scannedUrls.has(r.url)) continue;
+      scannedUrls.set(r.url, { timestamp: Date.now(), engine });
+      allResults.push({
+        sourceUrl: r.url,
+        confidence,
+        mediaType,
+        matchedOn: formatNote(r),
+        notes: `Found on ${engine}: ${r.title}`,
+        timestamp: new Date().toISOString(),
+        engine,
+      });
+    }
+  };
 
-  // Process Pastebin results
-  for (const r of pastebin) {
-    if (!r.url || scannedUrls.has(r.url)) continue;
-    scannedUrls.set(r.url, { timestamp: Date.now(), engine: 'pastebin' });
-    allResults.push({
-      sourceUrl: r.url,
-      confidence: 50,
-      mediaType: 'paste',
-      matchedOn: 'pastebin match',
-      notes: `Found on Pastebin: ${r.title}`,
-      timestamp: new Date().toISOString(),
-      engine: 'pastebin',
-    });
-  }
+  // Social Media
+  addResults(reddit, 'reddit', 'social', 55, (r) => `reddit: r/${r.subreddit} | score: ${r.score}`);
+  addResults(twitter, 'twitter', 'social', 50, () => 'twitter/x match');
+  addResults(instagram, 'instagram', 'social', 50, () => 'instagram match');
+  addResults(tiktok, 'tiktok', 'social', 50, () => 'tiktok match');
+  addResults(facebook, 'facebook', 'social', 50, () => 'facebook match');
+  addResults(youtube, 'youtube', 'video', 55, () => 'youtube match');
+  addResults(linkedin, 'linkedin', 'social', 45, () => 'linkedin match');
+  addResults(pinterest, 'pinterest', 'image', 45, () => 'pinterest match');
+  addResults(telegram, 'telegram', 'social', 55, () => 'telegram match');
 
-  // Process 4chan results
-  for (const r of fourchan) {
-    if (!r.url || scannedUrls.has(r.url)) continue;
-    scannedUrls.set(r.url, { timestamp: Date.now(), engine: '4chan' });
-    allResults.push({
-      sourceUrl: r.url,
-      confidence: 60,
-      mediaType: 'forum',
-      matchedOn: `4chan: /${r.board}/`,
-      notes: `Found on 4chan: ${r.title}`,
-      timestamp: new Date().toISOString(),
-      engine: '4chan',
-    });
-  }
+  // Paste Sites
+  addResults(pastebin, 'pastebin', 'paste', 50, () => 'pastebin match');
+
+  // Forums
+  addResults(fourchan, '4chan', 'forum', 60, (r) => `4chan: /${r.board}/`);
+
+  // Dark Web
+  addResults(darkForums, 'dark-forum', 'darkweb', 65, (r) => `dark web forum: ${r.source}`);
+  addResults(torHidden, 'ahmia-tor', 'darkweb', 70, () => 'tor hidden service');
+  addResults(darkPaste, 'dark-paste', 'paste', 55, (r) => `dark paste: ${r.source}`);
 
   return allResults;
 }

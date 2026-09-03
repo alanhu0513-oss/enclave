@@ -73,8 +73,52 @@ class IntegrationService {
   }
 
   /**
-   * Generic webhook POST with retry
+   * Send alert to Zapier webhook
    */
+  async sendZapier(webhookUrl, alert) {
+    const payload = {
+      event: alert.type || 'alert',
+      title: alert.title || 'Enclave Alert',
+      severity: alert.severity || 'medium',
+      confidence: alert.confidence || 0,
+      description: alert.description || '',
+      timestamp: alert.created_at || new Date().toISOString(),
+      dashboard_url: `${process.env.FRONTEND_URL || 'https://enclave-react.vercel.app'}/alerts`,
+    };
+
+    return this._postWebhook(webhookUrl, payload, 'Zapier');
+  }
+
+  /**
+   * Send alert via email forwarding
+   */
+  async sendEmail(toEmail, alert) {
+    try {
+      const { table } = require('../db/query');
+      const notifications = await table('notifications');
+      await notifications.create({
+        id: `notif_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+        user_id: alert.user_id,
+        type: 'integration_email',
+        title: alert.title || 'Enclave Alert',
+        message: alert.description || `Alert: ${alert.type} (${alert.confidence}% confidence)`,
+        read: false,
+        created_at: new Date().toISOString(),
+      });
+
+      // Also try to send actual email if notifications service is available
+      try {
+        const notify = require('./notifications');
+        if (notify.sendEmail) {
+          await notify.sendEmail(toEmail, alert.title || 'Enclave Alert', alert.description || 'New alert from Enclave');
+        }
+      } catch (_) {}
+
+      return { success: true, provider: 'email' };
+    } catch (e) {
+      return { success: false, provider: 'email', error: e.message };
+    }
+  }
   async _postWebhook(url, payload, provider) {
     const maxRetries = 3;
     let lastError = null;

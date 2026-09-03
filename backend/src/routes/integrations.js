@@ -29,7 +29,7 @@ router.post('/', authenticate, async (req, res) => {
   try {
     const { type, name, webhook_url } = req.body;
     if (!type || !webhook_url) return error(res, 'type and webhook_url required', 400);
-    if (!['slack', 'discord'].includes(type)) return error(res, 'type must be slack or discord', 400);
+    if (!['slack', 'discord', 'zapier', 'email'].includes(type)) return error(res, 'type must be slack, discord, zapier, or email', 400);
 
     const tbl = await table('integrations');
     const id = `int_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -63,6 +63,7 @@ router.post('/:id/test', authenticate, async (req, res) => {
       confidence: 85,
       description: 'This is a test alert from Enclave. If you see this, the integration is working!',
       created_at: new Date().toISOString(),
+      user_id: req.user.userId,
     };
 
     let result;
@@ -70,6 +71,10 @@ router.post('/:id/test', authenticate, async (req, res) => {
       result = await integrations.sendSlack(integration.webhook_url, testAlert);
     } else if (integration.type === 'discord') {
       result = await integrations.sendDiscord(integration.webhook_url, testAlert);
+    } else if (integration.type === 'zapier') {
+      result = await integrations.sendZapier(integration.webhook_url, testAlert);
+    } else if (integration.type === 'email') {
+      result = await integrations.sendEmail(integration.webhook_url, testAlert);
     }
 
     return success(res, { message: result.success ? 'Test sent successfully' : 'Test failed', ...result });

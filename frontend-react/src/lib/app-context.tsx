@@ -28,7 +28,9 @@ export type TabId =
   | "blog"
   | "comparison"
   | "demo"
-  | "analytics";
+  | "analytics"
+  | "platforms"
+  | "scan-history";
 
 interface Toast {
   id: number;

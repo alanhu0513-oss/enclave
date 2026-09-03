@@ -1,4 +1,4 @@
-import { Bell, Menu, Search, ShieldCheck, ChevronRight } from "lucide-react";
+import { Bell, Menu, Search, ShieldCheck, ChevronRight, PanelLeftOpen } from "lucide-react";
 import { motion } from "motion/react";
 import { useApp, type TabId } from "@/lib/app-context";
 
@@ -6,6 +6,8 @@ interface TopbarProps {
   onMenu: () => void;
   onOpenCommand: () => void;
   onOpenNotifications: () => void;
+  collapsed?: boolean;
+  onToggleCollapsed?: () => void;
 }
 
 const TITLES: Record<TabId, string> = {
@@ -34,12 +36,16 @@ const TITLES: Record<TabId, string> = {
   demo: "See It In Action",
   analytics: "Analytics Dashboard",
   "bug-bounty": "Bug Bounty",
+  platforms: "Platform Coverage",
+  "scan-history": "Scan History",
 };
 
 export function Topbar({
   onMenu,
   onOpenCommand,
   onOpenNotifications,
+  collapsed,
+  onToggleCollapsed,
 }: TopbarProps) {
   const { tab, unread } = useApp();
 
@@ -52,6 +58,18 @@ export function Topbar({
       >
         <Menu className="h-5 w-5" />
       </button>
+
+      {/* Desktop expand sidebar button */}
+      {collapsed && onToggleCollapsed && (
+        <button
+          onClick={onToggleCollapsed}
+          className="hidden rounded-lg p-2 text-ink-muted transition-colors hover:bg-white/[0.07] hover:text-ink md:block"
+          aria-label="Expand sidebar"
+          title="Expand sidebar"
+        >
+          <PanelLeftOpen className="h-5 w-5" />
+        </button>
+      )}
 
       <div className="hidden items-center gap-2 sm:flex">
         <motion.span

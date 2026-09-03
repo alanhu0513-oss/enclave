@@ -42,6 +42,8 @@ const BlogView = lazy(() => import("@/features/blog/blog-view").then((m) => ({ d
 const ComparisonView = lazy(() => import("@/features/comparison/comparison-view").then((m) => ({ default: m.ComparisonView })));
 const DemoView = lazy(() => import("@/features/demo/demo-view").then((m) => ({ default: m.DemoView })));
 const AnalyticsView = lazy(() => import("@/features/analytics/analytics-view").then((m) => ({ default: m.AnalyticsView })));
+const PlatformsView = lazy(() => import("@/features/platforms/platforms-view").then((m) => ({ default: m.PlatformsView })));
+const ScanHistoryView = lazy(() => import("@/features/scan-history/scan-history-view").then((m) => ({ default: m.ScanHistoryView })));
 
 const COLLAPSE_KEY = "enclave_sidebar_collapsed";
 
@@ -102,6 +104,8 @@ export function AppShell() {
             setCommandOpen(true);
           }}
           onOpenNotifications={() => setNotifOpen((o) => !o)}
+          collapsed={collapsed}
+          onToggleCollapsed={toggleCollapsed}
         />
         <Sidebar mobile open={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
         <div className="flex flex-1">
@@ -138,6 +142,8 @@ export function AppShell() {
                 {tab === "comparison" && <ComparisonView />}
                 {tab === "demo" && <DemoView />}
                 {tab === "analytics" && <AnalyticsView />}
+                {tab === "platforms" && <PlatformsView />}
+                {tab === "scan-history" && <ScanHistoryView />}
               </Suspense>
             </FadeIn>
           </main>

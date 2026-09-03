@@ -44,7 +44,99 @@ const DARK_WEB_KEYWORDS = [
   'nonconsensual', 'ncii', 'sextortion', 'fake profile',
 ];
 
-/* ─── HTTP Helpers ─── */
+/* ─── Platform-Specific Crawlers ─── */
+
+async function searchReddit(userName) {
+  const results = [];
+  const queries = [
+    `${userName} deepfake`,
+    `${userName} face swap`,
+    `${userName} impersonation`,
+  ];
+
+  for (const q of queries) {
+    try {
+      const res = await fetchWithTimeout(
+        `https://www.reddit.com/search.json?q=${encodeURIComponent(q)}&sort=new&limit=25`,
+        10000
+      );
+      if (!res.ok) continue;
+      const data = await res.json();
+      for (const post of (data.data?.children || []).slice(0, 10)) {
+        const d = post.data;
+        results.push({
+          title: d.title || 'Untitled',
+          url: `https://reddit.com${d.permalink}`,
+          snippet: (d.selftext || '').slice(0, 200),
+          source: 'reddit',
+          subreddit: d.subreddit,
+          score: d.score,
+          created: d.created_utc,
+        });
+      }
+    } catch {}
+  }
+  return results;
+}
+
+async function searchPastebin(userName) {
+  const results = [];
+  const queries = [
+    `${userName} deepfake`,
+    `${userName} identity`,
+    `${userName} leaked`,
+  ];
+
+  for (const q of queries) {
+    try {
+      const res = await fetchWithTimeout(
+        `https://pastebin.com/search?q=${encodeURIComponent(q)}`,
+        10000
+      );
+      if (!res.ok) continue;
+      const html = await res.text();
+      const $ = cheerio.load(html);
+      $('.col-sm-12, .col-md-12').each((i, el) => {
+        const title = $(el).find('a').first().text().trim();
+        const url = $(el).find('a').first().attr('href');
+        const snippet = $(el).text().trim().slice(0, 200);
+        if (url && url.startsWith('/')) {
+          results.push({
+            title: title || 'Untitled Paste',
+            url: `https://pastebin.com${url}`,
+            snippet,
+            source: 'pastebin',
+          });
+        }
+      });
+    } catch {}
+  }
+  return results;
+}
+
+async function search4chan(userName) {
+  const results = [];
+  try {
+    const res = await fetchWithTimeout(
+      `https://a.4cdn.org/search.json?q=${encodeURIComponent(userName)}`,
+      10000
+    );
+    if (!res.ok) return [];
+    const data = await res.json();
+    for (const thread of (data.threads || []).slice(0, 10)) {
+      results.push({
+        title: thread.subject || thread.com?.slice(0, 50) || 'Untitled',
+        url: `https://boards.4chan.org/${thread.board}/thread/${thread.no}`,
+        snippet: (thread.com || '').replace(/<[^>]+>/g, '').slice(0, 200),
+        source: '4chan',
+        board: thread.board,
+      });
+    }
+  } catch {}
+  return results;
+}
+
+/* ─── Search Engines ─── */
 
 async function fetchWithTimeout(url, timeoutMs = 10000) {
   const controller = new AbortController();
@@ -322,11 +414,62 @@ async function searchDarkWebSources(userName) {
 
 /* Original combined search (backward compatible) */
 async function searchIdentity(userName) {
-  const [web, dark] = await Promise.all([
+  const [web, dark, reddit, pastebin, fourchan] = await Promise.all([
     searchWebEngines(userName),
     searchDarkWebSources(userName),
+    searchReddit(userName),
+    searchPastebin(userName),
+    search4chan(userName),
   ]);
-  return [...web, ...dark];
+
+  const allResults = [...web, ...dark];
+
+  // Process Reddit results
+  for (const r of reddit) {
+    if (!r.url || scannedUrls.has(r.url)) continue;
+    scannedUrls.set(r.url, { timestamp: Date.now(), engine: 'reddit' });
+    allResults.push({
+      sourceUrl: r.url,
+      confidence: 55,
+      mediaType: 'social',
+      matchedOn: `reddit: r/${r.subreddit} | score: ${r.score}`,
+      notes: `Found on Reddit: ${r.title}`,
+      timestamp: new Date().toISOString(),
+      engine: 'reddit',
+    });
+  }
+
+  // Process Pastebin results
+  for (const r of pastebin) {
+    if (!r.url || scannedUrls.has(r.url)) continue;
+    scannedUrls.set(r.url, { timestamp: Date.now(), engine: 'pastebin' });
+    allResults.push({
+      sourceUrl: r.url,
+      confidence: 50,
+      mediaType: 'paste',
+      matchedOn: 'pastebin match',
+      notes: `Found on Pastebin: ${r.title}`,
+      timestamp: new Date().toISOString(),
+      engine: 'pastebin',
+    });
+  }
+
+  // Process 4chan results
+  for (const r of fourchan) {
+    if (!r.url || scannedUrls.has(r.url)) continue;
+    scannedUrls.set(r.url, { timestamp: Date.now(), engine: '4chan' });
+    allResults.push({
+      sourceUrl: r.url,
+      confidence: 60,
+      mediaType: 'forum',
+      matchedOn: `4chan: /${r.board}/`,
+      notes: `Found on 4chan: ${r.title}`,
+      timestamp: new Date().toISOString(),
+      engine: '4chan',
+    });
+  }
+
+  return allResults;
 }
 
 async function deepAnalyzeResult(result, userId) {

@@ -34,7 +34,7 @@ function toJson(a) {
   return {
     id: a.id, sourceUrl: a.source_url, confidence: a.confidence,
     status: a.status, mediaType: a.media_type, matchedOn: a.matched_on,
-    notes: a.notes, timestamp: a.timestamp
+    engine: a.engine || 'unknown', notes: a.notes, timestamp: a.timestamp
   };
 }
 

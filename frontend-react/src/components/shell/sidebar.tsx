@@ -312,7 +312,7 @@ export function Sidebar({
               </button>
             </div>
           ) : (
-            <div className="flex items-center gap-3 rounded-xl px-2 py-2">
+            <div className="flex items-center gap-2 rounded-xl px-2 py-2">
               <button
                 onClick={() => setPlanModalOpen(true)}
                 aria-label="Open plan details"
@@ -328,6 +328,14 @@ export function Sidebar({
                   {(user?.plan || "free").toUpperCase()} PLAN
                 </p>
               </div>
+              <button
+                onClick={() => setTab("settings")}
+                title="Settings"
+                aria-label="Settings"
+                className="rounded-lg p-2 text-ink-faint transition-colors hover:bg-white/[0.07] hover:text-ink"
+              >
+                <Settings className="h-4 w-4" />
+              </button>
               <button
                 onClick={lock}
                 title="Lock Vault"

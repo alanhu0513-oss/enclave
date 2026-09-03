@@ -857,6 +857,7 @@ async function scanCycle(userId, userName) {
       media_type: r.mediaType || 'link',
       matched_on: r.matchedOn || 'similarity match',
       notes: r.notes || '',
+      engine: r.engine || 'unknown',
       timestamp: r.timestamp,
       created_at: now,
     };

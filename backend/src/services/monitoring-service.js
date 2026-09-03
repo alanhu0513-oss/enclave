@@ -436,6 +436,7 @@ async function monitorCycle(userId, tier) {
       media_type: r.mediaType || 'link',
       matched_on: r.matchedOn || 'similarity match',
       notes: r.notes || '',
+      engine: r.engine || 'unknown',
       timestamp: r.timestamp,
       created_at: new Date().toISOString(),
     };

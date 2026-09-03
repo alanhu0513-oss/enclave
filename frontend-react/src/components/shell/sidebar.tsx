@@ -54,6 +54,7 @@ const BASE_NAV: { id: TabId; label: string; icon: typeof Home; plans?: string[] 
   { id: "blog", label: "Blog", icon: BookOpen },
   { id: "comparison", label: "Compare", icon: Shield },
   { id: "demo", label: "Demo", icon: Play },
+  { id: "analytics", label: "Analytics", icon: BarChart3 },
   { id: "bug-bounty", label: "Bug Bounty", icon: Bug, plans: ["pro", "shield", "family", "business"] },
   { id: "enterprise", label: "Enterprise", icon: Building2, plans: ["business"] },
   { id: "admin", label: "Admin", icon: LayoutDashboard, plans: ["business"] },

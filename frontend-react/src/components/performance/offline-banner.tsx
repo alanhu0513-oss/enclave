@@ -1,21 +1,14 @@
 import { useState, useEffect, useCallback } from "react";
-import { Wifi, WifiOff, RefreshCw } from "lucide-react";
+import { WifiOff, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "motion/react";
 
 export function OfflineBanner() {
-  const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [showBanner, setShowBanner] = useState(false);
 
   useEffect(() => {
-    const handleOnline = () => {
-      setIsOnline(true);
-      setShowBanner(false);
-    };
-    const handleOffline = () => {
-      setIsOnline(false);
-      setShowBanner(true);
-    };
+    const handleOnline = () => setShowBanner(false);
+    const handleOffline = () => setShowBanner(true);
 
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);

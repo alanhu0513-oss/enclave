@@ -41,6 +41,7 @@ const BugBountyView = lazy(() => import("@/features/bug-bounty/bug-bounty-view")
 const BlogView = lazy(() => import("@/features/blog/blog-view").then((m) => ({ default: m.BlogView })));
 const ComparisonView = lazy(() => import("@/features/comparison/comparison-view").then((m) => ({ default: m.ComparisonView })));
 const DemoView = lazy(() => import("@/features/demo/demo-view").then((m) => ({ default: m.DemoView })));
+const AnalyticsView = lazy(() => import("@/features/analytics/analytics-view").then((m) => ({ default: m.AnalyticsView })));
 
 const COLLAPSE_KEY = "enclave_sidebar_collapsed";
 
@@ -136,6 +137,7 @@ export function AppShell() {
                 {tab === "blog" && <BlogView />}
                 {tab === "comparison" && <ComparisonView />}
                 {tab === "demo" && <DemoView />}
+                {tab === "analytics" && <AnalyticsView />}
               </Suspense>
             </FadeIn>
           </main>

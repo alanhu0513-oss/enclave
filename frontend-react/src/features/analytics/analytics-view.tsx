@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "motion/react";
-import { BarChart3, TrendingUp, Users, Shield, AlertTriangle, Activity } from "lucide-react";
+import { BarChart3, Users, Shield, AlertTriangle, Activity } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { StaggerContainer, StaggerItem } from "@/components/ui/motion";
 import { SectionHeader } from "@/components/ui/dashboard";
@@ -51,7 +51,7 @@ export function AnalyticsView() {
     users: { total: 0, active: 0, newToday: 0 },
     performance: { avgLatency: 0, uptime: 99.9, errorRate: 0 },
   });
-  const [loading, setLoading] = useState(true);
+  const [_loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetch(`${import.meta.env.VITE_API_URL || "http://localhost:4000"}/api/metrics`)

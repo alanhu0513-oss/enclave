@@ -27,7 +27,8 @@ export type TabId =
   | "bug-bounty"
   | "blog"
   | "comparison"
-  | "demo";
+  | "demo"
+  | "analytics";
 
 interface Toast {
   id: number;

@@ -32,6 +32,7 @@ const TITLES: Record<TabId, string> = {
   blog: "Blog & Insights",
   comparison: "Why Enclave?",
   demo: "See It In Action",
+  analytics: "Analytics Dashboard",
   "bug-bounty": "Bug Bounty",
 };
 

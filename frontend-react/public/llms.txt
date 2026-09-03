@@ -1,0 +1,41 @@
+# Enclave — Deepfake Detection & Identity Protection
+
+> AI-powered platform for detecting deepfakes, monitoring the dark web, and taking down unauthorized use of your identity.
+
+## About
+
+Enclave is a real-time identity protection platform that uses machine learning to detect deepfake images, audio, and video. It monitors the dark web, social media, and paste sites for unauthorized use of your face and voice, and automatically sends DMCA takedown notices.
+
+## Core Features
+
+- **Deepfake Detection**: Neural network analysis of images, audio, and video frame-by-frame using XceptionNet, MTCNN, and spectral analysis
+- **Dark Web Monitoring**: Continuous scanning of surface web, Reddit, paste sites, dark web forums, and Telegram channels
+- **Auto Takedown**: Automatic DMCA notices with 48-hour escalation and evidence preservation
+- **Content Watermarking**: Invisible watermarks and C2PA credentials to prove ownership
+- **Face Analysis**: Multi-face detection and matching against enrolled biometric profiles
+- **Threat Alerts**: Real-time push notifications and email alerts
+
+## API Documentation
+
+- [API Reference](https://enclave-production-d818.up.railway.app/api-docs)
+- [Backend Health](https://enclave-production-d818.up.railway.app/api/health)
+
+## Pricing
+
+- Free: 3 scans/month, surface web only
+- Pro ($9.99/mo): 50 scans, web + Reddit + paste sites, hourly monitoring
+- Shield ($19.99/mo): 200 scans, all sources + dark web, real-time alerts
+- Family ($29.99/mo): 500 scans, up to 5 members, per-member alerts
+- Business ($49.99/mo): Unlimited scans, 10 seats, API access, SSO
+
+## Contact
+
+- Website: [https://enclave-react.vercel.app](https://enclave-react.vercel.app)
+- GitHub: [https://github.com/alanhu0513-oss/enclave](https://github.com/alanhu0513-oss/enclave)
+- API: [https://enclave-production-d818.up.railway.app](https://enclave-production-d818.up.railway.app)
+
+## Terms
+
+- [Terms of Service](https://enclave-react.vercel.app/terms)
+- [Privacy Policy](https://enclave-react.vercel.app/privacy)
+- [DMCA Policy](https://enclave-react.vercel.app/dmca)

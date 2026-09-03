@@ -196,6 +196,24 @@ export function BlogView() {
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6 p-6">
       <SectionHeader icon={BookOpen} title="Blog & Insights" description="Research, case studies, and threat analysis" />
 
+      {/* Introduction */}
+      <Card className="bg-white/5 border-white/10">
+        <CardContent className="p-6">
+          <h2 className="text-lg font-semibold text-white mb-3">Understanding the Deepfake Threat Landscape</h2>
+          <div className="space-y-3 text-sm text-white/70 leading-relaxed">
+            <p>
+              The deepfake threat is no longer theoretical. In 2024 alone, deepfake fraud attempts increased by 900%, with losses exceeding billions of dollars globally. From CEO impersonation scams that trick finance teams into wiring millions, to non-consensual intimate imagery used for blackmail and harassment, synthetic media attacks are affecting individuals and organizations at an unprecedented scale.
+            </p>
+            <p>
+              This blog serves as your resource for staying informed about the rapidly evolving world of AI-generated content threats. Our research team publishes in-depth analysis of emerging attack vectors, case studies from real incidents we have investigated, and practical guides for strengthening your defenses against synthetic media manipulation.
+            </p>
+            <p>
+              Whether you are a security professional tracking the latest adversarial techniques, a content creator concerned about impersonation, or anyone who wants to understand how deepfake technology works and how to detect it, these articles provide the technical depth and actionable insights you need. We cover everything from the underlying machine learning research to the real-world tactics threat actors use to deploy deepfakes at scale.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Featured Post */}
       {selectedCategory === "All" && featuredPost && !searchQuery && (
         <StaggerItem>

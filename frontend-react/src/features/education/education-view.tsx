@@ -86,6 +86,24 @@ export function EducationView() {
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6 p-6">
       <SectionHeader icon={GraduationCap} title="Education Center" description="Learn to detect and prevent deepfakes" />
 
+      {/* Introduction */}
+      <Card className="bg-white/5 border-white/10">
+        <CardContent className="p-6">
+          <h2 className="text-lg font-semibold text-white mb-3">Why Deepfake Education Matters</h2>
+          <div className="space-y-3 text-sm text-white/70 leading-relaxed">
+            <p>
+              Deepfake technology has become alarmingly accessible. What once required advanced technical skills and powerful hardware can now be done with a smartphone app and a few reference photos. As of 2025, over 96% of deepfake content is non-consensual intimate imagery, with creators and public figures being the primary targets. Understanding how these attacks work is the first step to protecting yourself and your organization.
+            </p>
+            <p>
+              This education center covers three critical areas: detection techniques that help you identify manipulated content, prevention strategies to reduce your exposure to deepfake attacks, and response protocols for when deepfakes targeting you are discovered. Each tutorial includes practical examples, real-world case studies, and knowledge checks to reinforce what you have learned.
+            </p>
+            <p>
+              Whether you are a content creator worried about impersonation, a security professional responsible for organizational integrity, or simply someone who wants to navigate the digital world more safely, these resources give you the tools to stay ahead of synthetic media threats. Complete tutorials to earn certifications that demonstrate your expertise in identity protection.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Progress */}
       {progress && (
         <div className="grid grid-cols-4 gap-4">

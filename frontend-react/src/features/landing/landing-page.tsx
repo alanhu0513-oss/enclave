@@ -28,7 +28,7 @@ const cssVars = {
   "--color-bg-raised": "#161618",
   "--color-text": "#fafaf9",
   "--color-text-muted": "#a1a1aa",
-  "--color-text-dim": "#71717a",
+  "--color-text-dim": "#a1a1aa",
   "--color-border": "rgba(255,255,255,0.06)",
 } as React.CSSProperties;
 
@@ -277,10 +277,10 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
           </div>
 
           <div className="hidden items-center gap-8 md:flex">
-            <a href="#features" className="text-sm text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text)]">Features</a>
-            <a href="#how-it-works" className="text-sm text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text)]">How It Works</a>
-            <a href="#pricing" className="text-sm text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text)]">Pricing</a>
-            <a href="#faq" className="text-sm text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text)]">FAQ</a>
+            <a href="#features" className="text-base text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text)]">Features</a>
+            <a href="#how-it-works" className="text-base text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text)]">How It Works</a>
+            <a href="#pricing" className="text-base text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text)]">Pricing</a>
+            <a href="#faq" className="text-base text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text)]">FAQ</a>
           </div>
 
           <div className="flex items-center gap-3">
@@ -309,10 +309,10 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
               className="overflow-hidden border-t border-white/[0.06] md:hidden"
             >
               <div className="space-y-2 px-6 py-4">
-                <a href="#features" className="block py-2 text-sm text-[var(--color-text-muted)]">Features</a>
-                <a href="#how-it-works" className="block py-2 text-sm text-[var(--color-text-muted)]">How It Works</a>
-                <a href="#pricing" className="block py-2 text-sm text-[var(--color-text-muted)]">Pricing</a>
-                <a href="#faq" className="block py-2 text-sm text-[var(--color-text-muted)]">FAQ</a>
+                <a href="#features" className="block py-2 text-base text-[var(--color-text-muted)]">Features</a>
+                <a href="#how-it-works" className="block py-2 text-base text-[var(--color-text-muted)]">How It Works</a>
+                <a href="#pricing" className="block py-2 text-base text-[var(--color-text-muted)]">Pricing</a>
+                <a href="#faq" className="block py-2 text-base text-[var(--color-text-muted)]">FAQ</a>
               </div>
             </motion.div>
           )}
@@ -349,7 +349,7 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
             transition={{ duration: 0.4 }}
             className="flex justify-center mb-8"
           >
-            <div className="inline-flex items-center gap-2 rounded-full border border-green/20 bg-green/[0.06] px-4 py-1.5 text-sm text-green">
+            <div className="inline-flex items-center gap-2 rounded-full border border-green/20 bg-green/[0.06] px-4 py-1.5 text-base text-green">
               <Zap className="h-3.5 w-3.5" aria-hidden="true" />
               <span>ML-powered identity protection</span>
             </div>
@@ -374,7 +374,7 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
-            className="mx-auto mt-6 max-w-2xl text-center text-lg text-[var(--color-text-muted)] leading-relaxed"
+            className="mx-auto mt-6 max-w-2xl text-center text-xl text-[var(--color-text-muted)] leading-relaxed"
           >
             Detect deepfakes, monitor the dark web, and take down unauthorized use of your identity.
             Built with real ML models — not marketing.
@@ -414,14 +414,14 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
                 {["#06b6d4", "#a855f7", "#f59e0b", "#22c55e", "#ef4444"].map((color, i) => (
                   <div
                     key={i}
-                    className="h-7 w-7 rounded-full border-2 border-[#111113] flex items-center justify-center text-[10px] font-bold text-white"
+                    className="h-8 w-8 rounded-full border-2 border-[#111113] flex items-center justify-center text-xs font-bold text-white"
                     style={{ backgroundColor: color, zIndex: 5 - i }}
                   >
                     {["S", "M", "A", "K", "J"][i]}
                   </div>
                 ))}
               </div>
-              <span className="text-sm text-[var(--color-text-muted)]">
+              <span className="text-base text-[var(--color-text-muted)]">
                 Join <span className="text-[var(--color-text)] font-medium">2,400+</span> people protecting their identity
               </span>
             </div>
@@ -452,7 +452,7 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
                   <div className="h-3 w-3 rounded-full bg-[#ff5f57]" />
                   <div className="h-3 w-3 rounded-full bg-[#febc2e]" />
                   <div className="h-3 w-3 rounded-full bg-[#28c840]" />
-                  <span className="ml-3 text-xs text-[var(--color-text-dim)]">enclave — dashboard</span>
+                  <span className="ml-3 text-sm text-[var(--color-text-dim)]">enclave — dashboard</span>
                 </div>
 
                 {/* Dashboard content */}
@@ -488,7 +488,7 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
                         { label: "Takedowns", value: "8", color: "text-cyan" },
                       ].map((s) => (
                         <div key={s.label} className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-3">
-                          <p className="text-xs text-[var(--color-text-dim)]">{s.label}</p>
+                          <p className="text-sm text-[var(--color-text-dim)]">{s.label}</p>
                           <p className={`font-display text-2xl font-bold mt-1 ${s.color}`}>{s.value}</p>
                         </div>
                       ))}
@@ -508,9 +508,9 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium truncate">{alert.title}</p>
-                            <p className="text-xs text-[var(--color-text-dim)] truncate">{alert.detail}</p>
+                            <p className="text-sm text-[var(--color-text-dim)] truncate">{alert.detail}</p>
                           </div>
-                          <span className={`text-xs font-medium ${alert.statusColor}`}>{alert.status}</span>
+                          <span className={`text-sm font-medium ${alert.statusColor}`}>{alert.status}</span>
                         </div>
                       ))}
                     </div>
@@ -543,7 +543,7 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
             <h2 className="font-display text-3xl font-bold md:text-4xl" style={{ letterSpacing: "-0.025em" }}>
               Here&apos;s exactly what Enclave does under the hood
             </h2>
-            <p className="mt-3 max-w-lg text-[15px] text-[var(--color-text-muted)]">
+            <p className="mt-3 max-w-lg text-base text-[var(--color-text-muted)]">
               Six core capabilities, each backed by real infrastructure.
             </p>
           </div>
@@ -560,7 +560,7 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
                     <Icon className={`h-5 w-5 ${COLOR_MAP[f.color]}`} aria-hidden="true" />
                   </div>
                   <h3 className="mt-4 font-display text-lg font-semibold" style={{ letterSpacing: "-0.01em" }}>{f.title}</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-[var(--color-text-muted)]">{f.desc}</p>
+                  <p className="mt-2 text-base leading-relaxed text-[var(--color-text-muted)]">{f.desc}</p>
                 </div>
               );
             })}
@@ -577,7 +577,7 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
             <h2 className="font-display text-3xl font-bold md:text-4xl" style={{ letterSpacing: "-0.025em" }}>
               Three steps to protection
             </h2>
-            <p className="mt-3 text-[15px] text-[var(--color-text-muted)]">No setup wizard. No 30-minute onboarding.</p>
+            <p className="mt-3 text-base text-[var(--color-text-muted)]">No setup wizard. No 30-minute onboarding.</p>
           </div>
 
           <div className="grid gap-8 md:grid-cols-3">
@@ -594,7 +594,7 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
                   </div>
                 </div>
                 <h3 className="font-display text-lg font-semibold">{item.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-[var(--color-text-muted)]">{item.desc}</p>
+                <p className="mt-2 text-base leading-relaxed text-[var(--color-text-muted)]">{item.desc}</p>
               </div>
             ))}
           </div>
@@ -610,7 +610,7 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
             <h2 className="font-display text-3xl font-bold md:text-4xl" style={{ letterSpacing: "-0.025em" }}>
               Pricing
             </h2>
-            <p className="mt-3 text-[15px] text-[var(--color-text-muted)]">
+            <p className="mt-3 text-base text-[var(--color-text-muted)]">
               Start free. Upgrade when you need more.
             </p>
           </div>
@@ -631,21 +631,21 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
                   </div>
                 )}
                 <h3 className="font-display text-base font-semibold">{tier.name}</h3>
-                <p className="mt-1 text-xs text-[var(--color-text-dim)] italic">{tier.tagline}</p>
+                <p className="mt-1 text-sm text-[var(--color-text-dim)] italic">{tier.tagline}</p>
                 <div className="mt-3 flex items-baseline gap-1">
                   <span className="font-display text-3xl font-bold" style={{ letterSpacing: "-0.02em" }}>{tier.price}</span>
-                  <span className="text-xs text-[var(--color-text-dim)]">{tier.period}</span>
+                  <span className="text-sm text-[var(--color-text-dim)]">{tier.period}</span>
                 </div>
                 <ul className="mt-4 space-y-1.5">
                   {tier.features.map((f) => (
-                    <li key={f} className="flex items-center gap-1.5 text-xs text-[#d4d4d8]">
+                    <li key={f} className="flex items-center gap-1.5 text-sm text-[#d4d4d8]">
                       <CheckCircle2 className="h-3 w-3 shrink-0 text-green/70" aria-hidden="true" />
                       {f}
                     </li>
                   ))}
                 </ul>
                 <Button
-                  className={`mt-5 w-full text-xs ${tier.popular ? "bg-green text-black font-medium" : ""}`}
+                  className={`mt-5 w-full text-sm ${tier.popular ? "bg-green text-black font-medium" : ""}`}
                   variant={tier.popular ? "default" : "outline"}
                   size="sm"
                   onClick={handleGetStarted}
@@ -686,7 +686,7 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
                 </div>
                 <div>
                   <p className="text-sm font-medium">{TESTIMONIALS[0].name}</p>
-                  <p className="text-xs text-[var(--color-text-dim)]">{TESTIMONIALS[0].role}</p>
+                  <p className="text-sm text-[var(--color-text-dim)]">{TESTIMONIALS[0].role}</p>
                 </div>
               </div>
             </div>
@@ -709,7 +709,7 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
                     </div>
                     <div>
                       <p className="text-sm font-medium">{t.name}</p>
-                      <p className="text-xs text-[var(--color-text-dim)]">{t.role}</p>
+                      <p className="text-sm text-[var(--color-text-dim)]">{t.role}</p>
                     </div>
                   </div>
                 </div>
@@ -727,7 +727,7 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
           <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-green/10 text-green mb-4">
             <Shield className="h-6 w-6" aria-hidden="true" />
           </div>
-          <blockquote className="text-lg leading-relaxed text-[var(--color-text-muted)] italic">
+          <blockquote className="text-xl leading-relaxed text-[var(--color-text-muted)] italic">
             &ldquo;We built Enclave because we were tired of seeing deepfake victims file DMCA notices by hand while platforms dragged their feet. The tools exist to fight this automatically — we just had to wire them together. Every feature in Enclave exists because someone needed it.&rdquo;
           </blockquote>
           <p className="mt-4 text-sm text-[var(--color-text-dim)]">— The Enclave Team</p>
@@ -756,7 +756,7 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
                   onClick={() => setOpenFaq(openFaq === i ? null : i)}
                   aria-expanded={openFaq === i}
                 >
-                  <span className="font-display text-sm font-semibold pr-4">{item.q}</span>
+                  <span className="font-display text-base font-semibold pr-4">{item.q}</span>
                   <ChevronDown className={`h-4 w-4 shrink-0 text-[var(--color-text-dim)] transition-transform ${openFaq === i ? "rotate-180" : ""}`} />
                 </button>
                 <AnimatePresence>
@@ -768,7 +768,7 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
                       transition={{ duration: 0.2 }}
                       className="overflow-hidden"
                     >
-                      <p className="px-5 pb-4 text-sm leading-relaxed text-[var(--color-text-muted)]">{item.a}</p>
+                      <p className="px-5 pb-4 text-base leading-relaxed text-[var(--color-text-muted)]">{item.a}</p>
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -789,7 +789,7 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
               <h2 className="font-display text-3xl font-bold md:text-4xl" style={{ letterSpacing: "-0.025em" }}>
                 Protect your identity today
               </h2>
-              <p className="mt-4 text-[15px] text-[var(--color-text-muted)] max-w-lg mx-auto">
+              <p className="mt-4 text-base text-[var(--color-text-muted)] max-w-lg mx-auto">
                 Free to start. No credit card required. Join thousands who already use Enclave to protect their face, voice, and digital identity.
               </p>
               <Button
@@ -814,13 +814,13 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
             </div>
             <span className="font-display text-sm font-bold">Enclave</span>
           </div>
-          <div className="flex gap-6 text-xs text-[var(--color-text-muted)]">
+          <div className="flex gap-6 text-sm text-[var(--color-text-muted)]">
             <a href="/privacy" className="hover:text-[var(--color-text)] transition-colors">Privacy</a>
             <a href="/terms" className="hover:text-[var(--color-text)] transition-colors">Terms</a>
             <a href="/dmca" className="hover:text-[var(--color-text)] transition-colors">DMCA</a>
             <a href="https://enclave-production-d818.up.railway.app/api-docs" target="_blank" rel="noopener noreferrer" className="hover:text-[var(--color-text)] transition-colors">API</a>
           </div>
-          <p className="text-xs text-[var(--color-text-dim)]">&copy; {new Date().getFullYear()} Enclave</p>
+          <p className="text-sm text-[var(--color-text-dim)]">&copy; {new Date().getFullYear()} Enclave</p>
         </div>
       </footer>
     </div>
@@ -841,7 +841,7 @@ function StatCounter({ value, suffix, label }: { value: number; suffix: string; 
       <p className="font-display text-3xl font-bold text-green" style={{ letterSpacing: "-0.02em" }}>
         {display}
       </p>
-      <p className="mt-1 text-sm text-[var(--color-text-dim)]">{label}</p>
+      <p className="mt-1 text-base text-[var(--color-text-dim)]">{label}</p>
     </div>
   );
 }

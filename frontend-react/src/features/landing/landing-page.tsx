@@ -307,6 +307,7 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
               animate={{ height: "auto", opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
               className="overflow-hidden border-t border-white/[0.06] md:hidden"
+              style={{ willChange: "height, opacity" }}
             >
               <div className="space-y-2 px-6 py-4">
                 <a href="#features" className="block py-2 text-base text-[var(--color-text-muted)]">Features</a>
@@ -348,6 +349,7 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4 }}
             className="flex justify-center mb-8"
+            style={{ willChange: "transform, opacity" }}
           >
             <div className="inline-flex items-center gap-2 rounded-full border border-green/20 bg-green/[0.06] px-4 py-1.5 text-base text-green">
               <Zap className="h-3.5 w-3.5" aria-hidden="true" />
@@ -361,7 +363,7 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.05 }}
             className="text-center font-display text-5xl font-bold leading-[1.05] md:text-7xl lg:text-8xl"
-            style={{ letterSpacing: "-0.035em" }}
+            style={{ letterSpacing: "-0.035em", willChange: "transform, opacity" }}
           >
             Your face is{" "}
             <span className="text-green">yours</span>.
@@ -375,6 +377,7 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
             className="mx-auto mt-6 max-w-2xl text-center text-xl text-[var(--color-text-muted)] leading-relaxed"
+            style={{ willChange: "transform, opacity" }}
           >
             Detect deepfakes, monitor the dark web, and take down unauthorized use of your identity.
             Built with real ML models — not marketing.
@@ -386,6 +389,7 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.15 }}
             className="mt-8 flex flex-wrap items-center justify-center gap-4"
+            style={{ willChange: "transform, opacity" }}
           >
             <Button
               size="lg"
@@ -408,6 +412,7 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
             animate={{ opacity: 1 }}
             transition={{ duration: 0.5, delay: 0.3 }}
             className="mt-10 flex flex-col items-center gap-3"
+            style={{ willChange: "opacity" }}
           >
             <div className="flex items-center gap-3">
               <div className="flex -space-x-2">
@@ -433,6 +438,7 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.3 }}
             className="mt-16"
+            style={{ willChange: "transform, opacity" }}
           >
             <div className="relative mx-auto max-w-4xl">
               {/* Ambient glow */}
@@ -445,6 +451,7 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
                   className="absolute left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-green/40 to-transparent pointer-events-none z-10"
                   animate={{ top: ["0%", "100%"] }}
                   transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+                  style={{ willChange: "top" }}
                 />
 
                 {/* Title bar */}
@@ -526,6 +533,7 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.4 }}
             className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-6"
+            style={{ willChange: "transform, opacity" }}
           >
             {STATS.map((stat) => (
               <StatCounter key={stat.label} {...stat} />
@@ -767,6 +775,7 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
                       exit={{ height: 0, opacity: 0 }}
                       transition={{ duration: 0.2 }}
                       className="overflow-hidden"
+                      style={{ willChange: "height, opacity" }}
                     >
                       <p className="px-5 pb-4 text-base leading-relaxed text-[var(--color-text-muted)]">{item.a}</p>
                     </motion.div>

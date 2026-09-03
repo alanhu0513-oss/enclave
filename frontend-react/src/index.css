@@ -211,6 +211,11 @@ small { @apply text-sm; color: color-mix(in oklab, var(--color-ink) 50%, transpa
   }
 }
 
+/* Prevent forced reflow on animated elements */
+[style*="will-change"] {
+  contain: layout style;
+}
+
 /* Screen reader only */
 .sr-only {
   position: absolute;

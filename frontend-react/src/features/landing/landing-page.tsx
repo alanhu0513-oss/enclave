@@ -237,12 +237,6 @@ function useCountUp(target: number, duration = 2000) {
   return { count, ref };
 }
 
-function formatStat(value: number, suffix: string) {
-  if (value >= 1000000) return `${(value / 1000000).toFixed(0)}M${suffix}`;
-  if (value >= 1000) return `${(value / 1000).toFixed(0)}K${suffix}`;
-  return `${value}${suffix}`;
-}
-
 /* ─── Main Component ─── */
 export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
   const { user } = useAuth();

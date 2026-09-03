@@ -15,7 +15,7 @@ import { OfflineBanner } from "@/components/performance/offline-banner";
 import { FadeIn } from "@/components/ui/motion";
 import { updateSEO } from "@/lib/seo";
 import { SeoJsonLd } from "@/components/seo-json-ld";
-import { Loader2 } from "lucide-react";
+import { Loader2, Home, ScanSearch, Bell, Shield, Settings } from "lucide-react";
 
 const HomeView = lazy(() => import("@/features/home/home-view").then((m) => ({ default: m.HomeView })));
 const ShieldsView = lazy(() => import("@/features/shields/shields-view").then((m) => ({ default: m.ShieldsView })));
@@ -56,7 +56,7 @@ function ViewLoader() {
 }
 
 export function AppShell() {
-  const { tab } = useApp();
+  const { tab, setTab, unread } = useApp();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(
     () => localStorage.getItem(COLLAPSE_KEY) === "1"
@@ -112,7 +112,7 @@ export function AppShell() {
           <Sidebar collapsed={collapsed} onToggleCollapsed={toggleCollapsed} />
           <main
             id="main-content"
-            className="relative z-10 flex-1 overflow-visible px-4 pb-24 pt-6 md:px-8 md:pt-8"
+            className="relative z-10 flex-1 overflow-visible px-3 pb-24 pt-4 sm:px-4 sm:pt-6 md:px-8 md:pt-8"
             role="main"
           >
             <FadeIn key={tab}>
@@ -156,6 +156,39 @@ export function AppShell() {
       <FeedbackWidget />
       <NpsSurvey />
       <OfflineBanner />
+
+      {/* Mobile bottom nav */}
+      <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-white/[0.07] bg-surface-0/90 backdrop-blur-xl md:hidden">
+        <div className="flex items-center justify-around px-2 py-2">
+          {[
+            { id: "home", icon: Home, label: "Home" },
+            { id: "scan", icon: ScanSearch, label: "Scan" },
+            { id: "alerts", icon: Bell, label: "Alerts", badge: unread },
+            { id: "shield", icon: Shield, label: "Shields" },
+            { id: "settings", icon: Settings, label: "Settings" },
+          ].map((item) => {
+            const Icon = item.icon;
+            const active = tab === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => setTab(item.id as any)}
+                className={`relative flex flex-col items-center gap-0.5 rounded-lg px-3 py-1.5 text-[10px] transition-colors ${
+                  active ? "text-green" : "text-ink-faint"
+                }`}
+              >
+                <Icon className={`h-5 w-5 ${active ? "text-green" : "text-ink-faint"}`} />
+                <span>{item.label}</span>
+                {item.badge && item.badge > 0 && (
+                  <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red px-1 text-[9px] font-bold text-white">
+                    {item.badge > 99 ? "99+" : item.badge}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </nav>
     </div>
   );
 }

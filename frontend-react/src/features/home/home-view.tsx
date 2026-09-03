@@ -111,9 +111,9 @@ export function HomeView() {
       {/* ─── HERO ─── */}
       <StaggerContainer className="grid gap-5 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
         <StaggerItem>
-          <Card className="relative overflow-hidden p-6 md:p-7">
+          <Card className="relative overflow-hidden p-4 sm:p-6 md:p-7">
             <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-green/10 blur-3xl" />
-            <div className="relative flex flex-col gap-6 md:flex-row md:items-center md:gap-7">
+            <div className="relative flex flex-col gap-4 sm:gap-6 md:flex-row md:items-center md:gap-7">
               <div className="relative mx-auto shrink-0">
                 <motion.div
                   animate={{ rotate: 360 }}
@@ -121,12 +121,13 @@ export function HomeView() {
                   className="absolute inset-0 rounded-full border border-dashed border-green/15"
                 />
                 <div className="pulse-ring absolute inset-0 rounded-full" />
-                <ProgressRing value={protectionScore} size={200} strokeWidth={12} />
+                <ProgressRing value={protectionScore} size={140} strokeWidth={10} className="sm:hidden" />
+                <ProgressRing value={protectionScore} size={200} strokeWidth={12} className="hidden sm:block" />
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="font-display text-4xl font-bold text-ink">
+                  <span className="font-display text-3xl font-bold text-ink sm:text-4xl">
                     {protectionScore}
                   </span>
-                  <span className="text-[11px] uppercase tracking-widest text-ink-muted">
+                  <span className="text-[10px] uppercase tracking-widest text-ink-muted sm:text-[11px]">
                     Protection
                   </span>
                 </div>
@@ -137,21 +138,21 @@ export function HomeView() {
                   <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-cyan" />
                   Shield Active
                 </Badge>
-                <h2 className="font-display text-2xl font-bold tracking-tight text-ink md:text-3xl">
+                <h2 className="font-display text-xl font-bold tracking-tight text-ink sm:text-2xl md:text-3xl">
                   Good morning, <span className="text-gradient">{firstName}</span>
                 </h2>
-                <p className="mt-2 text-sm text-ink-muted">
+                <p className="mt-2 text-xs text-ink-muted sm:text-sm">
                   Your identity is {protectionScore >= 80 ? "strongly" : "moderately"} guarded.
                   {critical > 0
                     ? ` ${critical} critical threat${critical > 1 ? "s" : ""} needs action.`
                     : " No critical threats right now."}
                 </p>
-                <div className="mt-5 flex flex-wrap justify-center gap-3 md:justify-start">
-                  <Button onClick={() => setTab("scan")}>
+                <div className="mt-4 flex flex-wrap justify-center gap-3 sm:mt-5 md:justify-start">
+                  <Button onClick={() => setTab("scan")} size="sm" className="sm:size-default">
                     <ScanSearch className="h-4 w-4" />
                     Run Scan
                   </Button>
-                  <Button variant="glass" onClick={() => setTab("alerts")}>
+                  <Button variant="glass" onClick={() => setTab("alerts")} size="sm" className="sm:size-default">
                     View Alerts
                     <ArrowRight className="h-4 w-4" />
                   </Button>
@@ -160,7 +161,7 @@ export function HomeView() {
             </div>
 
             {/* Anchoring strip */}
-            <div className="relative mt-6 flex flex-wrap items-center justify-between gap-4 border-t border-white/[0.07] pt-5">
+            <div className="relative mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-white/[0.07] pt-4 sm:mt-6 sm:gap-4 sm:pt-5">
               <StreakWidget streak={psych.streak} sub={psych.streakSub} />
               <ThreatAvoidanceWidget count={psych.threatsBlocked} />
             </div>
@@ -168,7 +169,7 @@ export function HomeView() {
         </StaggerItem>
 
         {/* Bento stat stack */}
-        <StaggerItem className="grid grid-cols-2 gap-4">
+        <StaggerItem className="grid grid-cols-2 gap-3 sm:gap-4">
           <StatTile
             icon={ShieldCheck}
             color="green"
@@ -187,7 +188,7 @@ export function HomeView() {
             value={loading ? "—" : critical.toString()}
             label="Critical threats"
           />
-          <div className="flex flex-col justify-center rounded-2xl glass p-4 md:p-5">
+          <div className="flex flex-col justify-center rounded-2xl glass p-3 sm:p-4 md:p-5">
             <AnchorMetric
               icon={ScanSearch}
               color="cyan"

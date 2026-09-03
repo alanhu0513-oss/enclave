@@ -165,7 +165,7 @@ export function ScanView() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-6">
+    <div className="mx-auto w-full max-w-6xl space-y-4 sm:space-y-6">
       {/* Header */}
       <FadeIn>
         <SectionHeader
@@ -176,25 +176,25 @@ export function ScanView() {
       </FadeIn>
 
       {/* Step indicator */}
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-1 sm:gap-1.5">
         {STEP_LABELS.map((label, i) => (
-          <div key={label} className="flex items-center gap-1.5">
+          <div key={label} className="flex items-center gap-1 sm:gap-1.5">
             <motion.div
               animate={i <= stepIdx ? { scale: [1, 1.2, 1] } : {}}
               transition={{ duration: 0.4 }}
               className={cn(
-                "flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold transition-all duration-300",
+                "flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-semibold transition-all duration-300 sm:h-7 sm:w-7 sm:text-xs",
                 i < stepIdx ? "bg-green/20 text-green" :
                 i === stepIdx ? "bg-cyan/20 text-cyan shadow-[0_0_12px_rgba(0,191,255,0.3)]" :
                 "bg-white/[0.04] text-ink-faint"
               )}
             >
-              {i < stepIdx ? <CheckCircle2 className="h-4 w-4" /> : i + 1}
+              {i < stepIdx ? <CheckCircle2 className="h-3 w-3 sm:h-4 sm:w-4" /> : i + 1}
             </motion.div>
-            <span className={cn("text-xs font-medium", i <= stepIdx ? "text-ink" : "text-ink-faint")}>{label}</span>
+            <span className={cn("text-[10px] font-medium sm:text-xs", i <= stepIdx ? "text-ink" : "text-ink-faint")}>{label}</span>
             {i < STEP_LABELS.length - 1 && (
               <div className={cn(
-                "h-px w-6 transition-colors duration-300",
+                "h-px w-4 transition-colors duration-300 sm:w-6",
                 i < stepIdx ? "bg-green/40" : "bg-white/[0.06]"
               )} />
             )}
@@ -206,7 +206,7 @@ export function ScanView() {
         {/* Step 1: Choose tool */}
         {step === "choose" && (
           <motion.div key="choose" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }}>
-            <StaggerContainer className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <StaggerContainer className="grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
               {TOOLS.map((t) => {
                 const Icon = t.icon;
                 const gradients: Record<string, string> = {
@@ -223,13 +223,13 @@ export function ScanView() {
                         onClick={() => chooseTool(t.id)}
                       >
                         <div className={cn("absolute inset-0 bg-gradient-to-br opacity-0 transition-opacity duration-300 group-hover:opacity-100", gradients[t.color])} />
-                        <CardContent className="relative p-5">
-                          <div className={cn("mb-3 flex h-11 w-11 items-center justify-center rounded-xl", COLOR_MAP[t.color])}>
-                            <Icon className="h-5 w-5" />
+                        <CardContent className="relative p-3 sm:p-5">
+                          <div className={cn("mb-2 flex h-9 w-9 items-center justify-center rounded-lg sm:mb-3 sm:h-11 sm:w-11 sm:rounded-xl", COLOR_MAP[t.color])}>
+                            <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
                           </div>
-                          <p className="text-sm font-semibold text-ink">{t.label}</p>
-                          <p className="mt-1 text-xs leading-relaxed text-ink-muted">{t.desc}</p>
-                          <div className="mt-3 flex items-center gap-1 text-xs font-medium text-cyan opacity-0 transition-opacity group-hover:opacity-100">
+                          <p className="text-xs font-semibold text-ink sm:text-sm">{t.label}</p>
+                          <p className="mt-1 text-[11px] leading-relaxed text-ink-muted sm:text-xs">{t.desc}</p>
+                          <div className="mt-2 flex items-center gap-1 text-xs font-medium text-cyan opacity-0 transition-opacity group-hover:opacity-100 sm:mt-3">
                             Get started <ArrowRight className="h-3 w-3" />
                           </div>
                         </CardContent>

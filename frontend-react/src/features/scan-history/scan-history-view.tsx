@@ -125,7 +125,7 @@ export function ScanHistoryView() {
   const safeCount = scans.filter((s) => s.status === "safe" || s.status === "completed" || s.status === "RESOLVED_SAFE").length;
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6 p-6">
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4 p-3 sm:space-y-6 sm:p-6">
       <FadeIn>
         <SectionHeader
           icon={History}
@@ -141,28 +141,28 @@ export function ScanHistoryView() {
       </FadeIn>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-3 gap-2 sm:gap-4">
         <StaggerItem>
           <Card className="bg-white/5 border-white/10">
-            <CardContent className="p-4">
-              <p className="text-2xl font-bold text-white">{scans.length}</p>
-              <p className="text-xs text-white/60">Total Scans</p>
+            <CardContent className="p-3 sm:p-4">
+              <p className="text-lg font-bold text-white sm:text-2xl">{scans.length}</p>
+              <p className="text-[10px] text-white/60 sm:text-xs">Total Scans</p>
             </CardContent>
           </Card>
         </StaggerItem>
         <StaggerItem>
           <Card className="bg-red-500/5 border-red-500/10">
-            <CardContent className="p-4">
-              <p className="text-2xl font-bold text-red-400">{threatCount}</p>
-              <p className="text-xs text-white/60">Threats Detected</p>
+            <CardContent className="p-3 sm:p-4">
+              <p className="text-lg font-bold text-red-400 sm:text-2xl">{threatCount}</p>
+              <p className="text-[10px] text-white/60 sm:text-xs">Threats</p>
             </CardContent>
           </Card>
         </StaggerItem>
         <StaggerItem>
           <Card className="bg-emerald-500/5 border-emerald-500/10">
-            <CardContent className="p-4">
-              <p className="text-2xl font-bold text-emerald-400">{safeCount}</p>
-              <p className="text-xs text-white/60">Safe</p>
+            <CardContent className="p-3 sm:p-4">
+              <p className="text-lg font-bold text-emerald-400 sm:text-2xl">{safeCount}</p>
+              <p className="text-[10px] text-white/60 sm:text-xs">Safe</p>
             </CardContent>
           </Card>
         </StaggerItem>
@@ -170,9 +170,9 @@ export function ScanHistoryView() {
 
       {/* Filters */}
       <Card className="bg-white/5 border-white/10">
-        <CardContent className="p-4">
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="relative flex-1 min-w-[200px]">
+        <CardContent className="p-3 sm:p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+            <div className="relative flex-1 min-w-0 sm:min-w-[200px]">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
               <Input
                 placeholder="Search scans..."
@@ -184,7 +184,7 @@ export function ScanHistoryView() {
             <select
               value={typeFilter}
               onChange={(e) => setTypeFilter(e.target.value)}
-              className="rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-sm text-white"
+              className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-sm text-white sm:w-auto"
             >
               <option value="all">All Types</option>
               <option value="image">Image</option>
@@ -196,7 +196,7 @@ export function ScanHistoryView() {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-sm text-white"
+              className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-sm text-white sm:w-auto"
             >
               <option value="all">All Status</option>
               <option value="PENDING_REVIEW">Pending Review</option>
@@ -232,13 +232,13 @@ export function ScanHistoryView() {
             return (
               <StaggerItem key={scan.id}>
                 <Card className="bg-white/5 border-white/10 hover:bg-white/[0.07] transition-colors">
-                  <CardContent className="p-4">
-                    <div className="flex items-start gap-4">
-                      <div className={`shrink-0 rounded-full p-2 ${isThreat ? "bg-red/10" : "bg-emerald-500/10"}`}>
-                        <StatusIcon className={`h-5 w-5 ${isThreat ? "text-red" : "text-emerald-400"}`} />
+                  <CardContent className="p-3 sm:p-4">
+                    <div className="flex items-start gap-3 sm:gap-4">
+                      <div className={`shrink-0 rounded-full p-1.5 sm:p-2 ${isThreat ? "bg-red/10" : "bg-emerald-500/10"}`}>
+                        <StatusIcon className={`h-4 w-4 sm:h-5 sm:w-5 ${isThreat ? "text-red" : "text-emerald-400"}`} />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 mb-1">
+                        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-1">
                           <Badge className={TYPE_COLORS[scan.type] || TYPE_COLORS.url}>
                             {scan.type.toUpperCase()}
                           </Badge>
@@ -251,15 +251,15 @@ export function ScanHistoryView() {
                             </Badge>
                           )}
                         </div>
-                        <p className="text-sm text-white truncate">{scan.target}</p>
-                        <p className="text-xs text-white/50 mt-1">{scan.matchedOn || scan.result}</p>
-                        <div className="flex items-center gap-3 mt-2">
+                        <p className="text-xs text-white truncate sm:text-sm">{scan.target}</p>
+                        <p className="mt-1 text-[11px] text-white/50 sm:text-xs">{scan.matchedOn || scan.result}</p>
+                        <div className="mt-1.5 flex items-center gap-2 sm:mt-2 sm:gap-3">
                           {scan.confidence !== undefined && (
-                            <span className={`text-xs font-medium ${isThreat ? "text-red" : "text-emerald-400"}`}>
+                            <span className={`text-[11px] font-medium sm:text-xs ${isThreat ? "text-red" : "text-emerald-400"}`}>
                               {scan.confidence}% confidence
                             </span>
                           )}
-                          <span className="text-xs text-white/40">
+                          <span className="text-[11px] text-white/40 sm:text-xs">
                             {scan.created_at ? timeAgo(scan.created_at) : "Unknown time"}
                           </span>
                         </div>
@@ -269,9 +269,9 @@ export function ScanHistoryView() {
                           href={scan.source}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="shrink-0 p-2 text-white/40 hover:text-cyan transition-colors"
+                          className="shrink-0 p-1.5 text-white/40 hover:text-cyan transition-colors sm:p-2"
                         >
-                          <ExternalLink className="h-4 w-4" />
+                          <ExternalLink className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                         </a>
                       )}
                     </div>

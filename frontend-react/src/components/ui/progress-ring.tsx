@@ -1,16 +1,19 @@
 import { motion } from "motion/react";
+import { cn } from "@/lib/utils";
 
 interface ProgressRingProps {
   value: number;
   size?: number;
   strokeWidth?: number;
   label?: string;
+  className?: string;
 }
 
 export function ProgressRing({
   value = 0,
   size = 220,
   strokeWidth = 12,
+  className,
 }: ProgressRingProps) {
   const r = (size - strokeWidth) / 2;
   const c = 2 * Math.PI * r;
@@ -19,7 +22,7 @@ export function ProgressRing({
 
   return (
     <div
-      className="relative"
+      className={cn("relative", className)}
       style={{ width: size, height: size }}
       role="progressbar"
       aria-valuenow={Math.round(clamped)}

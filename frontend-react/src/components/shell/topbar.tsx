@@ -71,7 +71,7 @@ export function Topbar({
         </button>
       )}
 
-      <div className="hidden items-center gap-2 sm:flex">
+      <div className="flex items-center gap-2">
         <motion.span
           initial={{ scale: 0.6, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
@@ -83,14 +83,14 @@ export function Topbar({
 
         {/* Breadcrumb navigation */}
         <nav aria-label="Breadcrumb" className="flex items-center gap-1.5">
-          <span className="text-xs text-ink-faint">Enclave</span>
-          <ChevronRight className="h-3 w-3 text-ink-faint/50" />
+          <span className="hidden text-xs text-ink-faint sm:inline">Enclave</span>
+          <ChevronRight className="hidden h-3 w-3 text-ink-faint/50 sm:inline" />
           <motion.h1
             key={tab}
             initial={{ opacity: 0, y: 4 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.2 }}
-            className="font-display text-[15px] font-semibold tracking-tight text-ink"
+            className="font-display text-sm font-semibold tracking-tight text-ink sm:text-[15px]"
           >
             {TITLES[tab]}
           </motion.h1>

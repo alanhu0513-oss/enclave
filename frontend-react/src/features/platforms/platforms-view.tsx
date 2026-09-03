@@ -162,14 +162,14 @@ export function PlatformsView() {
   const selectedAlerts = selectedPlatform ? getAlertsForPlatform(selectedPlatformData!) : [];
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6 p-6">
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4 p-3 sm:space-y-6 sm:p-6">
       <FadeIn>
         <SectionHeader
           icon={Globe}
           title="Platform Coverage"
           description="Platforms and sources we monitor for deepfake and identity threats"
           action={
-            <Button onClick={runScan} disabled={scanning} className="bg-gradient-to-r from-cyan to-green text-black font-semibold">
+            <Button onClick={runScan} disabled={scanning} className="bg-gradient-to-r from-cyan to-green text-black font-semibold" size="sm">
               {scanning ? <Loader2 className="h-4 w-4 animate-spin" /> : <ScanSearch className="h-4 w-4" />}
               {scanning ? "Scanning..." : "Run Full Scan"}
             </Button>
@@ -178,39 +178,39 @@ export function PlatformsView() {
       </FadeIn>
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
         <StaggerItem>
           <Card className="bg-white/5 border-white/10">
-            <CardContent className="p-4">
-              <p className="text-2xl font-bold text-white">{PLATFORMS.length}</p>
-              <p className="text-xs text-white/60">Total Platforms</p>
+            <CardContent className="p-3 sm:p-4">
+              <p className="text-xl font-bold text-white sm:text-2xl">{PLATFORMS.length}</p>
+              <p className="text-[10px] text-white/60 sm:text-xs">Total Platforms</p>
             </CardContent>
           </Card>
         </StaggerItem>
         <StaggerItem>
           <Card className="bg-emerald-500/5 border-emerald-500/10">
-            <CardContent className="p-4">
-              <p className="text-2xl font-bold text-emerald-400">{fullCount}</p>
-              <p className="text-xs text-white/60">Full Coverage</p>
+            <CardContent className="p-3 sm:p-4">
+              <p className="text-xl font-bold text-emerald-400 sm:text-2xl">{fullCount}</p>
+              <p className="text-[10px] text-white/60 sm:text-xs">Full Coverage</p>
             </CardContent>
           </Card>
         </StaggerItem>
         <StaggerItem>
           <Card className="bg-cyan-500/5 border-cyan-500/10">
-            <CardContent className="p-4">
-              <p className="text-2xl font-bold text-cyan-400">{totalAlerts}</p>
-              <p className="text-xs text-white/60">Total Alerts</p>
+            <CardContent className="p-3 sm:p-4">
+              <p className="text-xl font-bold text-cyan-400 sm:text-2xl">{totalAlerts}</p>
+              <p className="text-[10px] text-white/60 sm:text-xs">Total Alerts</p>
             </CardContent>
           </Card>
         </StaggerItem>
         <StaggerItem>
           <Card className="bg-white/5 border-white/10">
-            <CardContent className="p-4">
+            <CardContent className="p-3 sm:p-4">
               <div className="flex items-center gap-2">
-                <Shield className="h-5 w-5 text-cyan-400" />
-                <p className="text-2xl font-bold text-white">Active</p>
+                <Shield className="h-4 w-4 text-cyan-400 sm:h-5 sm:w-5" />
+                <p className="text-xl font-bold text-white sm:text-2xl">Active</p>
               </div>
-              <p className="text-xs text-white/60">Protection Status</p>
+              <p className="text-[10px] text-white/60 sm:text-xs">Protection Status</p>
             </CardContent>
           </Card>
         </StaggerItem>

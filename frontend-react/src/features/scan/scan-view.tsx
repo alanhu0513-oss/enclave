@@ -391,6 +391,45 @@ function ResultCard({ result }: { result: { type: Tool; data: any } }) {
   const label = conf !== null ? confidenceLabel(conf) : null;
   const color = conf !== null ? confidenceColor(conf) : "#00ff88";
 
+  // Handle deep scan response (async job started)
+  if (result.type === "deep" && result.data?.status === "started") {
+    return (
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] }}
+      >
+        <Card className="overflow-hidden border-cyan/20 bg-cyan/[0.03]">
+          <CardContent className="p-5">
+            <div className="mb-3 flex items-center gap-2">
+              <Loader2 className="h-5 w-5 text-cyan animate-spin" />
+              <p className="font-display text-sm font-semibold text-ink">
+                DEEP SCAN IN PROGRESS
+              </p>
+            </div>
+            <div className="space-y-3">
+              <p className="text-sm text-ink-muted">
+                Your deep scan has been queued and is currently running in the background.
+                This typically takes 2-5 minutes depending on how many sources need to be checked.
+              </p>
+              <div className="rounded-lg bg-white/[0.03] p-3">
+                <p className="text-xs text-ink-faint">
+                  <span className="font-medium text-ink-muted">Scan ID:</span> {result.data.scanId}
+                </p>
+                <p className="text-xs text-ink-faint mt-1">
+                  <span className="font-medium text-ink-muted">Status:</span> Running — scanning surface web, Reddit, paste sites, dark web, and social media
+                </p>
+              </div>
+              <p className="text-xs text-ink-faint">
+                You will receive an alert when the scan completes. Check your Alerts tab for results.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
+    );
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
@@ -434,10 +473,33 @@ function ResultCard({ result }: { result: { type: Tool; data: any } }) {
                 </p>
               </div>
             </div>
+          ) : result.data?.error ? (
+            <div className="rounded-lg bg-red/5 border border-red/10 p-3">
+              <p className="text-sm text-red">{result.data.error}</p>
+            </div>
+          ) : result.data?.alerts ? (
+            <div className="space-y-2">
+              <p className="text-sm text-ink-muted">
+                Scan completed. Found <span className="font-semibold text-ink">{result.data.count || 0}</span> potential matches.
+              </p>
+              {result.data.alerts.length > 0 && (
+                <div className="space-y-2">
+                  {result.data.alerts.slice(0, 5).map((alert: any, i: number) => (
+                    <div key={i} className="flex items-center gap-2 rounded-lg bg-white/[0.03] p-2">
+                      <AlertTriangle className="h-4 w-4 text-amber shrink-0" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs text-ink truncate">{alert.sourceUrl || alert.matchedOn || 'Match found'}</p>
+                        <p className="text-[10px] text-ink-faint">{alert.matchedOn} — {alert.confidence}% confidence</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           ) : (
-            <pre className="max-h-64 overflow-auto rounded-lg bg-black/30 p-3 font-mono text-xs text-ink-muted">
-              {JSON.stringify(result.data, null, 2)}
-            </pre>
+            <div className="rounded-lg bg-white/[0.03] p-3">
+              <p className="text-xs text-ink-faint">No results to display</p>
+            </div>
           )}
         </CardContent>
       </Card>

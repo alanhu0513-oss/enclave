@@ -16,6 +16,8 @@ CREATE TABLE IF NOT EXISTS users (
   stripe_subscription_id TEXT,
   subscription_current_period_end TIMESTAMP WITH TIME ZONE,
   token_version INTEGER DEFAULT 0,
+  totp_secret TEXT,
+  totp_enabled BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
@@ -23,6 +25,32 @@ CREATE TABLE IF NOT EXISTS users (
 -- Migration for existing installs
 ALTER TABLE users ADD COLUMN IF NOT EXISTS token_version INTEGER DEFAULT 0;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS email_notifications BOOLEAN DEFAULT TRUE;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_secret TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_enabled BOOLEAN DEFAULT FALSE;
+
+CREATE TABLE IF NOT EXISTS login_history (
+  id TEXT PRIMARY KEY DEFAULT ('login_' || replace(cast(gen_random_uuid() as text), '-', '')),
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  ip_address TEXT,
+  user_agent TEXT,
+  success BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_login_history_user ON login_history(user_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS integrations (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  type TEXT NOT NULL CHECK (type IN ('slack', 'discord')),
+  name TEXT,
+  webhook_url TEXT NOT NULL,
+  active BOOLEAN DEFAULT TRUE,
+  last_triggered_at TIMESTAMP WITH TIME ZONE,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_integrations_user ON integrations(user_id);
 
 CREATE TABLE IF NOT EXISTS faceprints (
   id TEXT PRIMARY KEY,

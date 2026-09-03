@@ -3,14 +3,16 @@
  *   1. OpenAI-compatible provider (auto-detected: Groq / Cerebras /
  *      OpenRouter / Mistral / SiliconFlow / GitHub Models / custom)
  *   2. Gemini 2.5 Flash (optional backup; also handles audio)
- *   3. Python ML microservice (XceptionNet, optional self-hosted)
- *   4. Local Laplacian heuristic (always available)
+ *   3. Anthropic Claude (optional backup; strong vision + text)
+ *   4. Python ML microservice (XceptionNet, optional self-hosted)
+ *   5. Local Laplacian heuristic (always available)
  */
 
 const fs = require('fs');
 const path = require('path');
 const gemini = require('./gemini-client');
 const primaryAi = require('./openai-compat-client');
+const anthropic = require('./anthropic-client');
 
 const ML_SERVICE_URL = process.env.ML_SERVICE_URL || 'http://localhost:8001';
 const ML_TIMEOUT = 30000;
@@ -166,7 +168,15 @@ async function detectImageBuffer(buffer, filename) {
     console.warn('[ML Client] Gemini image detect failed:', e.message);
   }
 
-  // 3) Python ML service (optional)
+  // 3) Anthropic Claude (backup)
+  try {
+    const g = await anthropic.detectImage(buffer, mimetype);
+    if (g) return _finalizeAiResult(g, started, buffer);
+  } catch (e) {
+    console.warn('[ML Client] Anthropic image detect failed:', e.message);
+  }
+
+  // 4) Python ML service (optional)
   if (await isMlAvailable()) {
     try {
       const result = await mlPostMultipart('/detect/image', 'file', buffer, filename || 'image.jpg');
@@ -366,7 +376,7 @@ async function detectText(text) {
   try {
     const g = await primaryAi.detectText(text);
     if (g && !g.error) return { ...g, latency_ms: Date.now() - started };
-    if (g && g.error) return g; // validation error — no point trying next provider
+    if (g && g.error) return g;
   } catch (e) {
     console.warn('[ML Client] primary AI text detect failed:', e.message);
   }
@@ -376,19 +386,25 @@ async function detectText(text) {
   } catch (e) {
     console.warn('[ML Client] Gemini text detect failed:', e.message);
   }
+  try {
+    const result = await anthropic.detectText(text);
+    if (result && !result.error) return { ...result, latency_ms: Date.now() - started };
+  } catch (e) {
+    console.warn('[ML Client] Anthropic text detect failed:', e.message);
+  }
   return null;
 }
 
-/** Merged provider status across primary AI + Gemini + Python ML service. */
+/** Merged provider status across primary AI + Gemini + Anthropic + Python ML service. */
 async function getStatus() {
-  const [aiStatus, geminiStatus, pythonHealth] = await Promise.all([
+  const [aiStatus, geminiStatus, anthropicStatus, pythonHealth] = await Promise.all([
     Promise.resolve(primaryAi.getStatus()),
     Promise.resolve(gemini.getStatus()),
+    Promise.resolve(anthropic.getStatus()),
     getHealth().catch(() => ({ status: 'unavailable' })),
   ]);
   return {
     primaryAi: {
-      // Flattened failover layer -> legacy badge shape
       configured: aiStatus.configured,
       provider: aiStatus.provider,
       vision: { available: !!aiStatus.visionAvailable },
@@ -398,6 +414,7 @@ async function getStatus() {
       providers: aiStatus.providers,
     },
     gemini: geminiStatus,
+    anthropic: anthropicStatus,
     pythonService: {
       url: ML_SERVICE_URL,
       status: pythonHealth.status || 'unavailable',

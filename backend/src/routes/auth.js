@@ -314,4 +314,148 @@ router.post('/change-password', authenticate, async (req, res) => {
   }
 });
 
+// ─── 2FA (TOTP) ───
+let speakeasy, qrcode;
+try { speakeasy = require('speakeasy'); qrcode = require('qrcode'); } catch (_) {}
+
+router.post('/2fa/setup', authenticate, async (req, res) => {
+  try {
+    if (!speakeasy) return error(res, '2FA module not installed', 500);
+    const users = await table('users');
+    const user = await users.find({ id: req.user.userId });
+    if (!user) return error(res, 'User not found', 404);
+
+    const secret = speakeasy.generateSecret({ name: `Enclave (${user.email})`, length: 20 });
+    await users.update({ id: user.id }, {
+      totp_secret: secret.base32,
+      totp_enabled: false,
+      updated_at: new Date().toISOString(),
+    });
+
+    const otpauthUrl = secret.otpauth_url;
+    const qrDataUrl = await qrcode.toDataURL(otpauthUrl);
+
+    return success(res, {
+      secret: secret.base32,
+      qrCode: qrDataUrl,
+      message: 'Scan QR code with authenticator app, then verify with /api/auth/2fa/verify',
+    });
+  } catch (e) {
+    return error(res, e.message || '2FA setup failed');
+  }
+});
+
+router.post('/2fa/verify', authenticate, async (req, res) => {
+  try {
+    if (!speakeasy) return error(res, '2FA module not installed', 500);
+    const { token } = req.body;
+    if (!token) return error(res, 'Token required', 400);
+
+    const users = await table('users');
+    const user = await users.find({ id: req.user.userId });
+    if (!user || !user.totp_secret) return error(res, '2FA not set up', 400);
+
+    const verified = speakeasy.totp.verify({
+      secret: user.totp_secret,
+      encoding: 'base32',
+      token,
+      window: 1,
+    });
+
+    if (!verified) return error(res, 'Invalid token', 400);
+
+    await users.update({ id: user.id }, {
+      totp_enabled: true,
+      updated_at: new Date().toISOString(),
+    });
+
+    return success(res, { message: '2FA enabled successfully' });
+  } catch (e) {
+    return error(res, e.message || '2FA verification failed');
+  }
+});
+
+router.post('/2fa/disable', authenticate, async (req, res) => {
+  try {
+    if (!speakeasy) return error(res, '2FA module not installed', 500);
+    const { token, password } = req.body;
+    if (!token || !password) return error(res, 'Token and password required', 400);
+
+    const users = await table('users');
+    const user = await users.find({ id: req.user.userId });
+    if (!user) return error(res, 'User not found', 404);
+
+    if (!(await bcrypt.compare(password, user.password_hash))) {
+      return error(res, 'Incorrect password', 401);
+    }
+
+    const verified = speakeasy.totp.verify({
+      secret: user.totp_secret,
+      encoding: 'base32',
+      token,
+      window: 1,
+    });
+    if (!verified) return error(res, 'Invalid token', 400);
+
+    await users.update({ id: user.id }, {
+      totp_secret: null,
+      totp_enabled: false,
+      updated_at: new Date().toISOString(),
+    });
+
+    return success(res, { message: '2FA disabled' });
+  } catch (e) {
+    return error(res, e.message || '2FA disable failed');
+  }
+});
+
+// Login with 2FA check
+router.post('/login', async (req, res) => {
+  try {
+    const { email, password, totpToken } = req.body;
+    if (!email || !password) return error(res, 'Email and password required', 400);
+
+    const users = await table('users');
+    const user = await users.find({ email: email.toLowerCase() });
+    if (!user) return error(res, 'Invalid credentials', 401);
+
+    if (!(await bcrypt.compare(password, user.password_hash))) {
+      return error(res, 'Invalid credentials', 401);
+    }
+
+    // Check 2FA
+    if (user.totp_enabled && user.totp_secret) {
+      if (!totpToken) return error(res, '2FA token required', 403, { requires2FA: true });
+
+      const verified = speakeasy?.totp.verify({
+        secret: user.totp_secret,
+        encoding: 'base32',
+        token: totpToken,
+        window: 1,
+      });
+      if (!verified) return error(res, 'Invalid 2FA token', 401);
+    }
+
+    // Log login history
+    try {
+      const loginHistory = await table('login_history');
+      await loginHistory.create({
+        user_id: user.id,
+        ip_address: req.ip || req.connection?.remoteAddress || 'unknown',
+        user_agent: req.headers['user-agent'] || 'unknown',
+        success: true,
+        created_at: new Date().toISOString(),
+      });
+    } catch (_) {}
+
+    const token = await generateTokenForUser({ id: user.id, email: user.email });
+    return success(res, {
+      token,
+      user: { id: user.id, email: user.email, fullName: user.full_name },
+    });
+  } catch (e) {
+    return error(res, e.message || 'Login failed');
+  }
+});
+
 module.exports = router;

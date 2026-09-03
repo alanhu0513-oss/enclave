@@ -169,6 +169,7 @@ app.use('/api/threat-intel', threatIntelRoutes);
 app.use('/api/education', educationRoutes);
 app.use('/api/bug-bounty', bugBountyRoutes);
 app.use('/api/whitelabel', whitelabelRoutes);
+app.use('/api/integrations', require('./routes/integrations'));
 
 app.get('/api/health', async (req, res) => {
   const health = {

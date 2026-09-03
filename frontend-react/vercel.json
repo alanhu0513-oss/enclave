@@ -3,7 +3,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://rbk8qolrpkys-production-jd0sc3vz.us-central1.suga.run/api/:path*"
+      "destination": "https://enclave-production-d818.up.railway.app/api/:path*"
     },
     {
       "source": "/((?!assets/).*)",

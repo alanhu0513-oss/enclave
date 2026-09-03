@@ -10,21 +10,19 @@ chrome.storage.local.get(['shieldActive', 'settings', 'stats', 'lastDetection', 
 
 // Toggle shield
 document.getElementById('shieldToggle').addEventListener('click', () => {
-  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    if (tabs[0]) {
-      chrome.tabs.sendMessage(tabs[0].id, { type: 'TOGGLE_SHIELD' });
-      // Also send to background
-      chrome.runtime.sendMessage({ type: 'TOGGLE_SHIELD' }, (res) => {
-        updateToggleUI(res?.active);
-      });
-    }
+  chrome.runtime.sendMessage({ type: 'TOGGLE_SHIELD' }, (res) => {
+    if (res) updateToggleUI(res.active);
   });
 });
 
-// Sensitivity selector
-document.getElementById('sensitivity').addEventListener('change', (e) => {
-  settings.sensitivity = e.target.value;
-  chrome.runtime.sendMessage({ type: 'UPDATE_SETTINGS', settings });
+// Sensitivity buttons
+document.querySelectorAll('.sens-btn').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    settings.sensitivity = btn.dataset.level;
+    chrome.runtime.sendMessage({ type: 'UPDATE_SETTINGS', settings });
+    document.querySelectorAll('.sens-btn').forEach((b) => b.classList.remove('active'));
+    btn.classList.add('active');
+  });
 });
 
 // Audio toggle
@@ -42,7 +40,10 @@ function updateUI(active, stats, lastDetection, hasToken) {
     document.getElementById('threatCount').textContent = stats.threats || 0;
   }
 
-  document.getElementById('sensitivity').value = settings.sensitivity || 'medium';
+  // Highlight active sensitivity button
+  document.querySelectorAll('.sens-btn').forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.level === (settings.sensitivity || 'medium'));
+  });
 
   if (document.getElementById('audioToggle')) {
     document.getElementById('audioToggle').classList.toggle('active', settings.audioAnalysis !== false);
@@ -57,6 +58,7 @@ function updateUI(active, stats, lastDetection, hasToken) {
       ? `Deepfake: ${lastDetection.confidence}%`
       : 'No threats detected';
     lastEl.querySelector('.ld-time').textContent = ago;
+    lastEl.className = `last-detection ${lastDetection.isDeepfake ? 'danger' : 'safe'}`;
   }
 }
 
@@ -65,7 +67,7 @@ function updateToggleUI(active) {
   const dot = document.getElementById('statusDot');
   const text = document.getElementById('statusText');
   if (toggle) toggle.className = `toggle ${active ? 'on' : ''}`;
-  if (dot) dot.style.background = active ? '#00ff88' : '#ef4444';
+  if (dot) dot.className = `status-dot ${active ? '' : 'off'}`;
   if (text) text.textContent = active ? 'Active' : 'Paused';
 }
 

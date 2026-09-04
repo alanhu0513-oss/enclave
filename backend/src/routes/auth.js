@@ -451,13 +451,16 @@ router.post('/login', async (req, res) => {
     try {
       const loginHistory = await table('login_history');
       await loginHistory.create({
+        id: uuidv4(),
         user_id: user.id,
         ip_address: req.ip || req.connection?.remoteAddress || 'unknown',
         user_agent: req.headers['user-agent'] || 'unknown',
         success: true,
         created_at: new Date().toISOString(),
       });
-    } catch (_) {}
+    } catch (e) {
+      console.warn('[AUTH] Login history insert failed:', e.message);
+    }
 
     const token = await generateTokenForUser({ id: user.id, email: user.email });
     return success(res, {

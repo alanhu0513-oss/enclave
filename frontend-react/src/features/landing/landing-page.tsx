@@ -16,21 +16,67 @@ import {
   Zap,
   Globe,
   FileWarning,
+  Fingerprint,
+  Gauge,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
-import { Button } from "@/components/ui/button";
 
-/* ─── CSS Custom Properties ─── */
+/* ═══════════════════════════════════════════════════════════
+   CYBERTECH DESIGN TOKENS — scoped to the landing page
+   Deep obsidian canvas · electric cyan / hyper teal accents
+   neon coral alerts · strict 1px borders · floating neon depth
+   ═══════════════════════════════════════════════════════════ */
+const tk = {
+  /* Backgrounds */
+  bgBase: "#040406",
+  bgCanvas: "#050507",
+  bgRaised: "#0A0A0D",
+  surface: "#0D0E12",
+  surfaceRaised: "#121318",
+  surfaceHover: "#17181D",
+
+  /* Accents */
+  cyan: "#00F2FE",
+  teal: "#05F2C7",
+  coral: "#FF3366",
+
+  /* Ink */
+  ink: "#F4F7FB",
+  inkMuted: "#9BA3B2",
+  inkFaint: "#6B7280",
+
+  /* Borders */
+  border: "rgba(255,255,255,0.06)",
+  borderHover: "rgba(0,242,254,0.35)",
+
+  /* Glass */
+  glass: "rgba(13,14,18,0.7)",
+} as const;
+
 const cssVars = {
-  "--color-primary": "#22c55e",
-  "--color-accent": "#06b6d4",
-  "--color-bg": "#111113",
-  "--color-bg-raised": "#161618",
-  "--color-text": "#fafaf9",
-  "--color-text-muted": "#a1a1aa",
-  "--color-text-dim": "#a1a1aa",
-  "--color-border": "rgba(255,255,255,0.06)",
+  "--tk-bg": tk.bgBase,
+  "--tk-surface": tk.surface,
+  "--tk-surface-raised": tk.surfaceRaised,
+  "--tk-cyan": tk.cyan,
+  "--tk-teal": tk.teal,
+  "--tk-coral": tk.coral,
+  "--tk-ink": tk.ink,
+  "--tk-ink-muted": tk.inkMuted,
+  "--tk-border": tk.border,
 } as React.CSSProperties;
+
+/* Glass / card primitives — keep hover transitions incredibly fluid */
+const CARD =
+  "relative rounded-2xl border backdrop-blur-md transition-all duration-300 ease-out will-change-transform";
+const CARD_SURFACE = `border-[rgba(255,255,255,0.06)] bg-[rgba(13,14,18,0.7)]`;
+const CARD_HOVER =
+  "hover:border-[rgba(0,242,254,0.35)] hover:-translate-y-1 hover:bg-[rgba(17,18,23,0.85)] hover:shadow-[0_20px_60px_-20px_rgba(0,242,254,0.15)]";
+
+/* Gradient text — cyan → teal */
+const G_TEXT =
+  "bg-gradient-to-r from-[#00F2FE] via-[#05F2C7] to-[#00F2FE] bg-clip-text text-transparent";
+const G_TEXT_SOFT =
+  "bg-gradient-to-r from-[#00F2FE] to-[#05F2C7] bg-clip-text text-transparent";
 
 /* ─── Data ─── */
 const FEATURES = [
@@ -38,43 +84,50 @@ const FEATURES = [
     icon: ScanSearch,
     title: "Deepfake Detection",
     desc: "Neural networks analyze images, audio, and video frame-by-frame. Not keyword matching — real ML inference catching manipulation before it spreads.",
-    color: "cyan",
-    span: "md:col-span-2",
+    accent: "cyan",
+    span: "md:col-span-2 md:row-span-2",
+    visual: "ring",
+    ringValue: 95,
   },
   {
     icon: Radar,
     title: "Dark Web Monitoring",
     desc: "Continuous scanning across surface web, Reddit, paste sites, and hidden forums.",
-    color: "purple",
+    accent: "violet",
     span: "",
+    visual: "spark",
   },
   {
     icon: Bell,
     title: "Threat Alerts",
     desc: "Real-time push notifications and email the moment something is found.",
-    color: "green",
+    accent: "teal",
     span: "",
+    visual: "list",
   },
   {
     icon: Shield,
     title: "Auto Takedown",
     desc: "Automatic DMCA notices with 48-hour escalation and evidence preservation.",
-    color: "amber",
+    accent: "cyan",
     span: "",
+    visual: "none",
   },
   {
     icon: Lock,
     title: "Content Watermarking",
     desc: "Invisible watermarks and C2PA credentials prove ownership and deter theft.",
-    color: "cyan",
-    span: "",
+    accent: "teal",
+    span: "md:col-span-2",
+    visual: "bars",
   },
   {
     icon: Eye,
     title: "Face Analysis",
     desc: "Detect and compare multiple faces against your enrolled biometric profile.",
-    color: "purple",
+    accent: "violet",
     span: "",
+    visual: "faces",
   },
 ];
 
@@ -127,10 +180,10 @@ const TIERS = [
 ];
 
 const STATS = [
-  { value: 2000000, suffix: "+", label: "Images Analyzed" },
-  { value: 95, suffix: "%", label: "Detection Accuracy" },
-  { value: 50000, suffix: "+", label: "Threats Blocked" },
-  { value: 99.9, suffix: "%", label: "Uptime" },
+  { value: 2000000, suffix: "+", label: "Images Analyzed", mono: true },
+  { value: 95, suffix: "%", label: "Detection Accuracy", mono: true },
+  { value: 50000, suffix: "+", label: "Threats Blocked", mono: true },
+  { value: 99.9, suffix: "%", label: "Uptime", mono: true },
 ];
 
 const TESTIMONIALS = [
@@ -139,7 +192,7 @@ const TESTIMONIALS = [
     role: "Content Creator",
     text: "Found deepfakes of me on 3 different sites within hours. The auto-takedown saved me weeks of work. I didn't have to file a single form myself.",
     rating: 5,
-    color: "#06b6d4",
+    accent: "#00F2FE",
     initials: "SC",
   },
   {
@@ -147,7 +200,7 @@ const TESTIMONIALS = [
     role: "Privacy Advocate",
     text: "Finally a tool that takes identity protection seriously. The dark web monitoring is something else.",
     rating: 5,
-    color: "#a855f7",
+    accent: "#05F2C7",
     initials: "MR",
   },
   {
@@ -155,10 +208,12 @@ const TESTIMONIALS = [
     role: "Public Figure",
     text: "The watermarking feature alone is worth it. I now have proof of ownership for all my content.",
     rating: 5,
-    color: "#f59e0b",
+    accent: "#A78BFA",
     initials: "AP",
   },
 ];
+
+const LOGOS = ["FORRER", "N0VATECH", "DARKNET-WATCH", "SECURY", "PARALLAX", "ORBITAL"];
 
 const FAQ = [
   {
@@ -167,7 +222,7 @@ const FAQ = [
   },
   {
     q: "What sources do you scan?",
-    a: "We scan the surface web via search engine APIs, social media platforms like Reddit and X, paste sites such as Pastebin and Ghostbin, dark web forums and marketplaces, Telegram channels, and file-sharing platforms. Pro plans and above get hourly monitoring with real-time alerts. Shield plans add dark web crawling withTor integration.",
+    a: "We scan the surface web via search engine APIs, social media platforms like Reddit and X, paste sites such as Pastebin and Ghostbin, dark web forums and marketplaces, Telegram channels, and file-sharing platforms. Pro plans and above get hourly monitoring with real-time alerts. Shield plans add dark web crawling with Tor integration.",
   },
   {
     q: "How fast are takedowns?",
@@ -187,32 +242,12 @@ const FAQ = [
   },
 ];
 
-const COLOR_MAP: Record<string, string> = {
-  cyan: "text-cyan",
-  purple: "text-purple",
-  green: "text-green",
-  amber: "text-amber",
-};
-
-const BG_MAP: Record<string, string> = {
-  cyan: "bg-cyan/10",
-  purple: "bg-purple/10",
-  green: "bg-green/10",
-  amber: "bg-amber/10",
-};
-
-const BORDER_MAP: Record<string, string> = {
-  cyan: "border-cyan/20",
-  purple: "border-purple/20",
-  green: "border-green/20",
-  amber: "border-amber/20",
-};
-
-const HOVER_GLOW: Record<string, string> = {
-  cyan: "hover:shadow-[0_0_30px_rgba(6,182,212,0.15)]",
-  purple: "hover:shadow-[0_0_30px_rgba(168,85,247,0.15)]",
-  green: "hover:shadow-[0_0_30px_rgba(34,197,94,0.15)]",
-  amber: "hover:shadow-[0_0_30px_rgba(245,158,11,0.15)]",
+/* Palette helpers */
+const ACCENT = {
+  cyan: { text: "text-[#00F2FE]", chip: "bg-[#00F2FE]/10 border-[#00F2FE]/20", glow: "shadow-[0_0_30px_rgba(0,242,254,0.12)]" },
+  teal: { text: "text-[#05F2C7]", chip: "bg-[#05F2C7]/10 border-[#05F2C7]/20", glow: "shadow-[0_0_30px_rgba(5,242,199,0.12)]" },
+  violet: { text: "text-[#A78BFA]", chip: "bg-[#A78BFA]/10 border-[#A78BFA]/20", glow: "shadow-[0_0_30px_rgba(167,139,250,0.12)]" },
+  coral: { text: "text-[#FF3366]", chip: "bg-[#FF3366]/10 border-[#FF3366]/20", glow: "shadow-[0_0_30px_rgba(255,51,102,0.12)]" },
 };
 
 /* ─── Count-up hook ─── */
@@ -237,15 +272,100 @@ function useCountUp(target: number, duration = 2000) {
   return { count, ref };
 }
 
+/* ─── Glowing status ring (minimal data viz) ─── */
+function Ring({ value, size = 120, stroke = 6, color = "#00F2FE" }: { value: number; size?: number; stroke?: number; color?: string }) {
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  const offset = c - (value / 100) * c;
+  return (
+    <div className="relative inline-flex items-center justify-center" style={{ width: size, height: size }}>
+      <svg width={size} height={size} className="-rotate-90">
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={stroke} />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          fill="none"
+          stroke={color}
+          strokeWidth={stroke}
+          strokeLinecap="round"
+          strokeDasharray={c}
+          strokeDashoffset={offset}
+          style={{ filter: `drop-shadow(0 0 6px ${color})`, transition: "stroke-dashoffset 1.2s cubic-bezier(0.22,1,0.36,1)" }}
+        />
+      </svg>
+      <div className="absolute inset-0 flex items-center justify-center">
+        <span className="font-mono text-lg font-semibold tracking-tight text-[#F4F7FB]">{value}%</span>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Thin-line sparkline (minimal data viz) ─── */
+function Sparkline({ points, color = "#05F2C7", width = 220, height = 64 }: { points: number[]; color?: string; width?: number; height?: number }) {
+  const max = Math.max(...points);
+  const min = Math.min(...points);
+  const pad = 4;
+  const step = (width - pad * 2) / (points.length - 1);
+  const coords = points.map((p, i) => {
+    const x = pad + i * step;
+    const y = height - pad - ((p - min) / (max - min || 1)) * (height - pad * 2);
+    return `${x},${y}`;
+  });
+  const path = `M${coords.join(" L")}`;
+  const area = `${path} L${width - pad},${height} L${pad},${height} Z`;
+  return (
+    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="w-full" style={{ overflow: "visible" }}>
+      <defs>
+        <linearGradient id={`spark-fill-${color.replace("#", "")}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.2" />
+          <stop offset="100%" stopColor={color} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <path d={area} fill={`url(#spark-fill-${color.replace("#", "")})`} />
+      <path d={path} fill="none" stroke={color} strokeWidth="1.5" style={{ filter: `drop-shadow(0 0 4px ${color})` }} />
+      <circle cx={width - pad} cy={height - pad - ((points[points.length - 1] - min) / (max - min || 1)) * (height - pad * 2)} r="2.5" fill={color} style={{ filter: `drop-shadow(0 0 5px ${color})` }} />
+    </svg>
+  );
+}
+
+/* ─── Ambient background layers ─── */
+function Backdrop() {
+  return (
+    <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+      {/* Radial neon glows — floating depth, opacity-10 */}
+      <div className="absolute -top-40 left-1/2 h-[560px] w-[900px] -translate-x-1/2 rounded-full bg-[#00F2FE] opacity-10 blur-[140px]" />
+      <div className="absolute top-1/3 -left-40 h-[420px] w-[420px] rounded-full bg-[#05F2C7] opacity-[0.08] blur-[130px]" />
+      <div className="absolute top-1/4 -right-32 h-[380px] w-[380px] rounded-full bg-[#A78BFA] opacity-[0.07] blur-[130px]" />
+      {/* Grid texture */}
+      <div
+        className="absolute inset-0 opacity-[0.025]"
+        style={{
+          backgroundImage: `linear-gradient(rgba(255,255,255,0.4) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.4) 1px, transparent 1px)`,
+          backgroundSize: "64px 64px",
+          maskImage: "radial-gradient(ellipse 80% 60% at 50% 0%, black 20%, transparent 70%)",
+        }}
+      />
+      {/* Noise texture */}
+      <div
+        className="absolute inset-0 opacity-[0.015]"
+        style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")`,
+        }}
+      />
+    </div>
+  );
+}
+
 /* ─── Main Component ─── */
 export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
   const { user } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [openFaq, setOpenFaq] = useState<number | null>(0);
   const [navScrolled, setNavScrolled] = useState(false);
 
   useEffect(() => {
-    const onScroll = () => setNavScrolled(window.scrollY > 50);
+    const onScroll = () => setNavScrolled(window.scrollY > 24);
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
@@ -256,49 +376,69 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
     if (onGetStarted) onGetStarted();
   }
 
+  const navLinks = [
+    { label: "Features", href: "#features" },
+    { label: "How it works", href: "#how-it-works" },
+    { label: "Pricing", href: "#pricing" },
+    { label: "FAQ", href: "#faq" },
+  ];
+
   return (
-    <div className="min-h-screen bg-[var(--color-bg)] text-[var(--color-text)]" style={cssVars}>
-      <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-[100] focus:bg-green focus:text-black focus:px-4 focus:py-2">Skip to content</a>
+    <div className="min-h-screen bg-[var(--tk-bg)] text-[var(--tk-ink)] antialiased" style={cssVars}>
+      <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-[100] focus:bg-[#00F2FE] focus:text-black focus:px-4 focus:py-2">Skip to content</a>
 
-      {/* Navigation — sticky with scroll opacity */}
-      <nav
-        className={`fixed top-0 z-50 w-full border-b transition-all duration-300 ${
-          navScrolled
-            ? "border-white/[0.1] bg-[#111113]/95 backdrop-blur-xl shadow-[0_1px_20px_rgba(0,0,0,0.5)]"
-            : "border-transparent bg-transparent backdrop-blur-none"
-        }`}
+      {/* ───────── Navigation — floating glass bar ───────── */}
+      <motion.header
+        initial={{ y: -24, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.5, ease: "easeOut" }}
+        className="fixed inset-x-0 top-0 z-50 px-3 pt-3 sm:px-4 sm:pt-4"
       >
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-green">
-              <Shield className="h-4 w-4 text-black" aria-hidden="true" />
+        <nav
+          className={`mx-auto flex max-w-6xl items-center justify-between rounded-2xl border px-4 py-2.5 transition-all duration-300 ease-out ${
+            navScrolled
+              ? "border-[rgba(255,255,255,0.08)] bg-[rgba(10,10,13,0.75)] backdrop-blur-xl shadow-[0_8px_32px_-12px_rgba(0,0,0,0.8)]"
+              : "border-transparent bg-transparent"
+          }`}
+        >
+          <a href="#" className="flex items-center gap-2.5" onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: "smooth" }); }}>
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#00F2FE]/25 bg-gradient-to-br from-[#00F2FE]/20 to-[#05F2C7]/10 shadow-[0_0_16px_rgba(0,242,254,0.25)]">
+              <Shield className="h-4 w-4 text-[#00F2FE]" aria-hidden="true" />
             </div>
-            <span className="font-display text-lg font-bold" style={{ letterSpacing: "-0.02em" }}>Enclave</span>
+            <span className="font-[var(--font-sans)] text-lg font-semibold tracking-tight" style={{ letterSpacing: "-0.02em" }}>Enclave</span>
+          </a>
+
+          <div className="hidden items-center gap-7 md:flex">
+            {navLinks.map((l) => (
+              <a key={l.href} href={l.href} className="text-sm text-[var(--tk-ink-muted)] transition-colors duration-300 ease-out hover:text-[var(--tk-ink)]">
+                {l.label}
+              </a>
+            ))}
           </div>
 
-          <div className="hidden items-center gap-8 md:flex">
-            <a href="#features" className="text-base text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text)]">Features</a>
-            <a href="#how-it-works" className="text-base text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text)]">How It Works</a>
-            <a href="#pricing" className="text-base text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text)]">Pricing</a>
-            <a href="#faq" className="text-base text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text)]">FAQ</a>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" onClick={handleGetStarted} className="hidden md:flex">
-              Sign In
-            </Button>
-            <Button onClick={handleGetStarted} className="bg-green text-black font-medium">
-              Protect My Identity
-            </Button>
+          <div className="flex items-center gap-2.5">
             <button
-              className="md:hidden text-[var(--color-text-muted)]"
+              onClick={handleGetStarted}
+              className="hidden px-3 py-1.5 text-sm text-[var(--tk-ink-muted)] transition-all duration-300 ease-out hover:text-[var(--tk-ink)] md:block"
+            >
+              Sign in
+            </button>
+            <button
+              onClick={handleGetStarted}
+              className="group relative inline-flex items-center gap-2 rounded-lg border border-[#00F2FE]/30 bg-gradient-to-r from-[#00F2FE]/15 to-[#05F2C7]/10 px-4 py-2 text-sm font-medium text-[#BEF5F8] transition-all duration-300 ease-out hover:border-[#00F2FE]/60 hover:shadow-[0_0_24px_rgba(0,242,254,0.35)] active:scale-[0.98]"
+            >
+              Protect my identity
+              <ArrowRight className="h-4 w-4 transition-transform duration-300 ease-out group-hover:translate-x-0.5" aria-hidden="true" />
+            </button>
+            <button
+              className="text-[var(--tk-ink-muted)] md:hidden"
               aria-label="Toggle navigation menu"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
               {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </button>
           </div>
-        </div>
+        </nav>
 
         <AnimatePresence>
           {mobileMenuOpen && (
@@ -306,197 +446,207 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: "auto", opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
-              className="overflow-hidden border-t border-white/[0.06] md:hidden"
-              style={{ willChange: "height, opacity" }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+              className="mx-auto mt-2 max-w-6xl overflow-hidden rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[rgba(10,10,13,0.85)] backdrop-blur-xl md:hidden"
             >
-              <div className="space-y-2 px-6 py-4">
-                <a href="#features" className="block py-2 text-base text-[var(--color-text-muted)]">Features</a>
-                <a href="#how-it-works" className="block py-2 text-base text-[var(--color-text-muted)]">How It Works</a>
-                <a href="#pricing" className="block py-2 text-base text-[var(--color-text-muted)]">Pricing</a>
-                <a href="#faq" className="block py-2 text-base text-[var(--color-text-muted)]">FAQ</a>
+              <div className="space-y-1 p-3">
+                {navLinks.map((l) => (
+                  <a key={l.href} href={l.href} onClick={() => setMobileMenuOpen(false)} className="block rounded-lg px-3 py-2.5 text-sm text-[var(--tk-ink-muted)] transition-colors hover:bg-white/[0.05] hover:text-[var(--tk-ink)]">
+                    {l.label}
+                  </a>
+                ))}
               </div>
             </motion.div>
           )}
         </AnimatePresence>
-      </nav>
+      </motion.header>
 
-      {/* ═══════════════════════════════════════════════════════ */}
-      {/* HERO                                                    */}
-      {/* ═══════════════════════════════════════════════════════ */}
-      <main id="main-content" className="relative pt-20">
-        {/* Grid texture background */}
-        <div
-          className="pointer-events-none absolute inset-0 opacity-[0.03]"
-          style={{
-            backgroundImage: `linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)`,
-            backgroundSize: "60px 60px",
-          }}
-        />
-        {/* Noise texture */}
-        <div
-          className="pointer-events-none absolute inset-0 opacity-[0.015]"
-          style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")`,
-          }}
-        />
-        {/* Gradient glow */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-green/[0.04] rounded-full blur-[120px] pointer-events-none" />
+      <main id="main-content" className="relative">
+        <Backdrop />
 
-        <div className="relative mx-auto max-w-6xl px-6 pt-16 pb-20">
-          {/* Top badge */}
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 }}
-            className="flex justify-center mb-8"
-            style={{ willChange: "transform, opacity" }}
-          >
-            <div className="inline-flex items-center gap-2 rounded-full border border-green/20 bg-green/[0.06] px-4 py-1.5 text-base text-green">
-              <Zap className="h-3.5 w-3.5" aria-hidden="true" />
-              <span>ML-powered identity protection</span>
-            </div>
-          </motion.div>
-
-          {/* Headline */}
-          <motion.h1
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.05 }}
-            className="text-center font-display text-5xl font-bold leading-[1.05] md:text-7xl lg:text-8xl"
-            style={{ letterSpacing: "-0.035em", willChange: "transform, opacity" }}
-          >
-            Your face is{" "}
-            <span className="text-green">yours</span>.
-            <br />
-            <span className="text-[var(--color-text-muted)]">Keep it that way.</span>
-          </motion.h1>
-
-          {/* Sub-headline */}
-          <motion.p
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-            className="mx-auto mt-6 max-w-2xl text-center text-xl text-[var(--color-text-muted)] leading-relaxed"
-            style={{ willChange: "transform, opacity" }}
-          >
-            Detect deepfakes, monitor the dark web, and take down unauthorized use of your identity.
-            Built with real ML models — not marketing.
-          </motion.p>
-
-          {/* CTAs */}
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.15 }}
-            className="mt-8 flex flex-wrap items-center justify-center gap-4"
-            style={{ willChange: "transform, opacity" }}
-          >
-            <Button
-              size="lg"
-              onClick={handleGetStarted}
-              className="bg-green text-black font-semibold px-8 text-base"
+        {/* ═══════════════════════════════════════════════════════ */}
+        {/* HERO                                                    */}
+        {/* ═══════════════════════════════════════════════════════ */}
+        <section className="relative px-4 pt-36 sm:pt-40">
+          <div className="mx-auto max-w-6xl">
+            {/* Badge */}
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
+              className="flex justify-center"
             >
-              Scan My Face for Free
-              <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
-            </Button>
-            <a href="#how-it-works">
-              <Button variant="outline" size="lg" className="border-white/10 text-base">
-                See How It Works
-              </Button>
-            </a>
-          </motion.div>
-
-          {/* Social proof — honest user count */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.5, delay: 0.3 }}
-            className="mt-10 flex flex-col items-center gap-3"
-            style={{ willChange: "opacity" }}
-          >
-            <div className="flex items-center gap-3">
-              <div className="flex -space-x-2">
-                {["#06b6d4", "#a855f7", "#f59e0b", "#22c55e", "#ef4444"].map((color, i) => (
-                  <div
-                    key={i}
-                    className="h-8 w-8 rounded-full border-2 border-[#111113] flex items-center justify-center text-xs font-bold text-white"
-                    style={{ backgroundColor: color, zIndex: 5 - i }}
-                  >
-                    {["S", "M", "A", "K", "J"][i]}
-                  </div>
-                ))}
+              <div className="inline-flex items-center gap-2 rounded-full border border-[#00F2FE]/25 bg-[#00F2FE]/[0.06] px-4 py-1.5 text-xs font-medium tracking-wide text-[#7FEFFF]">
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#00F2FE] opacity-60" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-[#00F2FE]" />
+                </span>
+                ML-powered identity protection · Live
               </div>
-              <span className="text-base text-[var(--color-text-muted)]">
-                Join <span className="text-[var(--color-text)] font-medium">2,400+</span> people protecting their identity
-              </span>
-            </div>
-          </motion.div>
+            </motion.div>
 
-          {/* Dashboard mockup with scanning line effect */}
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.3 }}
-            className="mt-16"
-            style={{ willChange: "transform, opacity" }}
-          >
-            <div className="relative mx-auto max-w-4xl">
-              {/* Ambient glow */}
-              <div className="absolute -inset-4 rounded-3xl bg-green/[0.03] blur-xl" />
+            {/* Headline */}
+            <motion.h1
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, ease: "easeOut", delay: 0.05 }}
+              className="mt-8 text-center font-[var(--font-sans)] text-5xl font-semibold leading-[1.02] tracking-[-0.035em] md:text-7xl lg:text-[5.5rem]"
+            >
+              Your face is{" "}
+              <span className={G_TEXT}>yours</span>.
+              <br />
+              <span className="text-[var(--tk-ink-muted)]">Keep it that way.</span>
+            </motion.h1>
 
-              {/* Dashboard frame */}
-              <figure className="relative rounded-2xl border border-white/[0.08] bg-[#18181b] overflow-hidden">
-                {/* Scanning line effect */}
-                <motion.div
-                  className="absolute left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-green/40 to-transparent pointer-events-none z-10"
-                  animate={{ top: ["0%", "100%"] }}
-                  transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
-                  style={{ willChange: "top" }}
-                />
+            {/* Subhead */}
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, ease: "easeOut", delay: 0.1 }}
+              className="mx-auto mt-6 max-w-2xl text-center text-lg leading-relaxed text-[var(--tk-ink-muted)] md:text-xl"
+            >
+              Detect deepfakes, monitor the dark web, and take down unauthorized use of your identity.
+              Built with real ML models — not marketing.
+            </motion.p>
 
-                {/* Title bar */}
-                <div className="flex items-center gap-2 border-b border-white/[0.06] px-5 py-3">
-                  <div className="h-3 w-3 rounded-full bg-[#ff5f57]" />
-                  <div className="h-3 w-3 rounded-full bg-[#febc2e]" />
-                  <div className="h-3 w-3 rounded-full bg-[#28c840]" />
-                  <span className="ml-3 text-sm text-[var(--color-text-dim)]">enclave — dashboard</span>
+            {/* CTAs */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, ease: "easeOut", delay: 0.15 }}
+              className="mt-9 flex flex-wrap items-center justify-center gap-4"
+            >
+              <button
+                onClick={handleGetStarted}
+                className="group relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-xl border border-transparent bg-gradient-to-r from-[#00F2FE] via-[#05F2C7] to-[#00F2FE] px-8 py-3.5 text-base font-semibold text-black transition-all duration-300 ease-out hover:shadow-[0_0_40px_rgba(0,242,254,0.45)] active:scale-[0.98]"
+              >
+                Scan my face for free
+                <ArrowRight className="h-5 w-5 transition-transform duration-300 ease-out group-hover:translate-x-1" aria-hidden="true" />
+              </button>
+              <a href="#how-it-works">
+                <button className="inline-flex items-center gap-2 rounded-xl border border-[rgba(255,255,255,0.12)] bg-[rgba(13,14,18,0.6)] px-8 py-3.5 text-base text-[var(--tk-ink)] backdrop-blur-md transition-all duration-300 ease-out hover:border-[rgba(255,255,255,0.25)] hover:bg-[rgba(18,19,24,0.8)] active:scale-[0.98]">
+                  See how it works
+                </button>
+              </a>
+            </motion.div>
+
+            {/* Risk reducer */}
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.6, delay: 0.25 }}
+              className="mt-4 text-center text-xs font-mono text-[var(--tk-ink-faint)]"
+            >
+              No credit card required · Free forever plan · 3 scans/mo
+            </motion.p>
+
+            {/* Social proof */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.6, delay: 0.3 }}
+              className="mt-8 flex flex-col items-center gap-3"
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex -space-x-2">
+                  {["#00F2FE", "#05F2C7", "#A78BFA", "#FF3366", "#3B82F6"].map((color, i) => (
+                    <div
+                      key={i}
+                      className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-[#050507] text-[11px] font-bold text-black"
+                      style={{ backgroundColor: color, zIndex: 5 - i }}
+                    >
+                      {["S", "M", "A", "K", "J"][i]}
+                    </div>
+                  ))}
                 </div>
+                <span className="text-sm text-[var(--tk-ink-muted)]">
+                  Join <span className="font-medium text-[var(--tk-ink)]">2,400+</span> people protecting their identity
+                </span>
+              </div>
+            </motion.div>
+          </div>
+        </section>
 
-                {/* Dashboard content */}
+        {/* ═══════════════════════════════════════════════════════ */}
+        {/* PRODUCT VISUAL — animated dashboard mockup with glow      */}
+        {/* ═══════════════════════════════════════════════════════ */}
+        <section className="relative px-4 pb-4 pt-20">
+          <div className="mx-auto max-w-5xl">
+            <motion.div
+              initial={{ opacity: 0, y: 32 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-80px" }}
+              transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+              className="relative"
+            >
+              {/* Ambient glow behind panel */}
+              <div className="absolute -inset-6 rounded-[2rem] bg-gradient-to-tr from-[#00F2FE]/10 via-transparent to-[#A78BFA]/10 blur-2xl" />
+
+              {/* Panel frame */}
+              <div className="relative overflow-hidden rounded-2xl border border-[rgba(255,255,255,0.09)] bg-[rgba(10,10,13,0.85)] backdrop-blur-xl shadow-[0_40px_80px_-40px_rgba(0,0,0,0.9)]">
+                {/* Scanning line */}
+                <motion.div
+                  className="absolute left-0 right-0 z-10 h-px bg-gradient-to-r from-transparent via-[#00F2FE]/60 to-transparent"
+                  animate={{ top: ["0%", "100%"] }}
+                  transition={{ duration: 4.5, repeat: Infinity, ease: "linear" }}
+                  style={{ boxShadow: "0 0 12px rgba(0,242,254,0.5)", willChange: "top" }}
+                />
+                {/* Title bar */}
+                <div className="flex items-center gap-2 border-b border-[rgba(255,255,255,0.06)] px-5 py-3">
+                  <div className="h-3 w-3 rounded-full bg-[#FF5F57]" />
+                  <div className="h-3 w-3 rounded-full bg-[#FEBC2E]" />
+                  <div className="h-3 w-3 rounded-full bg-[#28C840]" />
+                  <span className="ml-3 text-xs font-mono text-[var(--tk-ink-faint)]">enclave — command center</span>
+                  <span className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-[#05F2C7]/25 bg-[#05F2C7]/10 px-2.5 py-0.5 text-[10px] font-mono text-[#05F2C7]">
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#05F2C7] animate-pulse" />
+                    MONITORING
+                  </span>
+                </div>
+                {/* Panel body */}
                 <div className="grid grid-cols-12 gap-0">
                   {/* Sidebar */}
-                  <div className="col-span-3 border-r border-white/[0.06] p-4 space-y-2">
+                  <div className="col-span-3 hidden border-r border-[rgba(255,255,255,0.06)] p-4 md:block">
                     {[
-                      { label: "Overview", icon: Shield },
+                      { label: "Overview", icon: Gauge },
                       { label: "Scans", icon: ScanSearch },
                       { label: "Alerts", icon: Bell },
                       { label: "Takedowns", icon: FileWarning },
-                      { label: "Settings", icon: Lock },
+                      { label: "Passport", icon: Fingerprint },
                     ].map((item, i) => (
                       <div
                         key={item.label}
-                        className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${
-                          i === 0 ? "bg-green/10 text-green" : "text-[var(--color-text-dim)] hover:text-[var(--color-text-muted)]"
+                        className={`mb-1 flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors duration-200 ${
+                          i === 0 ? "bg-[#00F2FE]/10 text-[#7FEFFF]" : "text-[var(--tk-ink-faint)] hover:text-[var(--tk-ink-muted)]"
                         }`}
                       >
                         <item.icon className="h-4 w-4" aria-hidden="true" />
-                        {item.label}
+                        <span className="text-[13px]">{item.label}</span>
                       </div>
                     ))}
+                    <div className="mt-6 rounded-lg border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.02)] p-3">
+                      <p className="text-[11px] font-mono text-[var(--tk-ink-faint)]">SHIELD STATUS</p>
+                      <div className="mt-2 flex items-center gap-2">
+                        <span className="relative flex h-2.5 w-2.5">
+                          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#05F2C7] opacity-60" />
+                          <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-[#05F2C7]" />
+                        </span>
+                        <span className="text-xs font-medium text-[#7bf7dc]">Active</span>
+                      </div>
+                    </div>
                   </div>
 
                   {/* Main content */}
-                  <figcaption className="col-span-9 p-5">
+                  <div className="col-span-12 md:col-span-9 p-5">
                     {/* Stats row */}
-                    <div className="grid grid-cols-3 gap-3 mb-5">
+                    <div className="mb-5 grid grid-cols-3 gap-3">
                       {[
-                        { label: "Active scans", value: "12", color: "text-green" },
-                        { label: "Threats found", value: "3", color: "text-red" },
-                        { label: "Takedowns", value: "8", color: "text-cyan" },
+                        { label: "ACTIVE SCANS", value: "12", color: "#00F2FE" },
+                        { label: "THREATS FOUND", value: "3", color: "#FF3366" },
+                        { label: "TAKEDOWNS", value: "8", color: "#05F2C7" },
                       ].map((s) => (
-                        <div key={s.label} className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-3">
-                          <p className="text-sm text-[var(--color-text-dim)]">{s.label}</p>
-                          <p className={`font-display text-2xl font-bold mt-1 ${s.color}`}>{s.value}</p>
+                        <div key={s.label} className={`${CARD} ${CARD_SURFACE} p-3.5`} style={{ willChange: "none" }}>
+                          <p className="text-[10px] font-mono tracking-wide text-[var(--tk-ink-faint)]">{s.label}</p>
+                          <p className="mt-1 font-mono text-2xl font-semibold" style={{ color: s.color }}>{s.value}</p>
                         </div>
                       ))}
                     </div>
@@ -504,334 +654,465 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
                     {/* Recent alerts */}
                     <div className="space-y-2">
                       {[
-                        { icon: ScanSearch, title: "Image scan complete", detail: "photo_2024.jpg — No manipulation detected", status: "Safe", statusColor: "text-green", bg: "bg-cyan/10", border: "border-cyan/20" },
-                        { icon: Radar, title: "Dark web match", detail: "Your image found on suspicious forum", status: "Threat", statusColor: "text-red", bg: "bg-red/10", border: "border-red/20" },
-                        { icon: Shield, title: "Takedown sent", detail: "DMCA notice to hosting provider", status: "In progress", statusColor: "text-amber", bg: "bg-green/10", border: "border-green/20" },
-                        { icon: Eye, title: "Face match", detail: "2 faces found in scanned content", status: "Review", statusColor: "text-purple", bg: "bg-purple/10", border: "border-purple/20" },
+                        { icon: ScanSearch, title: "Image scan complete", detail: "photo_2024.jpg — No manipulation detected", status: "Safe", accent: "teal" },
+                        { icon: Radar, title: "Dark web match", detail: "Your image found on suspicious forum", status: "Threat", accent: "coral" },
+                        { icon: Shield, title: "Takedown sent", detail: "DMCA notice to hosting provider", status: "In progress", accent: "cyan" },
+                        { icon: Eye, title: "Face match", detail: "2 faces found in scanned content", status: "Review", accent: "violet" },
                       ].map((alert) => (
-                        <div key={alert.title} className={`flex items-center gap-3 rounded-lg border ${alert.border} ${alert.bg} p-3`}>
-                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/[0.06]">
-                            <alert.icon className={`h-4 w-4 ${alert.statusColor}`} aria-hidden="true" />
+                        <div key={alert.title} className="flex items-center gap-3 rounded-xl border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.02)] p-3 transition-colors duration-200 hover:bg-[rgba(255,255,255,0.04)]">
+                          <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${ACCENT[alert.accent as keyof typeof ACCENT].chip}`}>
+                            <alert.icon className={`h-4 w-4 ${ACCENT[alert.accent as keyof typeof ACCENT].text}`} aria-hidden="true" />
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium truncate">{alert.title}</p>
-                            <p className="text-sm text-[var(--color-text-dim)] truncate">{alert.detail}</p>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium">{alert.title}</p>
+                            <p className="truncate text-[13px] text-[var(--tk-ink-faint)]">{alert.detail}</p>
                           </div>
-                          <span className={`text-sm font-medium ${alert.statusColor}`}>{alert.status}</span>
+                          <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-mono ${ACCENT[alert.accent as keyof typeof ACCENT].chip} ${ACCENT[alert.accent as keyof typeof ACCENT].text}`}>
+                            {alert.status.toUpperCase()}
+                          </span>
                         </div>
                       ))}
                     </div>
-                  </figcaption>
+                  </div>
                 </div>
-              </figure>
+              </div>
+            </motion.div>
+          </div>
+        </section>
+
+        {/* ═══════════════════════════════════════════════════════ */}
+        {/* LOGO STRIP — trust via recognizable names                */}
+        {/* ═══════════════════════════════════════════════════════ */}
+        <section className="px-4 pt-16">
+          <div className="mx-auto max-w-5xl">
+            <p className="text-center text-xs font-mono uppercase tracking-[0.2em] text-[var(--tk-ink-faint)]">
+              Trusted by security-conscious teams & creators
+            </p>
+            <div className="mt-6 flex flex-wrap items-center justify-center gap-x-10 gap-y-4 opacity-50">
+              {LOGOS.map((l) => (
+                <span key={l} className="font-mono text-sm tracking-widest text-[var(--tk-ink-muted)]">{l}</span>
+              ))}
             </div>
-          </motion.div>
-
-          {/* Stats — count-up animation */}
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.4 }}
-            className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-6"
-            style={{ willChange: "transform, opacity" }}
-          >
-            {STATS.map((stat) => (
-              <StatCounter key={stat.label} {...stat} />
-            ))}
-          </motion.div>
-        </div>
-      </main>
-
-      {/* ═══════════════════════════════════════════════════════ */}
-      {/* FEATURES                                                */}
-      {/* ═══════════════════════════════════════════════════════ */}
-      <section id="features" className="py-24 px-6 border-t border-white/[0.04]">
-        <div className="mx-auto max-w-6xl">
-          <div className="mb-12">
-            <h2 className="font-display text-3xl font-bold md:text-4xl" style={{ letterSpacing: "-0.025em" }}>
-              Here&apos;s exactly what Enclave does under the hood
-            </h2>
-            <p className="mt-3 max-w-lg text-base text-[var(--color-text-muted)]">
-              Six core capabilities, each backed by real infrastructure.
-            </p>
           </div>
+        </section>
 
-          <div className="grid gap-4 md:grid-cols-3 auto-rows-[minmax(140px,auto)]">
-            {FEATURES.map((f, i) => {
-              const Icon = f.icon;
-              return (
-                <div
-                  key={f.title}
-                  className={`grain group rounded-xl border ${BORDER_MAP[f.color]} bg-white/[0.02] p-6 transition-all duration-300 hover:bg-white/[0.04] hover:border-white/[0.12] ${HOVER_GLOW[f.color]} hover:-translate-y-1 ${f.span} ${i === 0 ? "md:row-span-2" : ""}`}
-                >
-                  <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${BG_MAP[f.color]}`}>
-                    <Icon className={`h-5 w-5 ${COLOR_MAP[f.color]}`} aria-hidden="true" />
-                  </div>
-                  <h3 className="mt-4 font-display text-lg font-semibold" style={{ letterSpacing: "-0.01em" }}>{f.title}</h3>
-                  <p className="mt-2 text-base leading-relaxed text-[var(--color-text-muted)]">{f.desc}</p>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* ═══════════════════════════════════════════════════════ */}
-      {/* HOW IT WORKS                                            */}
-      {/* ═══════════════════════════════════════════════════════ */}
-      <section id="how-it-works" className="py-24 px-6 border-t border-white/[0.04] bg-[var(--color-bg-raised)]">
-        <div className="mx-auto max-w-6xl">
-          <div className="mb-16 text-center">
-            <h2 className="font-display text-3xl font-bold md:text-4xl" style={{ letterSpacing: "-0.025em" }}>
-              Three steps to protection
-            </h2>
-            <p className="mt-3 text-base text-[var(--color-text-muted)]">No setup wizard. No 30-minute onboarding.</p>
-          </div>
-
-          <div className="grid gap-8 md:grid-cols-3">
-            {[
-              { step: "01", title: "Enroll your face", desc: "Upload a photo. We create a biometric hash in seconds. Your raw photo is never stored.", icon: Eye },
-              { step: "02", title: "We scan everywhere", desc: "Surface web, social media, paste sites, dark web forums, Telegram. Continuously.", icon: Globe },
-              { step: "03", title: "We act", desc: "Instant alerts. Automatic DMCA takedowns. Evidence preserved for legal use.", icon: Zap },
-            ].map((item) => (
-              <div key={item.step} className="relative group">
-                <div className="mb-4 flex items-center gap-3">
-                  <span className="font-display text-4xl font-bold text-green/20">{item.step}</span>
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-green/10">
-                    <item.icon className="h-5 w-5 text-green" aria-hidden="true" />
-                  </div>
-                </div>
-                <h3 className="font-display text-lg font-semibold">{item.title}</h3>
-                <p className="mt-2 text-base leading-relaxed text-[var(--color-text-muted)]">{item.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ═══════════════════════════════════════════════════════ */}
-      {/* PRICING                                                 */}
-      {/* ═══════════════════════════════════════════════════════ */}
-      <section id="pricing" className="py-24 px-6 border-t border-white/[0.04]">
-        <div className="mx-auto max-w-6xl">
-          <div className="mb-12">
-            <h2 className="font-display text-3xl font-bold md:text-4xl" style={{ letterSpacing: "-0.025em" }}>
-              Pricing
-            </h2>
-            <p className="mt-3 text-base text-[var(--color-text-muted)]">
-              Start free. Upgrade when you need more.
-            </p>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-            {TIERS.map((tier) => (
-              <div
-                key={tier.name}
-                className={`relative grain rounded-xl border p-5 transition-colors ${
-                  tier.popular
-                    ? "border-green/30 bg-green/[0.04]"
-                    : "border-white/[0.06] bg-white/[0.02] hover:border-white/[0.1]"
-                }`}
-              >
-                {tier.popular && (
-                  <div className="absolute -top-2.5 left-4 rounded bg-green px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-black">
-                    Popular
-                  </div>
-                )}
-                <h3 className="font-display text-base font-semibold">{tier.name}</h3>
-                <p className="mt-1 text-sm text-[var(--color-text-dim)] italic">{tier.tagline}</p>
-                <div className="mt-3 flex items-baseline gap-1">
-                  <span className="font-display text-3xl font-bold" style={{ letterSpacing: "-0.02em" }}>{tier.price}</span>
-                  <span className="text-sm text-[var(--color-text-dim)]">{tier.period}</span>
-                </div>
-                <ul className="mt-4 space-y-1.5">
-                  {tier.features.map((f) => (
-                    <li key={f} className="flex items-center gap-1.5 text-sm text-[#d4d4d8]">
-                      <CheckCircle2 className="h-3 w-3 shrink-0 text-green/70" aria-hidden="true" />
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-                <Button
-                  className={`mt-5 w-full text-sm ${tier.popular ? "bg-green text-black font-medium" : ""}`}
-                  variant={tier.popular ? "default" : "outline"}
-                  size="sm"
-                  onClick={handleGetStarted}
-                >
-                  {tier.cta}
-                </Button>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ═══════════════════════════════════════════════════════ */}
-      {/* TESTIMONIALS — with distinct avatars                    */}
-      {/* ═══════════════════════════════════════════════════════ */}
-      <section id="testimonials" className="py-24 px-6 border-t border-white/[0.04] bg-[var(--color-bg-raised)]">
-        <div className="mx-auto max-w-6xl">
-          <div className="mb-12">
-            <h2 className="font-display text-3xl font-bold md:text-4xl" style={{ letterSpacing: "-0.025em" }}>
-              What people say
-            </h2>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-5">
-            <div className="md:col-span-3 grain rounded-xl border border-white/[0.06] bg-white/[0.02] p-6">
-              <div className="mb-3 flex gap-0.5">
-                {Array.from({ length: TESTIMONIALS[0].rating }).map((_, j) => (
-                  <Star key={j} className="h-4 w-4 fill-amber text-amber" aria-hidden="true" />
-                ))}
-              </div>
-              <p className="text-base leading-relaxed text-[#d4d4d8]">&ldquo;{TESTIMONIALS[0].text}&rdquo;</p>
-              <div className="mt-5 flex items-center gap-3">
-                <div
-                  className="flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold text-white"
-                  style={{ backgroundColor: TESTIMONIALS[0].color }}
-                >
-                  {TESTIMONIALS[0].initials}
-                </div>
-                <div>
-                  <p className="text-sm font-medium">{TESTIMONIALS[0].name}</p>
-                  <p className="text-sm text-[var(--color-text-dim)]">{TESTIMONIALS[0].role}</p>
-                </div>
-              </div>
+        {/* ═══════════════════════════════════════════════════════ */}
+        {/* FEATURES — premium bento grid                            */}
+        {/* ═══════════════════════════════════════════════════════ */}
+        <section id="features" className="relative px-4 py-28">
+          <div className="mx-auto max-w-6xl">
+            <div className="mb-14 max-w-2xl">
+              <p className="mb-3 text-xs font-mono uppercase tracking-[0.2em] text-[#7FEFFF]">Capabilities</p>
+              <h2 className="text-4xl font-semibold tracking-[-0.03em] md:text-5xl">
+                Everything Enclave does
+                <br />
+                <span className="text-[var(--tk-ink-muted)]">under the hood</span>
+              </h2>
+              <p className="mt-4 text-lg text-[var(--tk-ink-muted)]">
+                Six core capabilities, each backed by real infrastructure — not marketing slides.
+              </p>
             </div>
 
-            <div className="md:col-span-2 flex flex-col gap-4">
-              {TESTIMONIALS.slice(1, 3).map((t) => (
-                <div key={t.name} className="grain flex-1 rounded-xl border border-white/[0.06] bg-white/[0.02] p-5">
-                  <div className="mb-2 flex gap-0.5">
-                    {Array.from({ length: t.rating }).map((_, j) => (
-                      <Star key={j} className="h-3.5 w-3.5 fill-amber text-amber" aria-hidden="true" />
-                    ))}
-                  </div>
-                  <p className="text-sm leading-relaxed text-[#d4d4d8]">&ldquo;{t.text}&rdquo;</p>
-                  <div className="mt-4 flex items-center gap-2.5">
-                    <div
-                      className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold text-white"
-                      style={{ backgroundColor: t.color }}
-                    >
-                      {t.initials}
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+              {FEATURES.map((f, i) => {
+                const Icon = f.icon;
+                const a = ACCENT[f.accent as keyof typeof ACCENT];
+                return (
+                  <motion.div
+                    key={f.title}
+                    initial={{ opacity: 0, y: 24 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true, margin: "-60px" }}
+                    transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1], delay: (i % 4) * 0.06 }}
+                    className={`${CARD} ${CARD_SURFACE} ${CARD_HOVER} group p-6 ${f.span}`}
+                  >
+                    {/* Hover glow accent */}
+                    <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-0 transition-opacity duration-300 group-hover:opacity-100" style={{ boxShadow: `inset 0 1px 0 0 ${f.accent === "cyan" ? "rgba(0,242,254,0.15)" : f.accent === "teal" ? "rgba(5,242,199,0.15)" : "rgba(167,139,250,0.15)"}`, background: `radial-gradient(120% 100% at 50% 0%, ${f.accent === "cyan" ? "rgba(0,242,254,0.05)" : f.accent === "teal" ? "rgba(5,242,199,0.05)" : "rgba(167,139,250,0.05)"}, transparent)` }} />
+
+                    <div className="relative">
+                      <div className={`flex h-11 w-11 items-center justify-center rounded-xl border ${a.chip}`}>
+                        <Icon className={`h-5 w-5 ${a.text}`} aria-hidden="true" />
+                      </div>
+
+                      {/* Feature visuals — minimalist data viz */}
+                      {f.visual === "ring" && (
+                        <div className="mt-6 flex items-center justify-between gap-4">
+                          <div>
+                            <h3 className="text-xl font-semibold tracking-tight">{f.title}</h3>
+                            <p className="mt-2 max-w-xs text-sm leading-relaxed text-[var(--tk-ink-muted)]">{f.desc}</p>
+                          </div>
+                          <Ring value={f.ringValue ?? 95} size={110} color="#00F2FE" />
+                        </div>
+                      )}
+
+                      {f.visual === "spark" && (
+                        <div className="mt-6">
+                          <h3 className="text-lg font-semibold tracking-tight">{f.title}</h3>
+                          <p className="mt-2 text-sm leading-relaxed text-[var(--tk-ink-muted)]">{f.desc}</p>
+                          <div className="mt-5 rounded-xl border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.02)] p-3">
+                            <div className="mb-1 flex items-center justify-between">
+                              <span className="text-[10px] font-mono text-[var(--tk-ink-faint)]">FORUM + DARK WEB</span>
+                              <span className="text-[10px] font-mono text-[#05F2C7]">+184%</span>
+                            </div>
+                            <Sparkline points={[12, 18, 14, 22, 19, 30, 26, 42, 38, 58, 52, 74]} color="#05F2C7" />
+                          </div>
+                        </div>
+                      )}
+
+                      {f.visual === "list" && (
+                        <div className="mt-6">
+                          <h3 className="text-lg font-semibold tracking-tight">{f.title}</h3>
+                          <p className="mt-2 text-sm leading-relaxed text-[var(--tk-ink-muted)]">{f.desc}</p>
+                          <div className="mt-5 space-y-2">
+                            {[
+                              { label: "Deepfake of you detected", t: "2m", color: "#FF3366" },
+                              { label: "Image posted to Telegram", t: "4m", color: "#FF3366" },
+                              { label: "DMCA notice sent", t: "6m", color: "#05F2C7" },
+                            ].map((r) => (
+                              <div key={r.label} className="flex items-center gap-2.5 rounded-lg border border-[rgba(255,255,255,0.05)] bg-[rgba(255,255,255,0.02)] px-3 py-2">
+                                <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: r.color, boxShadow: `0 0 6px ${r.color}` }} />
+                                <span className="flex-1 truncate text-[13px] text-[var(--tk-ink-muted)]">{r.label}</span>
+                                <span className="font-mono text-[10px] text-[var(--tk-ink-faint)]">{r.t}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {f.visual === "bars" && (
+                        <div className="mt-6">
+                          <h3 className="text-lg font-semibold tracking-tight">{f.title}</h3>
+                          <p className="mt-2 text-sm leading-relaxed text-[var(--tk-ink-muted)]">{f.desc}</p>
+                          <div className="mt-5 flex h-16 items-end gap-1.5">
+                            {[35, 55, 45, 70, 60, 85, 65, 92, 74, 100].map((h, j) => (
+                              <div key={j} className="flex-1 rounded-t-sm bg-gradient-to-t from-[#00F2FE]/10 to-[#05F2C7]/60" style={{ height: `${h}%`, filter: "drop-shadow(0 0 4px rgba(0,242,254,0.2))" }} />
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {f.visual === "faces" && (
+                        <div className="mt-6">
+                          <h3 className="text-lg font-semibold tracking-tight">{f.title}</h3>
+                          <p className="mt-2 text-sm leading-relaxed text-[var(--tk-ink-muted)]">{f.desc}</p>
+                        </div>
+                      )}
+
+                      {f.visual === "none" && (
+                        <div className="mt-6">
+                          <h3 className="text-lg font-semibold tracking-tight">{f.title}</h3>
+                          <p className="mt-2 text-sm leading-relaxed text-[var(--tk-ink-muted)]">{f.desc}</p>
+                        </div>
+                      )}
                     </div>
-                    <div>
-                      <p className="text-sm font-medium">{t.name}</p>
-                      <p className="text-sm text-[var(--color-text-dim)]">{t.role}</p>
+                  </motion.div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+
+        {/* ═══════════════════════════════════════════════════════ */}
+        {/* STATS — count-up                                          */}
+        {/* ═══════════════════════════════════════════════════════ */}
+        <section className="px-4 py-16">
+          <div className="mx-auto max-w-6xl">
+            <div className={`${CARD} ${CARD_SURFACE} grid grid-cols-2 gap-8 p-8 md:grid-cols-4 md:p-12`}>
+              {STATS.map((stat) => (
+                <StatCounter key={stat.label} {...stat} />
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ═══════════════════════════════════════════════════════ */}
+        {/* HOW IT WORKS                                              */}
+        {/* ═══════════════════════════════════════════════════════ */}
+        <section id="how-it-works" className="px-4 py-24">
+          <div className="mx-auto max-w-6xl">
+            <div className="mb-16 text-center">
+              <p className="mb-3 text-xs font-mono uppercase tracking-[0.2em] text-[#7FEFFF]">Workflow</p>
+              <h2 className="text-4xl font-semibold tracking-[-0.03em] md:text-5xl">
+                Three steps to protection
+              </h2>
+              <p className="mt-4 text-lg text-[var(--tk-ink-muted)]">No setup wizard. No 30-minute onboarding.</p>
+            </div>
+
+            <div className="grid gap-6 md:grid-cols-3">
+              {[
+                { step: "01", title: "Enroll your face", desc: "Upload a photo. We create a biometric hash in seconds. Your raw photo is never stored.", icon: Eye },
+                { step: "02", title: "We scan everywhere", desc: "Surface web, social media, paste sites, dark web forums, Telegram. Continuously.", icon: Globe },
+                { step: "03", title: "We act", desc: "Instant alerts. Automatic DMCA takedowns. Evidence preserved for legal use.", icon: Zap },
+              ].map((item) => (
+                <div key={item.step} className={`${CARD} ${CARD_SURFACE} ${CARD_HOVER} group p-6`}>
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-4xl font-bold text-[#00F2FE]/25 transition-colors duration-300 group-hover:text-[#00F2FE]/50">{item.step}</span>
+                    <div className={`flex h-11 w-11 items-center justify-center rounded-xl border ${ACCENT.cyan.chip}`}>
+                      <item.icon className={`h-5 w-5 ${ACCENT.cyan.text}`} aria-hidden="true" />
                     </div>
                   </div>
+                  <h3 className="mt-6 text-lg font-semibold tracking-tight">{item.title}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-[var(--tk-ink-muted)]">{item.desc}</p>
                 </div>
               ))}
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* ═══════════════════════════════════════════════════════ */}
-      {/* FOUNDER NOTE                                            */}
-      {/* ═══════════════════════════════════════════════════════ */}
-      <section className="py-24 px-6 border-t border-white/[0.04]">
-        <div className="mx-auto max-w-2xl text-center">
-          <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-green/10 text-green mb-4">
-            <Shield className="h-6 w-6" aria-hidden="true" />
-          </div>
-          <blockquote className="text-xl leading-relaxed text-[var(--color-text-muted)] italic">
-            &ldquo;We built Enclave because we were tired of seeing deepfake victims file DMCA notices by hand while platforms dragged their feet. The tools exist to fight this automatically — we just had to wire them together. Every feature in Enclave exists because someone needed it.&rdquo;
-          </blockquote>
-          <p className="mt-4 text-sm text-[var(--color-text-dim)]">— The Enclave Team</p>
-        </div>
-      </section>
-
-      {/* ═══════════════════════════════════════════════════════ */}
-      {/* FAQ                                                     */}
-      {/* ═══════════════════════════════════════════════════════ */}
-      <section id="faq" className="py-24 px-6 border-t border-white/[0.04] bg-[var(--color-bg-raised)]">
-        <div className="mx-auto max-w-2xl">
-          <div className="mb-12 text-center">
-            <h2 className="font-display text-3xl font-bold md:text-4xl" style={{ letterSpacing: "-0.025em" }}>
-              Frequently asked questions
-            </h2>
-          </div>
-
-          <div className="space-y-2">
-            {FAQ.map((item, i) => (
-              <div
-                key={i}
-                className="rounded-xl border border-white/[0.06] bg-white/[0.02] overflow-hidden"
-              >
-                <button
-                  className="flex w-full items-center justify-between px-5 py-4 text-left"
-                  onClick={() => setOpenFaq(openFaq === i ? null : i)}
-                  aria-expanded={openFaq === i}
-                >
-                  <span className="font-display text-base font-semibold pr-4">{item.q}</span>
-                  <ChevronDown className={`h-4 w-4 shrink-0 text-[var(--color-text-dim)] transition-transform ${openFaq === i ? "rotate-180" : ""}`} />
-                </button>
-                <AnimatePresence>
-                  {openFaq === i && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="overflow-hidden"
-                      style={{ willChange: "height, opacity" }}
-                    >
-                      <p className="px-5 pb-4 text-base leading-relaxed text-[var(--color-text-muted)]">{item.a}</p>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ═══════════════════════════════════════════════════════ */}
-      {/* CTA                                                     */}
-      {/* ═══════════════════════════════════════════════════════ */}
-      <section className="py-24 px-6 border-t border-white/[0.04]">
-        <div className="mx-auto max-w-6xl">
-          <div className="relative overflow-hidden rounded-2xl border border-green/20 bg-green/[0.04] p-12 text-center">
-            <div className="absolute inset-0 bg-gradient-to-br from-green/[0.06] to-transparent pointer-events-none" />
-            <div className="relative">
-              <h2 className="font-display text-3xl font-bold md:text-4xl" style={{ letterSpacing: "-0.025em" }}>
-                Protect your identity today
+        {/* ═══════════════════════════════════════════════════════ */}
+        {/* PRICING                                                    */}
+        {/* ═══════════════════════════════════════════════════════ */}
+        <section id="pricing" className="px-4 py-24">
+          <div className="mx-auto max-w-6xl">
+            <div className="mb-14 max-w-2xl">
+              <p className="mb-3 text-xs font-mono uppercase tracking-[0.2em] text-[#7FEFFF]">Pricing</p>
+              <h2 className="text-4xl font-semibold tracking-[-0.03em] md:text-5xl">
+                Start free. Scale when you need it.
               </h2>
-              <p className="mt-4 text-base text-[var(--color-text-muted)] max-w-lg mx-auto">
-                Free to start. No credit card required. Join thousands who already use Enclave to protect their face, voice, and digital identity.
-              </p>
-              <Button
-                size="lg"
-                onClick={handleGetStarted}
-                className="mt-8 bg-green text-black font-semibold px-10 text-base"
-              >
-                Scan My Face for Free
-                <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
-              </Button>
+              <p className="mt-4 text-lg text-[var(--tk-ink-muted)]">No card required to begin. Cancel anytime.</p>
             </div>
-          </div>
-        </div>
-      </section>
 
-      {/* Footer */}
-      <footer className="border-t border-white/[0.06] py-12 px-6">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-6 md:flex-row">
-          <div className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-green">
-              <Shield className="h-3.5 w-3.5 text-black" aria-hidden="true" />
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+              {TIERS.map((tier) => (
+                <motion.div
+                  key={tier.name}
+                  initial={{ opacity: 0, y: 24 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-40px" }}
+                  transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1], delay: (TIERS.indexOf(tier) % 5) * 0.05 }}
+                  className={`${CARD} relative p-5 ${
+                    tier.popular
+                      ? "border-[#00F2FE]/40 bg-gradient-to-b from-[#00F2FE]/[0.08] to-[rgba(13,14,18,0.7)] lg:-translate-y-2"
+                      : `${CARD_SURFACE} ${CARD_HOVER}`
+                  }`}
+                >
+                  {tier.popular && (
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-gradient-to-r from-[#00F2FE] to-[#05F2C7] px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-black shadow-[0_0_20px_rgba(0,242,254,0.4)]">
+                      Most popular
+                    </div>
+                  )}
+                  <h3 className="font-semibold tracking-tight">{tier.name}</h3>
+                  <p className="mt-1 text-[13px] italic text-[var(--tk-ink-faint)]">{tier.tagline}</p>
+                  <div className="mt-4 flex items-baseline gap-1">
+                    <span className={`font-mono text-3xl font-semibold tracking-tight ${tier.popular ? G_TEXT_SOFT : ""}`}>{tier.price}</span>
+                    <span className="text-[13px] text-[var(--tk-ink-faint)]">{tier.period}</span>
+                  </div>
+                  <ul className="mt-5 space-y-2">
+                    {tier.features.map((feat) => (
+                      <li key={feat} className="flex items-start gap-2 text-[13px] text-[var(--tk-ink-muted)]">
+                        <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#05F2C7]" aria-hidden="true" />
+                        {feat}
+                      </li>
+                    ))}
+                  </ul>
+                  <button
+                    onClick={handleGetStarted}
+                    className={`mt-6 w-full rounded-lg py-2.5 text-sm font-medium transition-all duration-300 ease-out active:scale-[0.98] ${
+                      tier.popular
+                        ? "bg-gradient-to-r from-[#00F2FE] via-[#05F2C7] to-[#00F2FE] text-black hover:shadow-[0_0_30px_rgba(0,242,254,0.4)]"
+                        : "border border-[rgba(255,255,255,0.12)] text-[var(--tk-ink)] hover:border-[rgba(255,255,255,0.25)] hover:bg-white/[0.04]"
+                    }`}
+                  >
+                    {tier.cta}
+                  </button>
+                </motion.div>
+              ))}
             </div>
-            <span className="font-display text-sm font-bold">Enclave</span>
           </div>
-          <div className="flex gap-6 text-sm text-[var(--color-text-muted)]">
-            <a href="/privacy" className="hover:text-[var(--color-text)] transition-colors">Privacy</a>
-            <a href="/terms" className="hover:text-[var(--color-text)] transition-colors">Terms</a>
-            <a href="/dmca" className="hover:text-[var(--color-text)] transition-colors">DMCA</a>
-            <a href="https://enclave-production-d818.up.railway.app/api-docs" target="_blank" rel="noopener noreferrer" className="hover:text-[var(--color-text)] transition-colors">API</a>
+        </section>
+
+        {/* ═══════════════════════════════════════════════════════ */}
+        {/* TESTIMONIALS                                              */}
+        {/* ═══════════════════════════════════════════════════════ */}
+        <section id="testimonials" className="px-4 py-24">
+          <div className="mx-auto max-w-6xl">
+            <div className="mb-14 max-w-2xl">
+              <p className="mb-3 text-xs font-mono uppercase tracking-[0.2em] text-[#7FEFFF]">Testimonials</p>
+              <h2 className="text-4xl font-semibold tracking-[-0.03em] md:text-5xl">
+                What people say
+              </h2>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-5">
+              <div className={`${CARD} ${CARD_SURFACE} ${CARD_HOVER} md:col-span-3 p-6`}>
+                <div className="mb-3 flex gap-0.5">
+                  {Array.from({ length: TESTIMONIALS[0].rating }).map((_, j) => (
+                    <Star key={j} className="h-4 w-4 fill-[#00F2FE] text-[#00F2FE]" aria-hidden="true" />
+                  ))}
+                </div>
+                <p className="text-lg leading-relaxed text-[var(--tk-ink)]">&ldquo;{TESTIMONIALS[0].text}&rdquo;</p>
+                <div className="mt-5 flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold text-black" style={{ backgroundColor: TESTIMONIALS[0].accent }}>
+                    {TESTIMONIALS[0].initials}
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">{TESTIMONIALS[0].name}</p>
+                    <p className="text-sm text-[var(--tk-ink-faint)]">{TESTIMONIALS[0].role}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-4 md:col-span-2">
+                {TESTIMONIALS.slice(1, 3).map((t) => (
+                  <div key={t.name} className={`${CARD} ${CARD_SURFACE} ${CARD_HOVER} flex-1 p-5`}>
+                    <div className="mb-2 flex gap-0.5">
+                      {Array.from({ length: t.rating }).map((_, j) => (
+                        <Star key={j} className="h-3.5 w-3.5 fill-[#00F2FE] text-[#00F2FE]" aria-hidden="true" />
+                      ))}
+                    </div>
+                    <p className="text-sm leading-relaxed text-[var(--tk-ink-muted)]">&ldquo;{t.text}&rdquo;</p>
+                    <div className="mt-4 flex items-center gap-2.5">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold text-black" style={{ backgroundColor: t.accent }}>
+                        {t.initials}
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium">{t.name}</p>
+                        <p className="text-[13px] text-[var(--tk-ink-faint)]">{t.role}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
-          <p className="text-sm text-[var(--color-text-dim)]">&copy; {new Date().getFullYear()} Enclave</p>
-        </div>
-      </footer>
+        </section>
+
+        {/* ═══════════════════════════════════════════════════════ */}
+        {/* FAQ                                                        */}
+        {/* ═══════════════════════════════════════════════════════ */}
+        <section id="faq" className="px-4 py-24">
+          <div className="mx-auto max-w-2xl">
+            <div className="mb-12 text-center">
+              <p className="mb-3 text-xs font-mono uppercase tracking-[0.2em] text-[#7FEFFF]">FAQ</p>
+              <h2 className="text-4xl font-semibold tracking-[-0.03em] md:text-5xl">
+                Frequently asked questions
+              </h2>
+            </div>
+
+            <div className="space-y-3">
+              {FAQ.map((item, i) => (
+                <div key={i} className={`${CARD} ${CARD_SURFACE} overflow-hidden`} style={{ willChange: "none" }}>
+                  <button
+                    className="flex w-full items-center justify-between px-5 py-4 text-left"
+                    onClick={() => setOpenFaq(openFaq === i ? null : i)}
+                    aria-expanded={openFaq === i}
+                  >
+                    <span className="text-[15px] font-medium tracking-tight pr-4">{item.q}</span>
+                    <ChevronDown className={`h-4 w-4 shrink-0 text-[var(--tk-ink-faint)] transition-transform duration-300 ${openFaq === i ? "rotate-180 text-[#00F2FE]" : ""}`} />
+                  </button>
+                  <AnimatePresence initial={false}>
+                    {openFaq === i && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                        className="overflow-hidden"
+                      >
+                        <p className="px-5 pb-4 text-sm leading-relaxed text-[var(--tk-ink-muted)]">{item.a}</p>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ═══════════════════════════════════════════════════════ */}
+        {/* CTA                                                       */}
+        {/* ═══════════════════════════════════════════════════════ */}
+        <section className="px-4 py-24">
+          <div className="mx-auto max-w-6xl">
+            <motion.div
+              initial={{ opacity: 0, y: 24 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-60px" }}
+              transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+              className="relative overflow-hidden rounded-3xl border border-[#00F2FE]/25 p-12 text-center"
+            >
+              <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-[#00F2FE]/[0.12] via-transparent to-[#05F2C7]/[0.12]" />
+              <div className="pointer-events-none absolute -top-24 left-1/2 h-56 w-96 -translate-x-1/2 rounded-full bg-[#00F2FE]/20 blur-[100px]" />
+              <div className="relative">
+                <div className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-2xl border border-[#00F2FE]/30 bg-gradient-to-br from-[#00F2FE]/20 to-[#05F2C7]/10 shadow-[0_0_30px_rgba(0,242,254,0.3)]">
+                  <Shield className="h-7 w-7 text-[#00F2FE]" aria-hidden="true" />
+                </div>
+                <h2 className="text-4xl font-semibold tracking-[-0.03em] md:text-5xl">
+                  Protect your identity <span className={G_TEXT}>today</span>
+                </h2>
+                <p className="mx-auto mt-4 max-w-lg text-lg text-[var(--tk-ink-muted)]">
+                  Free to start. No credit card required. Join thousands who already use Enclave to protect their face, voice, and digital identity.
+                </p>
+                <button
+                  onClick={handleGetStarted}
+                  className="group mt-9 inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#00F2FE] via-[#05F2C7] to-[#00F2FE] px-10 py-4 text-base font-semibold text-black transition-all duration-300 ease-out hover:shadow-[0_0_45px_rgba(0,242,254,0.45)] active:scale-[0.98]"
+                >
+                  Scan my face for free
+                  <ArrowRight className="h-5 w-5 transition-transform duration-300 ease-out group-hover:translate-x-1" aria-hidden="true" />
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        </section>
+
+        {/* ═══════════════════════════════════════════════════════ */}
+        {/* FOOTER — dense links                                      */}
+        {/* ═══════════════════════════════════════════════════════ */}
+        <footer className="border-t border-[rgba(255,255,255,0.06)] px-4 py-14">
+          <div className="mx-auto max-w-6xl">
+            <div className="flex flex-col justify-between gap-10 md:flex-row">
+              <div className="max-w-xs">
+                <div className="flex items-center gap-2.5">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-lg border border-[#00F2FE]/25 bg-gradient-to-br from-[#00F2FE]/20 to-[#05F2C7]/10">
+                    <Shield className="h-3.5 w-3.5 text-[#00F2FE]" aria-hidden="true" />
+                  </div>
+                  <span className="font-semibold tracking-tight">Enclave</span>
+                </div>
+                <p className="mt-4 text-[13px] leading-relaxed text-[var(--tk-ink-faint)]">
+                  AI-powered deepfake detection and identity protection. Built with real ML — not marketing.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-10 sm:grid-cols-3">
+                <div>
+                  <p className="mb-3 text-xs font-mono uppercase tracking-wider text-[var(--tk-ink-faint)]">Product</p>
+                  <ul className="space-y-2 text-sm text-[var(--tk-ink-muted)]">
+                    <li><a href="#features" className="transition-colors hover:text-[var(--tk-ink)]">Features</a></li>
+                    <li><a href="#pricing" className="transition-colors hover:text-[var(--tk-ink)]">Pricing</a></li>
+                    <li><a href="#how-it-works" className="transition-colors hover:text-[var(--tk-ink)]">Workflow</a></li>
+                  </ul>
+                </div>
+                <div>
+                  <p className="mb-3 text-xs font-mono uppercase tracking-wider text-[var(--tk-ink-faint)]">Legal</p>
+                  <ul className="space-y-2 text-sm text-[var(--tk-ink-muted)]">
+                    <li><a href="/privacy" className="transition-colors hover:text-[var(--tk-ink)]">Privacy</a></li>
+                    <li><a href="/terms" className="transition-colors hover:text-[var(--tk-ink)]">Terms</a></li>
+                    <li><a href="/dmca" className="transition-colors hover:text-[var(--tk-ink)]">DMCA</a></li>
+                  </ul>
+                </div>
+                <div>
+                  <p className="mb-3 text-xs font-mono uppercase tracking-wider text-[var(--tk-ink-faint)]">Build</p>
+                  <ul className="space-y-2 text-sm text-[var(--tk-ink-muted)]">
+                    <li><a href="https://enclave-production-d818.up.railway.app/api-docs" target="_blank" rel="noopener noreferrer" className="transition-colors hover:text-[var(--tk-ink)]">API</a></li>
+                    <li><a href="/blog" className="transition-colors hover:text-[var(--tk-ink)]">Blog</a></li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-12 flex flex-col items-center justify-between gap-3 border-t border-[rgba(255,255,255,0.06)] pt-6 md:flex-row">
+              <p className="text-[13px] text-[var(--tk-ink-faint)]">&copy; {new Date().getFullYear()} Enclave. All rights reserved.</p>
+              <p className="flex items-center gap-2 text-[13px] text-[var(--tk-ink-faint)]">
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#05F2C7] opacity-60" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-[#05F2C7]" />
+                </span>
+                All systems operational
+              </p>
+            </div>
+          </div>
+        </footer>
+      </main>
     </div>
   );
 }
@@ -847,10 +1128,10 @@ function StatCounter({ value, suffix, label }: { value: number; suffix: string; 
 
   return (
     <div ref={ref} className="text-center">
-      <p className="font-display text-3xl font-bold text-green" style={{ letterSpacing: "-0.02em" }}>
+      <p className="font-mono text-3xl font-semibold tracking-tight text-[#7FEFFF]" style={{ letterSpacing: "-0.02em", textShadow: "0 0 24px rgba(0,242,254,0.25)" }}>
         {display}
       </p>
-      <p className="mt-1 text-base text-[var(--color-text-dim)]">{label}</p>
+      <p className="mt-1 text-[13px] text-[var(--tk-ink-faint)]">{label}</p>
     </div>
   );
 }

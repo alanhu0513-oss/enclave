@@ -7,23 +7,19 @@ import {
   LogIn,
   Loader2,
   CheckCircle2,
-  Mail,
   Lock,
-  Fingerprint,
 } from "lucide-react";
 import { useApp } from "@/lib/app-context";
 import { api } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { timeAgo } from "@/lib/utils";
 
 /* ─── Security Panel ───
  * Password change, 2FA, email verification, login history.
  */
 export function SecurityPanel() {
-  const { toast } = useApp();
   const [tab, setTab] = useState<"password" | "2fa" | "history">("password");
 
   return (

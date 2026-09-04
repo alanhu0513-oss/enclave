@@ -7,117 +7,131 @@
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-      width: 320px;
-      min-height: 400px;
+      width: 260px;
       background: #0a0a0f;
       color: #e0e0e0;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      padding: 0;
     }
+
+    /* Header */
     .header {
       display: flex;
       align-items: center;
-      gap: 10px;
-      padding: 16px;
-      background: linear-gradient(135deg, rgba(0,200,150,0.1), rgba(0,150,255,0.1));
+      gap: 8px;
+      padding: 10px 12px;
       border-bottom: 1px solid rgba(255,255,255,0.06);
     }
     .logo {
-      width: 36px;
-      height: 36px;
+      width: 28px; height: 28px;
       background: linear-gradient(135deg, #00c896, #0096ff);
-      border-radius: 10px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      border-radius: 7px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
     }
-    .logo svg { width: 20px; height: 20px; stroke: white; fill: none; stroke-width: 2; }
-    .header-text h1 { font-size: 16px; font-weight: 700; color: #fff; }
-    .header-text p { font-size: 11px; color: #888; }
-    .status-bar {
+    .logo svg { width: 14px; height: 14px; stroke: white; fill: none; stroke-width: 2.5; }
+    .header-text h1 { font-size: 13px; font-weight: 600; color: #fff; line-height: 1.2; }
+    .header-text p { font-size: 10px; color: #666; }
+
+    /* Toggle row */
+    .toggle-row {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 12px 16px;
-      background: rgba(0,200,150,0.08);
+      padding: 8px 12px;
+      background: rgba(0,200,150,0.06);
       border-bottom: 1px solid rgba(255,255,255,0.06);
     }
-    .status-left { display: flex; align-items: center; gap: 8px; }
-    .status-dot {
-      width: 8px; height: 8px; border-radius: 50%;
-      background: #00c896;
-      animation: pulse 2s infinite;
-    }
-    .status-dot.off { background: #666; animation: none; }
-    @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.5; } }
-    .status-text { font-size: 13px; font-weight: 600; }
+    .toggle-left { display: flex; align-items: center; gap: 6px; }
+    .dot { width: 6px; height: 6px; border-radius: 50%; background: #00c896; }
+    .dot.off { background: #555; }
+    .toggle-label { font-size: 12px; font-weight: 500; }
     .toggle {
-      width: 44px; height: 24px; border-radius: 12px;
+      width: 36px; height: 20px; border-radius: 10px;
       background: #333; border: none; cursor: pointer;
-      position: relative; transition: background 0.3s;
+      position: relative; transition: background 0.2s;
     }
     .toggle.on { background: #00c896; }
     .toggle::after {
       content: ''; position: absolute;
-      top: 3px; left: 3px;
-      width: 18px; height: 18px;
+      top: 2px; left: 2px;
+      width: 16px; height: 16px;
       border-radius: 50%; background: white;
-      transition: transform 0.3s;
+      transition: transform 0.2s;
     }
-    .toggle.on::after { transform: translateX(20px); }
+    .toggle.on::after { transform: translateX(16px); }
+
+    /* Stats */
     .stats {
-      display: grid; grid-template-columns: 1fr 1fr 1fr;
-      gap: 1px; background: rgba(255,255,255,0.06);
+      display: grid; grid-template-columns: 1fr 1fr;
       border-bottom: 1px solid rgba(255,255,255,0.06);
     }
-    .stat {
-      padding: 12px;
-      background: #0a0a0f;
-      text-align: center;
-    }
-    .stat-value { font-size: 20px; font-weight: 700; color: #fff; }
-    .stat-label { font-size: 10px; color: #666; text-transform: uppercase; letter-spacing: 0.5px; }
-    .section { padding: 16px; }
-    .section-title { font-size: 11px; color: #666; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
-    .sensitivity-options { display: flex; gap: 8px; }
+    .stat { padding: 8px 12px; text-align: center; }
+    .stat-val { font-size: 16px; font-weight: 700; color: #fff; }
+    .stat-lbl { font-size: 9px; color: #555; text-transform: uppercase; letter-spacing: 0.5px; }
+
+    /* Sensitivity */
+    .row { padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+    .row-label { font-size: 9px; color: #555; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+    .sens-row { display: flex; gap: 4px; }
     .sens-btn {
-      flex: 1; padding: 10px 8px;
-      background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 8px; color: #888;
-      font-size: 12px; font-weight: 600;
-      cursor: pointer; transition: all 0.2s;
+      flex: 1; padding: 5px 4px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 5px; color: #666;
+      font-size: 10px; font-weight: 600;
+      cursor: pointer; transition: all 0.15s;
       text-align: center;
     }
     .sens-btn.active {
-      background: rgba(0,200,150,0.15);
+      background: rgba(0,200,150,0.12);
       border-color: rgba(0,200,150,0.3);
       color: #00c896;
     }
-    .sens-btn:hover { border-color: rgba(255,255,255,0.15); }
-    .last-detection {
-      padding: 12px;
-      background: rgba(255,255,255,0.02);
-      border: 1px solid rgba(255,255,255,0.06);
-      border-radius: 8px;
+    .sens-btn:hover { border-color: rgba(255,255,255,0.12); }
+
+    /* Audio toggle */
+    .opt-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 6px 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
     }
-    .last-detection.safe { border-color: rgba(0,200,150,0.2); }
-    .last-detection.danger { border-color: rgba(220,38,38,0.3); background: rgba(220,38,38,0.05); }
-    .ld-header { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
-    .ld-icon { font-size: 14px; }
-    .ld-text { font-size: 12px; font-weight: 600; }
-    .ld-time { font-size: 10px; color: #666; }
-    .platforms { padding: 16px; border-top: 1px solid rgba(255,255,255,0.06); }
-    .platform-list { display: flex; flex-wrap: wrap; gap: 6px; }
-    .platform-tag {
-      padding: 4px 10px;
-      background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 6px;
-      font-size: 11px;
-      color: #888;
+    .opt-label { font-size: 11px; color: #888; }
+    .mini-toggle {
+      width: 28px; height: 16px; border-radius: 8px;
+      background: #333; border: none; cursor: pointer;
+      position: relative; transition: background 0.2s;
     }
-    .platform-tag.active { color: #00c896; border-color: rgba(0,200,150,0.3); }
+    .mini-toggle.on { background: #00c896; }
+    .mini-toggle::after {
+      content: ''; position: absolute;
+      top: 2px; left: 2px;
+      width: 12px; height: 12px;
+      border-radius: 50%; background: white;
+      transition: transform 0.2s;
+    }
+    .mini-toggle.on::after { transform: translateX(12px); }
+
+    /* Last scan */
+    .last-scan {
+      padding: 8px 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .ls-row { display: flex; align-items: center; gap: 6px; }
+    .ls-icon { font-size: 12px; }
+    .ls-text { font-size: 11px; font-weight: 500; }
+    .ls-time { font-size: 9px; color: #555; margin-top: 2px; }
+
+    /* Footer */
+    .footer {
+      padding: 8px 12px;
+      text-align: center;
+    }
+    .footer a {
+      font-size: 10px;
+      color: #00ff88;
+      text-decoration: none;
+    }
+    .footer a:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
@@ -131,65 +145,49 @@
     </div>
   </div>
 
-  <div class="status-bar">
-    <div class="status-left">
-      <div class="status-dot" id="statusDot"></div>
-      <span class="status-text" id="statusText">Active</span>
+  <div class="toggle-row">
+    <div class="toggle-left">
+      <div class="dot" id="statusDot"></div>
+      <span class="toggle-label" id="statusText">Active</span>
     </div>
     <button class="toggle on" id="shieldToggle"></button>
   </div>
 
   <div class="stats">
     <div class="stat">
-      <div class="stat-value" id="scanCount">0</div>
-      <div class="stat-label">Scans</div>
+      <div class="stat-val" id="scanCount">0</div>
+      <div class="stat-lbl">Scans</div>
     </div>
     <div class="stat">
-      <div class="stat-value" id="threatCount">0</div>
-      <div class="stat-label">Threats</div>
+      <div class="stat-val" id="threatCount">0</div>
+      <div class="stat-lbl">Threats</div>
     </div>
   </div>
 
-  <div class="section">
-    <div class="section-title">Detection</div>
-    <div class="toggle-row">
-      <span class="toggle-label">Audio Analysis</span>
-      <div id="audioToggle" class="toggle active"></div>
-    </div>
-  </div>
-
-  <div class="section">
-    <div class="section-title">Sensitivity</div>
-    <div class="sensitivity-options">
+  <div class="row">
+    <div class="row-label">Sensitivity</div>
+    <div class="sens-row">
       <button class="sens-btn" data-level="low">Low</button>
-      <button class="sens-btn active" data-level="medium">Medium</button>
+      <button class="sens-btn active" data-level="medium">Med</button>
       <button class="sens-btn" data-level="high">High</button>
     </div>
   </div>
 
-  <div class="section">
-    <div class="section-title">Last Scan</div>
-    <div class="last-detection safe" id="lastDetection">
-      <div class="ld-header">
-        <span class="ld-icon">🛡️</span>
-        <span class="ld-text">No threats detected</span>
-      </div>
-      <div class="ld-time">Waiting for video call...</div>
-    </div>
+  <div class="opt-row">
+    <span class="opt-label">Audio analysis</span>
+    <div id="audioToggle" class="mini-toggle on"></div>
   </div>
 
-  <div class="platforms">
-    <div class="section-title">Supported Platforms</div>
-    <div class="platform-list">
-      <span class="platform-tag active">Zoom</span>
-      <span class="platform-tag active">Google Meet</span>
-      <span class="platform-tag active">Teams</span>
-      <span class="platform-tag active">Webex</span>
+  <div class="last-scan">
+    <div class="ls-row">
+      <span class="ls-icon" id="lsIcon">🛡️</span>
+      <span class="ls-text" id="lsText">No threats</span>
     </div>
+    <div class="ls-time" id="lsTime">Waiting for call...</div>
   </div>
 
-  <div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.07);text-align:center;">
-    <a href="https://enclave-react.vercel.app" target="_blank" style="font-size:11px;color:#00ff88;text-decoration:none;">Open Dashboard →</a>
+  <div class="footer">
+    <a href="https://enclave-react.vercel.app" target="_blank">Open Dashboard →</a>
   </div>
 
   <script src="popup.js"></script>

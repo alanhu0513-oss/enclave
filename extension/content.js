@@ -174,10 +174,12 @@
     shieldIndicator = document.createElement('div');
     shieldIndicator.id = 'enclave-shield-indicator';
     shieldIndicator.innerHTML = `
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-      </svg>
-      <span>Shield Active</span>
+      <div class="shield-badge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        </svg>
+        <span>Shield</span>
+      </div>
     `;
     document.body.appendChild(shieldIndicator);
   }
@@ -197,19 +199,18 @@
     alertOverlay.id = 'enclave-shield-alert';
     const sourceLabel = source === 'audio' ? 'Audio' : 'Video';
     alertOverlay.innerHTML = `
-      <div style="display:flex;align-items:center;gap:12px;">
-        <span style="font-size:20px;">⚠️</span>
-        <div>
-          <div style="font-weight:700;font-size:14px;">Deepfake Detected — ${sourceLabel}</div>
-          <div style="font-size:12px;opacity:0.8;">Confidence: ${confidence}% — ${verdict || 'Potential manipulation'}</div>
+      <div class="shield-alert-content">
+        <span class="shield-alert-icon">⚠️</span>
+        <div class="shield-alert-text">
+          <strong>Deepfake — ${sourceLabel}</strong>
+          <span>${confidence}% — ${verdict || 'Manipulation detected'}</span>
         </div>
-        <button onclick="this.parentElement.parentElement.remove()" style="background:none;border:none;color:white;font-size:18px;cursor:pointer;padding:4px 8px;">✕</button>
+        <button class="shield-alert-dismiss" onclick="this.parentElement.parentElement.remove()">✕</button>
       </div>
     `;
     document.body.appendChild(alertOverlay);
 
-    // Auto-dismiss after 15s
-    setTimeout(() => { if (alertOverlay) alertOverlay.remove(); }, 15000);
+    setTimeout(() => { if (alertOverlay) alertOverlay.remove(); }, 12000);
   }
 
   /* ─── Init ─── */

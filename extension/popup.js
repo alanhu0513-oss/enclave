@@ -2,13 +2,12 @@
 
 let settings = { sensitivity: 'medium', autoScan: true, audioAnalysis: true, faceMatching: true };
 
-// Load state
-chrome.storage.local.get(['shieldActive', 'settings', 'stats', 'lastDetection', 'apiToken'], (data) => {
+chrome.storage.local.get(['shieldActive', 'settings', 'stats', 'lastDetection'], (data) => {
   if (data.settings) settings = { ...settings, ...data.settings };
-  updateUI(data.shieldActive, data.stats, data.lastDetection, !!data.apiToken);
+  updateUI(data.shieldActive, data.stats, data.lastDetection);
 });
 
-// Toggle shield
+// Shield toggle
 document.getElementById('shieldToggle').addEventListener('click', () => {
   chrome.runtime.sendMessage({ type: 'TOGGLE_SHIELD' }, (res) => {
     if (res) updateToggleUI(res.active);
@@ -26,13 +25,13 @@ document.querySelectorAll('.sens-btn').forEach((btn) => {
 });
 
 // Audio toggle
-document.getElementById('audioToggle')?.addEventListener('click', () => {
+document.getElementById('audioToggle').addEventListener('click', () => {
   settings.audioAnalysis = !settings.audioAnalysis;
   chrome.runtime.sendMessage({ type: 'UPDATE_SETTINGS', settings });
-  document.getElementById('audioToggle').classList.toggle('active', settings.audioAnalysis);
+  document.getElementById('audioToggle').classList.toggle('on', settings.audioAnalysis);
 });
 
-function updateUI(active, stats, lastDetection, hasToken) {
+function updateUI(active, stats, lastDetection) {
   updateToggleUI(active);
 
   if (stats) {
@@ -40,42 +39,32 @@ function updateUI(active, stats, lastDetection, hasToken) {
     document.getElementById('threatCount').textContent = stats.threats || 0;
   }
 
-  // Highlight active sensitivity button
   document.querySelectorAll('.sens-btn').forEach((btn) => {
     btn.classList.toggle('active', btn.dataset.level === (settings.sensitivity || 'medium'));
   });
 
-  if (document.getElementById('audioToggle')) {
-    document.getElementById('audioToggle').classList.toggle('active', settings.audioAnalysis !== false);
-  }
+  document.getElementById('audioToggle').classList.toggle('on', settings.audioAnalysis !== false);
 
-  // Last detection
-  const lastEl = document.getElementById('lastDetection');
-  if (lastDetection && lastEl) {
-    const ago = formatTimeAgo(lastDetection.time);
-    lastEl.querySelector('.ld-icon').textContent = lastDetection.isDeepfake ? '🚨' : '🛡️';
-    lastEl.querySelector('.ld-text').textContent = lastDetection.isDeepfake
+  if (lastDetection) {
+    document.getElementById('lsIcon').textContent = lastDetection.isDeepfake ? '🚨' : '🛡️';
+    document.getElementById('lsText').textContent = lastDetection.isDeepfake
       ? `Deepfake: ${lastDetection.confidence}%`
-      : 'No threats detected';
-    lastEl.querySelector('.ld-time').textContent = ago;
-    lastEl.className = `last-detection ${lastDetection.isDeepfake ? 'danger' : 'safe'}`;
+      : 'No threats';
+    document.getElementById('lsTime').textContent = formatTime(lastDetection.time);
   }
 }
 
 function updateToggleUI(active) {
-  const toggle = document.getElementById('shieldToggle');
-  const dot = document.getElementById('statusDot');
-  const text = document.getElementById('statusText');
-  if (toggle) toggle.className = `toggle ${active ? 'on' : ''}`;
-  if (dot) dot.className = `status-dot ${active ? '' : 'off'}`;
-  if (text) text.textContent = active ? 'Active' : 'Paused';
+  document.getElementById('shieldToggle').className = `toggle ${active ? 'on' : ''}`;
+  document.getElementById('statusDot').className = `dot ${active ? '' : 'off'}`;
+  document.getElementById('statusText').textContent = active ? 'Active' : 'Paused';
 }
 
-function formatTimeAgo(timestamp) {
-  if (!timestamp) return 'Never';
-  const diff = Date.now() - timestamp;
-  if (diff < 60000) return 'Just now';
-  if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
-  if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
-  return `${Math.floor(diff / 86400000)}d ago`;
+function formatTime(ts) {
+  if (!ts) return 'Never';
+  const d = Date.now() - ts;
+  if (d < 60000) return 'Just now';
+  if (d < 3600000) return `${Math.floor(d / 60000)}m ago`;
+  if (d < 86400000) return `${Math.floor(d / 3600000)}h ago`;
+  return `${Math.floor(d / 86400000)}d ago`;
 }

@@ -72,7 +72,6 @@
       font-size: 10px;
       color: var(--text-dim);
       margin-top: 1px;
-      letter-spacing: 0.01em;
     }
 
     /* Connection status */
@@ -96,6 +95,74 @@
     }
     .conn-status.connected .conn-dot { background: var(--green); box-shadow: 0 0 6px rgba(0,255,136,0.4); }
     .conn-status.error .conn-dot { background: var(--red); }
+
+    /* Login form */
+    .login-section {
+      padding: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .login-section h3 {
+      font-size: 12px;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 10px;
+    }
+    .form-group {
+      margin-bottom: 8px;
+    }
+    .form-group label {
+      display: block;
+      font-size: 9px;
+      color: var(--text-faint);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+    .form-input {
+      width: 100%;
+      padding: 8px 10px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 6px;
+      color: var(--text);
+      font-size: 12px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .form-input:focus { border-color: rgba(0,255,136,0.3); }
+    .form-input::placeholder { color: var(--text-faint); }
+    .login-btn {
+      width: 100%;
+      padding: 9px;
+      background: linear-gradient(135deg, var(--green), var(--cyan));
+      border: none;
+      border-radius: 6px;
+      color: #000;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity 0.15s;
+      margin-top: 4px;
+    }
+    .login-btn:hover { opacity: 0.9; }
+    .login-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .login-error {
+      font-size: 10px;
+      color: var(--red);
+      margin-top: 6px;
+      display: none;
+    }
+    .login-links {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 8px;
+    }
+    .login-links a {
+      font-size: 10px;
+      color: var(--text-dim);
+      text-decoration: none;
+    }
+    .login-links a:hover { color: var(--green); }
 
     /* Main toggle */
     .main-toggle {
@@ -162,7 +229,7 @@
     .stat-val.red { color: var(--red); }
     .stat-lbl { font-size: 9px; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
 
-    /* Settings section */
+    /* Settings */
     .section {
       padding: 10px 16px;
       border-bottom: 1px solid var(--border);
@@ -175,8 +242,6 @@
       margin-bottom: 8px;
       font-weight: 600;
     }
-
-    /* Sensitivity */
     .sens-group { display: flex; gap: 4px; }
     .sens-btn {
       flex: 1; padding: 7px 4px;
@@ -193,12 +258,8 @@
       border-color: rgba(0,255,136,0.3);
       color: var(--green);
     }
-
-    /* Toggles row */
     .toggles-row { display: flex; flex-direction: column; gap: 8px; }
-    .toggle-item {
-      display: flex; align-items: center; justify-content: space-between;
-    }
+    .toggle-item { display: flex; align-items: center; justify-content: space-between; }
     .toggle-item-label { font-size: 11px; color: var(--text-dim); }
     .mini-toggle {
       width: 32px; height: 18px; border-radius: 9px;
@@ -216,42 +277,6 @@
       box-shadow: 0 1px 2px rgba(0,0,0,0.2);
     }
     .mini-toggle.on::after { transform: translateX(14px); }
-
-    /* Token input */
-    .token-section {
-      padding: 10px 16px;
-      border-bottom: 1px solid var(--border);
-    }
-    .token-input-wrap {
-      display: flex; gap: 6px;
-    }
-    .token-input {
-      flex: 1;
-      padding: 7px 10px;
-      background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 6px;
-      color: var(--text);
-      font-size: 10px;
-      font-family: 'SF Mono', 'Consolas', monospace;
-      outline: none;
-      transition: border-color 0.15s;
-    }
-    .token-input:focus { border-color: rgba(0,255,136,0.3); }
-    .token-input::placeholder { color: var(--text-faint); }
-    .token-btn {
-      padding: 7px 10px;
-      background: rgba(0,255,136,0.1);
-      border: 1px solid rgba(0,255,136,0.2);
-      border-radius: 6px;
-      color: var(--green);
-      font-size: 10px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.15s;
-      white-space: nowrap;
-    }
-    .token-btn:hover { background: rgba(0,255,136,0.15); }
 
     /* Last detection */
     .last-detect {
@@ -288,12 +313,8 @@
     }
     .footer-link:hover { opacity: 1; }
 
-    /* Animation */
-    @keyframes fade-in {
-      from { opacity: 0; transform: translateY(4px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    .fade-in { animation: fade-in 0.2s ease-out; }
+    /* Hidden */
+    .hidden { display: none !important; }
   </style>
 </head>
 <body>
@@ -317,77 +338,90 @@
     <span id="connText">Checking connection...</span>
   </div>
 
-  <!-- Main toggle -->
-  <div class="main-toggle active" id="mainToggle">
-    <div class="mt-left">
-      <div class="mt-icon">
-        <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-      </div>
-      <div class="mt-text">
-        <h3 id="shieldLabel">Shield Active</h3>
-        <p id="shieldSub">Scanning video calls</p>
-      </div>
+  <!-- Login form (shown when not logged in) -->
+  <div class="login-section" id="loginSection">
+    <h3>Sign in to Enclave</h3>
+    <div class="form-group">
+      <label>Email</label>
+      <input type="email" class="form-input" id="loginEmail" placeholder="you@example.com" />
     </div>
-    <button class="toggle-switch on" id="shieldToggle" aria-label="Toggle shield"></button>
-  </div>
-
-  <!-- Stats -->
-  <div class="stats-row">
-    <div class="stat">
-      <div class="stat-val green" id="scanCount">0</div>
-      <div class="stat-lbl">Scans</div>
+    <div class="form-group">
+      <label>Password</label>
+      <input type="password" class="form-input" id="loginPassword" placeholder="Your password" />
     </div>
-    <div class="stat">
-      <div class="stat-val red" id="threatCount">0</div>
-      <div class="stat-lbl">Threats</div>
-    </div>
-    <div class="stat">
-      <div class="stat-val" id="audioCount">0</div>
-      <div class="stat-lbl">Audio</div>
+    <button class="login-btn" id="loginBtn">Sign In</button>
+    <div class="login-error" id="loginError"></div>
+    <div class="login-links">
+      <a href="https://enclave-react.vercel.app" target="_blank">Create account</a>
+      <a href="https://enclave-react.vercel.app" target="_blank">Forgot password?</a>
     </div>
   </div>
 
-  <!-- Sensitivity -->
-  <div class="section">
-    <div class="section-title">Sensitivity</div>
-    <div class="sens-group">
-      <button class="sens-btn" data-level="low">Low</button>
-      <button class="sens-btn active" data-level="medium">Medium</button>
-      <button class="sens-btn" data-level="high">High</button>
-    </div>
-  </div>
-
-  <!-- Toggles -->
-  <div class="section">
-    <div class="section-title">Detection</div>
-    <div class="toggles-row">
-      <div class="toggle-item">
-        <span class="toggle-item-label">Audio analysis</span>
-        <button id="audioToggle" class="mini-toggle on" aria-label="Toggle audio"></button>
+  <!-- Dashboard (shown when logged in) -->
+  <div id="dashboardSection" class="hidden">
+    <!-- Main toggle -->
+    <div class="main-toggle active" id="mainToggle">
+      <div class="mt-left">
+        <div class="mt-icon">
+          <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <div class="mt-text">
+          <h3 id="shieldLabel">Shield Active</h3>
+          <p id="shieldSub">Scanning video calls</p>
+        </div>
       </div>
-      <div class="toggle-item">
-        <span class="toggle-item-label">Face matching</span>
-        <button id="faceToggle" class="mini-toggle on" aria-label="Toggle face matching"></button>
+      <button class="toggle-switch on" id="shieldToggle" aria-label="Toggle shield"></button>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-row">
+      <div class="stat">
+        <div class="stat-val green" id="scanCount">0</div>
+        <div class="stat-lbl">Scans</div>
+      </div>
+      <div class="stat">
+        <div class="stat-val red" id="threatCount">0</div>
+        <div class="stat-lbl">Threats</div>
+      </div>
+      <div class="stat">
+        <div class="stat-val" id="audioCount">0</div>
+        <div class="stat-lbl">Audio</div>
       </div>
     </div>
-  </div>
 
-  <!-- API Token -->
-  <div class="token-section">
-    <div class="section-title">API Token</div>
-    <div class="token-input-wrap">
-      <input type="password" class="token-input" id="tokenInput" placeholder="Paste your JWT token..." />
-      <button class="token-btn" id="tokenSave">Save</button>
+    <!-- Sensitivity -->
+    <div class="section">
+      <div class="section-title">Sensitivity</div>
+      <div class="sens-group">
+        <button class="sens-btn" data-level="low">Low</button>
+        <button class="sens-btn active" data-level="medium">Medium</button>
+        <button class="sens-btn" data-level="high">High</button>
+      </div>
     </div>
-  </div>
 
-  <!-- Last detection -->
-  <div class="last-detect safe" id="lastDetect">
-    <div class="ld-row">
-      <div class="ld-icon" id="ldIcon">✅</div>
-      <div class="ld-info">
-        <h4 id="ldTitle">No threats detected</h4>
-        <p id="ldSub">Waiting for video call...</p>
+    <!-- Toggles -->
+    <div class="section">
+      <div class="section-title">Detection</div>
+      <div class="toggles-row">
+        <div class="toggle-item">
+          <span class="toggle-item-label">Audio analysis</span>
+          <button id="audioToggle" class="mini-toggle on" aria-label="Toggle audio"></button>
+        </div>
+        <div class="toggle-item">
+          <span class="toggle-item-label">Face matching</span>
+          <button id="faceToggle" class="mini-toggle on" aria-label="Toggle face matching"></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Last detection -->
+    <div class="last-detect safe" id="lastDetect">
+      <div class="ld-row">
+        <div class="ld-icon" id="ldIcon">✅</div>
+        <div class="ld-info">
+          <h4 id="ldTitle">No threats detected</h4>
+          <p id="ldSub">Waiting for video call...</p>
+        </div>
       </div>
     </div>
   </div>
@@ -395,6 +429,7 @@
   <!-- Footer -->
   <div class="footer">
     <a href="https://enclave-react.vercel.app" target="_blank" class="footer-link">Open Dashboard →</a>
+    <span id="logoutBtn" class="footer-link" style="margin-left:12px;cursor:pointer;color:var(--text-faint)">Sign Out</span>
   </div>
 
   <script src="popup.js"></script>

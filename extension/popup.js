@@ -1,197 +1,249 @@
-/* ─── ENCLAVE Video Call Shield — Popup ─── */
+/* ─── Enclave Shield — Popup Script ─── */
 
-let settings = { sensitivity: 'medium', autoScan: true, audioAnalysis: true, faceMatching: true };
+const API = 'https://enclave-production-d818.up.railway.app';
+let settings = { sensitivity: 'medium', audioAnalysis: true, faceMatching: true };
 let shieldActive = false;
+let stats = { scans: 0, threats: 0, audioScans: 0 };
 
-// ─── Init ───
+/* ─── Init ─── */
 document.addEventListener('DOMContentLoaded', () => {
-  // Load state from background
-  chrome.runtime.sendMessage({ type: 'GET_STATUS' }, (res) => {
-    if (res) {
-      shieldActive = res.active;
-      if (res.settings) settings = { ...settings, ...res.settings };
-      updateToggleUI(shieldActive);
-      updateStats(res.stats);
-      updateLastDetection(res.lastDetection);
-      updateSettingsUI();
-    }
-    checkConnection();
-  });
+  chrome.storage.local.get(['apiToken', 'settings', 'shieldActive', 'stats', 'userEmail'], (data) => {
+    if (data.settings) settings = { ...settings, ...data.settings };
+    if (data.shieldActive) shieldActive = data.shieldActive;
+    if (data.stats) stats = { ...stats, ...data.stats };
 
-  // Load saved token
-  chrome.storage.local.get('apiToken', (data) => {
     if (data.apiToken) {
-      document.getElementById('tokenInput').value = data.apiToken;
+      showDashboard(data.userEmail);
+      updateUI();
+      checkConnection(data.apiToken);
+    } else {
+      showLogin();
     }
-  });
 
-  setupEventListeners();
+    setupToggles();
+    setupSensitivity();
+    setupLogin();
+    setupLogout();
+
+    chrome.storage.onChanged.addListener((changes) => {
+      if (changes.stats) {
+        stats = changes.stats.newValue || stats;
+        updateStats();
+      }
+      if (changes.lastDetection) {
+        updateLastDetect(changes.lastDetection.newValue);
+      }
+      if (changes.shieldActive) {
+        shieldActive = changes.shieldActive.newValue;
+        updateToggle();
+      }
+    });
+  });
 });
 
-// ─── Event Listeners ───
-function setupEventListeners() {
-  // Shield toggle
-  document.getElementById('shieldToggle').addEventListener('click', (e) => {
+/* ─── Login ─── */
+function showLogin() {
+  document.getElementById('loginSection').classList.remove('hidden');
+  document.getElementById('dashboardSection').classList.add('hidden');
+}
+
+function showDashboard(email) {
+  document.getElementById('loginSection').classList.add('hidden');
+  document.getElementById('dashboardSection').classList.remove('hidden');
+  if (email) {
+    document.getElementById('ldSub').textContent = `Signed in as ${email}`;
+  }
+}
+
+function setupLogin() {
+  const btn = document.getElementById('loginBtn');
+  const emailInput = document.getElementById('loginEmail');
+  const passInput = document.getElementById('loginPassword');
+  const errEl = document.getElementById('loginError');
+
+  btn.addEventListener('click', async () => {
+    const email = emailInput.value.trim();
+    const password = passInput.value;
+
+    if (!email || !password) {
+      errEl.textContent = 'Email and password required';
+      errEl.style.display = 'block';
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Signing in...';
+    errEl.style.display = 'none';
+
+    try {
+      const res = await fetch(`${API}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.token) {
+        chrome.storage.local.set({
+          apiToken: data.token,
+          userEmail: email,
+          userTier: data.user?.tier || 'free',
+        });
+        // Notify background script of new token
+        chrome.runtime.sendMessage({ type: 'SET_TOKEN', token: data.token });
+        showDashboard(email);
+        checkConnection(data.token);
+      } else {
+        errEl.textContent = data.error || data.message || 'Login failed';
+        errEl.style.display = 'block';
+      }
+    } catch (e) {
+      errEl.textContent = 'Network error — is the server online?';
+      errEl.style.display = 'block';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Sign In';
+    }
+  });
+
+  passInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') btn.click();
+  });
+}
+
+/* ─── Connection check ─── */
+function checkConnection(token) {
+  const el = document.getElementById('connStatus');
+  const text = document.getElementById('connText');
+
+  fetch(`${API}/api/health`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  })
+    .then((r) => r.json())
+    .then((data) => {
+      if (data.status === 'ok' || data.status === 'degraded') {
+        el.className = 'conn-status connected';
+        text.textContent = 'Server connected';
+      } else {
+        el.className = 'conn-status error';
+        text.textContent = 'Server degraded';
+      }
+    })
+    .catch(() => {
+      el.className = 'conn-status error';
+      text.textContent = 'Offline';
+    });
+}
+
+/* ─── Shield toggle ─── */
+function setupToggles() {
+  const mainToggle = document.getElementById('mainToggle');
+  const shieldBtn = document.getElementById('shieldToggle');
+  const audioBtn = document.getElementById('audioToggle');
+  const faceBtn = document.getElementById('faceToggle');
+
+  shieldBtn.addEventListener('click', (e) => {
     e.stopPropagation();
-    chrome.runtime.sendMessage({ type: 'TOGGLE_SHIELD' }, (res) => {
-      if (res) {
-        shieldActive = res.active;
-        updateToggleUI(shieldActive);
-      }
-    });
+    shieldActive = !shieldActive;
+    chrome.storage.local.set({ shieldActive });
+    chrome.runtime.sendMessage({ type: 'TOGGLE_SHIELD' });
+    updateToggle();
   });
 
-  document.getElementById('mainToggle').addEventListener('click', () => {
-    chrome.runtime.sendMessage({ type: 'TOGGLE_SHIELD' }, (res) => {
-      if (res) {
-        shieldActive = res.active;
-        updateToggleUI(shieldActive);
-      }
-    });
+  mainToggle.addEventListener('click', () => shieldBtn.click());
+
+  audioBtn.addEventListener('click', () => {
+    settings.audioAnalysis = !settings.audioAnalysis;
+    chrome.storage.local.set({ settings });
+    audioBtn.classList.toggle('on', settings.audioAnalysis);
   });
 
-  // Sensitivity buttons
+  faceBtn.addEventListener('click', () => {
+    settings.faceMatching = !settings.faceMatching;
+    chrome.storage.local.set({ settings });
+    faceBtn.classList.toggle('on', settings.faceMatching);
+  });
+}
+
+function updateToggle() {
+  const btn = document.getElementById('shieldToggle');
+  const label = document.getElementById('shieldLabel');
+  const sub = document.getElementById('shieldSub');
+  const row = document.getElementById('mainToggle');
+
+  btn.classList.toggle('on', shieldActive);
+  row.classList.toggle('active', shieldActive);
+
+  if (shieldActive) {
+    label.textContent = 'Shield Active';
+    sub.textContent = 'Scanning video calls';
+  } else {
+    label.textContent = 'Shield Off';
+    sub.textContent = 'Click to activate';
+  }
+}
+
+/* ─── Sensitivity ─── */
+function setupSensitivity() {
   document.querySelectorAll('.sens-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
       settings.sensitivity = btn.dataset.level;
-      chrome.runtime.sendMessage({ type: 'UPDATE_SETTINGS', settings });
+      chrome.storage.local.set({ settings });
       document.querySelectorAll('.sens-btn').forEach((b) => b.classList.remove('active'));
       btn.classList.add('active');
     });
   });
-
-  // Audio toggle
-  document.getElementById('audioToggle').addEventListener('click', () => {
-    settings.audioAnalysis = !settings.audioAnalysis;
-    chrome.runtime.sendMessage({ type: 'UPDATE_SETTINGS', settings });
-    document.getElementById('audioToggle').classList.toggle('on', settings.audioAnalysis);
-  });
-
-  // Face matching toggle
-  document.getElementById('faceToggle').addEventListener('click', () => {
-    settings.faceMatching = !settings.faceMatching;
-    chrome.runtime.sendMessage({ type: 'UPDATE_SETTINGS', settings });
-    document.getElementById('faceToggle').classList.toggle('on', settings.faceMatching);
-  });
-
-  // Token save
-  document.getElementById('tokenSave').addEventListener('click', () => {
-    const token = document.getElementById('tokenInput').value.trim();
-    chrome.runtime.sendMessage({ type: 'SET_TOKEN', token }, () => {
-      checkConnection();
-      // Visual feedback
-      const btn = document.getElementById('tokenSave');
-      btn.textContent = '✓';
-      btn.style.color = 'var(--green)';
-      setTimeout(() => {
-        btn.textContent = 'Save';
-        btn.style.color = '';
-      }, 1500);
-    });
-  });
-
-  // Enter key on token input
-  document.getElementById('tokenInput').addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      document.getElementById('tokenSave').click();
-    }
-  });
 }
 
-// ─── UI Updates ───
-function updateToggleUI(active) {
-  const toggle = document.getElementById('shieldToggle');
-  const mainToggle = document.getElementById('mainToggle');
-  const label = document.getElementById('shieldLabel');
-  const sub = document.getElementById('shieldSub');
-
-  toggle.className = `toggle-switch ${active ? 'on' : ''}`;
-  mainToggle.className = `main-toggle ${active ? 'active' : ''}`;
-
-  if (active) {
-    label.textContent = 'Shield Active';
-    sub.textContent = 'Scanning video calls';
-  } else {
-    label.textContent = 'Shield Paused';
-    sub.textContent = 'Click to enable protection';
-  }
-}
-
-function updateStats(stats) {
-  if (!stats) return;
+/* ─── Stats ─── */
+function updateStats() {
   document.getElementById('scanCount').textContent = stats.scans || 0;
   document.getElementById('threatCount').textContent = stats.threats || 0;
   document.getElementById('audioCount').textContent = stats.audioScans || 0;
 }
 
-function updateLastDetection(detection) {
+/* ─── Last detection ─── */
+function updateLastDetect(d) {
   const el = document.getElementById('lastDetect');
   const icon = document.getElementById('ldIcon');
   const title = document.getElementById('ldTitle');
   const sub = document.getElementById('ldSub');
 
-  if (!detection) {
+  if (!d) return;
+
+  if (d.deepfake) {
+    el.className = 'last-detect danger';
+    icon.textContent = '🚨';
+    title.textContent = 'Deepfake detected';
+    sub.textContent = `${d.confidence}% confidence · ${d.provider || 'AI'}`;
+  } else {
     el.className = 'last-detect safe';
     icon.textContent = '✅';
     title.textContent = 'No threats detected';
-    sub.textContent = 'Waiting for video call...';
-    return;
+    sub.textContent = `Scan #${stats.scans} · ${d.provider || 'local'}`;
   }
-
-  const isThreat = detection.isDeepfake;
-  el.className = `last-detect ${isThreat ? 'danger' : 'safe'}`;
-  icon.textContent = isThreat ? '🚨' : '✅';
-  title.textContent = isThreat
-    ? `Threat: ${detection.confidence}%`
-    : 'No threats detected';
-  sub.textContent = isThreat
-    ? `${detection.verdict || 'Deepfake detected'} — ${formatTime(detection.time)}`
-    : `Last scan: ${formatTime(detection.time)}`;
 }
 
-function updateSettingsUI() {
-  document.querySelectorAll('.sens-btn').forEach((btn) => {
-    btn.classList.toggle('active', btn.dataset.level === (settings.sensitivity || 'medium'));
-  });
-  document.getElementById('audioToggle').classList.toggle('on', settings.audioAnalysis !== false);
-  document.getElementById('faceToggle').classList.toggle('on', settings.faceMatching !== false);
-}
-
-async function checkConnection() {
-  const el = document.getElementById('connStatus');
-  const text = document.getElementById('connText');
-
-  try {
-    const resp = await fetch('https://enclave-production-d818.up.railway.app/api/health', {
-      method: 'GET',
-      signal: AbortSignal.timeout(5000),
+/* ─── Logout ─── */
+function setupLogout() {
+  document.getElementById('logoutBtn').addEventListener('click', () => {
+    chrome.storage.local.remove(['apiToken', 'userEmail', 'userTier'], () => {
+      chrome.runtime.sendMessage({ type: 'SET_TOKEN', token: null });
+      showLogin();
     });
-
-    if (resp.ok) {
-      el.className = 'conn-status connected';
-      text.textContent = 'Connected to Enclave';
-    } else {
-      el.className = 'conn-status error';
-      text.textContent = `Server error (${resp.status})`;
-    }
-  } catch (e) {
-    el.className = 'conn-status error';
-    text.textContent = 'Cannot reach server';
-  }
+  });
 }
 
-function formatTime(ts) {
-  if (!ts) return 'Never';
-  const d = Date.now() - ts;
-  if (d < 60000) return 'Just now';
-  if (d < 3600000) return `${Math.floor(d / 60000)}m ago`;
-  if (d < 86400000) return `${Math.floor(d / 3600000)}h ago`;
-  return `${Math.floor(d / 86400000)}d ago`;
-}
+/* ─── Full UI sync ─── */
+function updateUI() {
+  updateToggle();
+  updateStats();
 
-// ─── Live updates from background ───
-chrome.storage.onChanged.addListener((changes) => {
-  if (changes.stats) updateStats(changes.stats.newValue);
-  if (changes.lastDetection) updateLastDetection(changes.lastDetection.newValue);
-  if (changes.shieldActive) updateToggleUI(changes.shieldActive.newValue);
-});
+  document.querySelectorAll('.sens-btn').forEach((b) => {
+    b.classList.toggle('active', b.dataset.level === settings.sensitivity);
+  });
+
+  document.getElementById('audioToggle').classList.toggle('on', settings.audioAnalysis);
+  document.getElementById('faceToggle').classList.toggle('on', settings.faceMatching);
+}

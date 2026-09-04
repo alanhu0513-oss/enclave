@@ -1,5 +1,6 @@
 const express = require("express");
 const multer = require("multer");
+const { v4: uuidv4 } = require("uuid");
 const { success, error } = require("../utils/response");
 const { authenticate } = require("../middleware/auth");
 const voiceAnalyzer = require("../services/voice-analyzer");
@@ -66,7 +67,7 @@ router.post("/batch", upload.array("audio", 10), async (req, res) => {
       const analysis = await voiceAnalyzer.analyzeClone(file.buffer, format);
 
       await tbl.insert({
-        id: "va_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6),
+        id: "va_" + uuidv4(),
         user_id: req.user.userId,
         file_name: file.originalname,
         file_size: file.size,

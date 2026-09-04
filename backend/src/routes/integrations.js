@@ -2,6 +2,7 @@ const express = require('express');
 const { success, error } = require('../utils/response');
 const { authenticate } = require('../middleware/auth');
 const { table } = require('../db/query');
+const { v4: uuidv4 } = require('uuid');
 const integrations = require('../services/integrations');
 
 const router = express.Router();
@@ -32,7 +33,7 @@ router.post('/', authenticate, async (req, res) => {
     if (!['slack', 'discord', 'zapier', 'email'].includes(type)) return error(res, 'type must be slack, discord, zapier, or email', 400);
 
     const tbl = await table('integrations');
-    const id = `int_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const id = `int_${uuidv4()}`;
     await tbl.create({
       id,
       user_id: req.user.userId,

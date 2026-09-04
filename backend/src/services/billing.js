@@ -5,6 +5,8 @@
  * Set STRIPE_SECRET_KEY to use real Stripe.
  */
 
+const { v4: uuidv4 } = require('uuid');
+
 const TABLES = { table: null };
 
 const TIERS = {
@@ -82,7 +84,7 @@ function getTier(userId) {
 
 async function createCheckoutSession(userId, tier, email, successUrl, cancelUrl) {
   if (useMock) {
-    const sessionId = 'mock_sess_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+    const sessionId = 'mock_sess_' + uuidv4();
     mockSubscriptions.set(userId, {
       tier, status: 'active', sessionId,
       createdAt: new Date().toISOString(),

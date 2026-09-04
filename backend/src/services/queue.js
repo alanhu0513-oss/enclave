@@ -5,6 +5,7 @@
  */
 
 const { Queue, Worker } = require('bullmq');
+const { v4: uuidv4 } = require('uuid');
 const { bus, Events } = require('./event-bus');
 
 const REDIS_URL = process.env.REDIS_URL || '';
@@ -24,7 +25,7 @@ class MemoryQueue {
 
   async add(jobName, data, opts = {}) {
     const job = {
-      id: `${this.name}:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`,
+      id: `${this.name}:${uuidv4()}`,
       name: jobName,
       data,
       opts,

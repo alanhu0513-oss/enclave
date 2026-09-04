@@ -97,7 +97,7 @@ class IntegrationService {
       const { table } = require('../db/query');
       const notifications = await table('notifications');
       await notifications.create({
-        id: `notif_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+        id: `notif_${crypto.randomUUID()}`,
         user_id: alert.user_id,
         type: 'integration_email',
         title: alert.title || 'Enclave Alert',

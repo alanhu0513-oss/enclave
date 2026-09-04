@@ -67,7 +67,8 @@ app.use(cors({
       "http://localhost:3000",
       "http://localhost:4000",
     ];
-    if (!origin || allowedOrigins.includes(origin)) {
+    // Allow Chrome extension requests (no origin) and specific origins
+    if (!origin || allowedOrigins.includes(origin) || origin.startsWith('chrome-extension://')) {
       callback(null, true);
     } else {
       callback(new Error("Not allowed by CORS"));

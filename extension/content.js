@@ -7,11 +7,9 @@
   const ALERT_COOLDOWN = 10000;
   let shieldIndicator = null;
   let alertOverlay = null;
-  let audioContext = null;
-  let mediaStream = null;
-  let audioWorkletNode = null;
+  let isCapturing = false;
 
-  /* ─── Video Element Detection (multi-participant) ─── */
+  /* ─── Video Element Detection ─── */
   function findRemoteVideos() {
     const allVideos = Array.from(document.querySelectorAll('video'));
     const remote = [];
@@ -21,12 +19,13 @@
       const h = video.videoHeight || video.clientHeight;
       if (w < 80 || h < 80) continue;
 
-      // Skip local preview (muted + small, or has 'local' in class/id)
+      // Skip local preview
       const isLocal = video.muted ||
         video.classList.toString().toLowerCase().includes('local') ||
         (video.id || '').toLowerCase().includes('local') ||
         (video.id || '').toLowerCase().includes('self') ||
-        (video.id || '').toLowerCase().includes('preview');
+        (video.id || '').toLowerCase().includes('preview') ||
+        (video.id || '').toLowerCase().includes('own');
 
       if (!isLocal) {
         remote.push(video);
@@ -52,7 +51,6 @@
     canvas.height = 299;
     const ctx = canvas.getContext('2d');
 
-    // Cover-fit the video frame
     const vw = video.videoWidth || video.clientWidth;
     const vh = video.videoHeight || video.clientHeight;
     const scale = Math.max(299 / vw, 299 / vh);
@@ -63,19 +61,19 @@
     return canvas.toDataURL('image/jpeg', 0.8);
   }
 
-  /* ─── Audio Capture (via tabCapture) ─── */
+  /* ─── Audio Capture ─── */
+  let audioContext = null;
+  let mediaStream = null;
+
   function startAudioCapture() {
     try {
       audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
-
-      // Request tab capture from background
       chrome.runtime.sendMessage({ type: 'START_AUDIO_CAPTURE' });
     } catch (e) {
       console.warn('[Shield] Audio capture not available:', e.message);
     }
   }
 
-  // Listen for audio stream from background (via tabCapture)
   chrome.runtime.onMessage.addListener((msg) => {
     if (msg.type === 'AUDIO_STREAM_READY' && msg.streamId) {
       setupAudioProcessing(msg.streamId);
@@ -92,7 +90,7 @@
         const processor = audioContext.createScriptProcessor(4096, 1, 1);
 
         let audioBuffer = [];
-        const BUFFER_DURATION = 3; // seconds
+        const BUFFER_DURATION = 3;
         const SAMPLE_RATE = 16000;
         const CHUNK_SIZE = SAMPLE_RATE * BUFFER_DURATION;
 
@@ -145,13 +143,25 @@
   /* ─── Message Handler ─── */
   chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     if (msg.type === 'CAPTURE_FRAME') {
-      const video = scanNextParticipant();
-      if (video) {
-        const dataUrl = captureFrame(video);
-        const source = `participant-${participantIndex}`;
-        chrome.runtime.sendMessage({ type: 'FRAME_CAPTURED', dataUrl, source });
+      if (isCapturing) {
+        sendResponse({ ok: false, reason: 'busy' });
+        return true;
       }
-      sendResponse({ ok: true });
+
+      isCapturing = true;
+      try {
+        const video = scanNextParticipant();
+        if (video) {
+          const dataUrl = captureFrame(video);
+          const source = `participant-${participantIndex}`;
+          chrome.runtime.sendMessage({ type: 'FRAME_CAPTURED', dataUrl, source });
+          sendResponse({ ok: true });
+        } else {
+          sendResponse({ ok: false, reason: 'no_video' });
+        }
+      } finally {
+        isCapturing = false;
+      }
       return true;
     }
 
@@ -175,7 +185,7 @@
     shieldIndicator.id = 'enclave-shield-indicator';
     shieldIndicator.innerHTML = `
       <div class="shield-badge">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
         </svg>
         <span>Shield</span>
@@ -195,9 +205,9 @@
 
     if (alertOverlay) alertOverlay.remove();
 
+    const sourceLabel = source === 'audio' ? 'Audio' : 'Video';
     alertOverlay = document.createElement('div');
     alertOverlay.id = 'enclave-shield-alert';
-    const sourceLabel = source === 'audio' ? 'Audio' : 'Video';
     alertOverlay.innerHTML = `
       <div class="shield-alert-content">
         <span class="shield-alert-icon">⚠️</span>
@@ -205,11 +215,17 @@
           <strong>Deepfake — ${sourceLabel}</strong>
           <span>${confidence}% — ${verdict || 'Manipulation detected'}</span>
         </div>
-        <button class="shield-alert-dismiss" onclick="this.parentElement.parentElement.remove()">✕</button>
+        <button class="shield-alert-dismiss" id="shield-alert-dismiss">✕</button>
       </div>
     `;
     document.body.appendChild(alertOverlay);
 
+    // Dismiss button
+    document.getElementById('shield-alert-dismiss').addEventListener('click', () => {
+      if (alertOverlay) alertOverlay.remove();
+    });
+
+    // Auto-dismiss after 12s
     setTimeout(() => { if (alertOverlay) alertOverlay.remove(); }, 12000);
   }
 

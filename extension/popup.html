@@ -5,13 +5,27 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Enclave Shield</title>
   <style>
+    :root {
+      --bg: #0a0a0f;
+      --surface: #12121a;
+      --border: rgba(255,255,255,0.06);
+      --green: #00ff88;
+      --cyan: #00bfff;
+      --red: #ff4466;
+      --amber: #ffaa00;
+      --text: #e8e8f0;
+      --text-dim: #888;
+      --text-faint: #555;
+    }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-      width: 280px;
-      background: #0c0c10;
-      color: #e0e0e0;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      width: 300px;
+      min-height: 200px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif;
       -webkit-font-smoothing: antialiased;
+      overflow: hidden;
     }
 
     /* Header */
@@ -19,194 +33,368 @@
       display: flex;
       align-items: center;
       gap: 10px;
-      padding: 12px 14px;
-      background: linear-gradient(135deg, rgba(0,200,150,0.08), rgba(0,150,255,0.05));
-      border-bottom: 1px solid rgba(255,255,255,0.06);
+      padding: 14px 16px;
+      background: linear-gradient(135deg, rgba(0,255,136,0.06), rgba(0,191,255,0.04));
+      border-bottom: 1px solid var(--border);
+    }
+    .logo-wrap {
+      position: relative;
+      width: 32px; height: 32px;
+      flex-shrink: 0;
     }
     .logo {
-      width: 30px; height: 30px;
-      background: linear-gradient(135deg, #00c896, #0096ff);
-      border-radius: 8px;
+      width: 32px; height: 32px;
+      background: linear-gradient(135deg, var(--green), var(--cyan));
+      border-radius: 9px;
       display: flex; align-items: center; justify-content: center;
-      flex-shrink: 0;
-      box-shadow: 0 2px 8px rgba(0,200,150,0.25);
+      box-shadow: 0 2px 12px rgba(0,255,136,0.2);
     }
-    .logo svg { width: 16px; height: 16px; stroke: white; fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
-    .header-text h1 { font-size: 13px; font-weight: 600; color: #fff; line-height: 1.2; letter-spacing: -0.01em; }
-    .header-text p { font-size: 10px; color: #666; margin-top: 1px; }
+    .logo svg { width: 18px; height: 18px; stroke: #000; fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+    .logo-pulse {
+      position: absolute;
+      inset: -3px;
+      border-radius: 12px;
+      border: 1.5px solid rgba(0,255,136,0.3);
+      animation: logo-pulse 2s ease-in-out infinite;
+      pointer-events: none;
+    }
+    @keyframes logo-pulse {
+      0%, 100% { opacity: 0.3; transform: scale(1); }
+      50% { opacity: 0.6; transform: scale(1.05); }
+    }
+    .header-text h1 {
+      font-size: 14px;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: -0.02em;
+    }
+    .header-text p {
+      font-size: 10px;
+      color: var(--text-dim);
+      margin-top: 1px;
+      letter-spacing: 0.01em;
+    }
 
-    /* Toggle row */
-    .toggle-row {
+    /* Connection status */
+    .conn-status {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      font-size: 10px;
+      color: var(--text-dim);
+      border-bottom: 1px solid var(--border);
+      transition: all 0.2s;
+    }
+    .conn-status.connected { color: var(--green); background: rgba(0,255,136,0.03); }
+    .conn-status.error { color: var(--red); background: rgba(255,68,102,0.03); }
+    .conn-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--text-faint);
+      transition: background 0.2s;
+    }
+    .conn-status.connected .conn-dot { background: var(--green); box-shadow: 0 0 6px rgba(0,255,136,0.4); }
+    .conn-status.error .conn-dot { background: var(--red); }
+
+    /* Main toggle */
+    .main-toggle {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 10px 14px;
-      background: rgba(0,200,150,0.04);
-      border-bottom: 1px solid rgba(255,255,255,0.06);
-      transition: background 0.2s;
+      padding: 12px 16px;
+      background: rgba(0,255,136,0.03);
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      transition: background 0.15s;
     }
-    .toggle-row.active { background: rgba(0,200,150,0.08); }
-    .toggle-left { display: flex; align-items: center; gap: 7px; }
-    .dot { width: 7px; height: 7px; border-radius: 50%; background: #00c896; transition: background 0.2s; }
-    .dot.off { background: #555; }
-    .toggle-label { font-size: 12px; font-weight: 600; color: #ccc; }
-    .toggle {
-      width: 40px; height: 22px; border-radius: 11px;
+    .main-toggle:hover { background: rgba(0,255,136,0.05); }
+    .main-toggle.active { background: rgba(0,255,136,0.06); }
+    .mt-left { display: flex; align-items: center; gap: 10px; }
+    .mt-icon {
+      width: 36px; height: 36px;
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(0,255,136,0.1);
+      transition: all 0.2s;
+    }
+    .main-toggle.active .mt-icon {
+      background: linear-gradient(135deg, rgba(0,255,136,0.2), rgba(0,191,255,0.15));
+      box-shadow: 0 0 16px rgba(0,255,136,0.15);
+    }
+    .mt-icon svg { width: 18px; height: 18px; stroke: var(--green); fill: none; stroke-width: 2; }
+    .mt-text h3 { font-size: 13px; font-weight: 600; color: #fff; }
+    .mt-text p { font-size: 10px; color: var(--text-dim); margin-top: 1px; }
+    .toggle-switch {
+      width: 44px; height: 24px; border-radius: 12px;
       background: #333; border: none; cursor: pointer;
       position: relative; transition: background 0.2s;
-      outline: none;
+      outline: none; flex-shrink: 0;
     }
-    .toggle.on { background: #00c896; }
-    .toggle::after {
+    .toggle-switch.on { background: var(--green); }
+    .toggle-switch::after {
       content: ''; position: absolute;
       top: 2px; left: 2px;
-      width: 18px; height: 18px;
-      border-radius: 50%; background: white;
+      width: 20px; height: 20px;
+      border-radius: 50%; background: #fff;
       transition: transform 0.2s;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.3);
     }
-    .toggle.on::after { transform: translateX(18px); }
-    .toggle:hover { filter: brightness(1.1); }
+    .toggle-switch.on::after { transform: translateX(20px); }
 
-    /* Stats */
-    .stats {
-      display: grid; grid-template-columns: 1fr 1fr;
-      border-bottom: 1px solid rgba(255,255,255,0.06);
+    /* Stats row */
+    .stats-row {
+      display: grid; grid-template-columns: 1fr 1fr 1fr;
+      border-bottom: 1px solid var(--border);
     }
-    .stat { padding: 10px 14px; text-align: center; }
-    .stat-val { font-size: 18px; font-weight: 700; color: #fff; font-variant-numeric: tabular-nums; }
-    .stat-lbl { font-size: 9px; color: #555; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
+    .stat {
+      padding: 10px 12px;
+      text-align: center;
+      border-right: 1px solid var(--border);
+    }
+    .stat:last-child { border-right: none; }
+    .stat-val {
+      font-size: 18px; font-weight: 700; color: #fff;
+      font-variant-numeric: tabular-nums;
+      line-height: 1.2;
+    }
+    .stat-val.green { color: var(--green); }
+    .stat-val.red { color: var(--red); }
+    .stat-lbl { font-size: 9px; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
+
+    /* Settings section */
+    .section {
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .section-title {
+      font-size: 9px;
+      color: var(--text-faint);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
 
     /* Sensitivity */
-    .row { padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,0.06); }
-    .row-label { font-size: 9px; color: #555; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 7px; }
-    .sens-row { display: flex; gap: 5px; }
+    .sens-group { display: flex; gap: 4px; }
     .sens-btn {
-      flex: 1; padding: 6px 4px;
+      flex: 1; padding: 7px 4px;
       background: rgba(255,255,255,0.03);
       border: 1px solid rgba(255,255,255,0.06);
-      border-radius: 6px; color: #666;
+      border-radius: 6px; color: var(--text-dim);
       font-size: 10px; font-weight: 600;
       cursor: pointer; transition: all 0.15s;
-      text-align: center;
-      outline: none;
-    }
-    .sens-btn.active {
-      background: rgba(0,200,150,0.12);
-      border-color: rgba(0,200,150,0.3);
-      color: #00c896;
+      text-align: center; outline: none;
     }
     .sens-btn:hover { border-color: rgba(255,255,255,0.12); color: #aaa; }
-    .sens-btn.active:hover { color: #00c896; }
-
-    /* Audio toggle */
-    .opt-row {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 8px 14px;
-      border-bottom: 1px solid rgba(255,255,255,0.06);
+    .sens-btn.active {
+      background: rgba(0,255,136,0.1);
+      border-color: rgba(0,255,136,0.3);
+      color: var(--green);
     }
-    .opt-label { font-size: 11px; color: #888; }
+
+    /* Toggles row */
+    .toggles-row { display: flex; flex-direction: column; gap: 8px; }
+    .toggle-item {
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .toggle-item-label { font-size: 11px; color: var(--text-dim); }
     .mini-toggle {
       width: 32px; height: 18px; border-radius: 9px;
       background: #333; border: none; cursor: pointer;
       position: relative; transition: background 0.2s;
-      outline: none;
+      outline: none; flex-shrink: 0;
     }
-    .mini-toggle.on { background: #00c896; }
+    .mini-toggle.on { background: var(--green); }
     .mini-toggle::after {
       content: ''; position: absolute;
       top: 2px; left: 2px;
       width: 14px; height: 14px;
-      border-radius: 50%; background: white;
+      border-radius: 50%; background: #fff;
       transition: transform 0.2s;
       box-shadow: 0 1px 2px rgba(0,0,0,0.2);
     }
     .mini-toggle.on::after { transform: translateX(14px); }
-    .mini-toggle:hover { filter: brightness(1.1); }
 
-    /* Last scan */
-    .last-scan {
-      padding: 10px 14px;
-      border-bottom: 1px solid rgba(255,255,255,0.06);
+    /* Token input */
+    .token-section {
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .token-input-wrap {
+      display: flex; gap: 6px;
+    }
+    .token-input {
+      flex: 1;
+      padding: 7px 10px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 6px;
+      color: var(--text);
+      font-size: 10px;
+      font-family: 'SF Mono', 'Consolas', monospace;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .token-input:focus { border-color: rgba(0,255,136,0.3); }
+    .token-input::placeholder { color: var(--text-faint); }
+    .token-btn {
+      padding: 7px 10px;
+      background: rgba(0,255,136,0.1);
+      border: 1px solid rgba(0,255,136,0.2);
+      border-radius: 6px;
+      color: var(--green);
+      font-size: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .token-btn:hover { background: rgba(0,255,136,0.15); }
+
+    /* Last detection */
+    .last-detect {
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
       transition: background 0.2s;
     }
-    .last-scan.safe { background: rgba(0,200,150,0.03); }
-    .last-scan.danger { background: rgba(220,38,38,0.06); }
-    .ls-row { display: flex; align-items: center; gap: 6px; }
-    .ls-icon { font-size: 13px; }
-    .ls-text { font-size: 11px; font-weight: 500; color: #ccc; }
-    .ls-time { font-size: 9px; color: #555; margin-top: 3px; }
+    .last-detect.safe { background: rgba(0,255,136,0.02); }
+    .last-detect.danger { background: rgba(255,68,102,0.04); }
+    .ld-row { display: flex; align-items: center; gap: 8px; }
+    .ld-icon {
+      width: 24px; height: 24px;
+      border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px;
+      flex-shrink: 0;
+    }
+    .last-detect.safe .ld-icon { background: rgba(0,255,136,0.1); }
+    .last-detect.danger .ld-icon { background: rgba(255,68,102,0.1); }
+    .ld-info h4 { font-size: 11px; font-weight: 600; color: var(--text); }
+    .ld-info p { font-size: 9px; color: var(--text-dim); margin-top: 1px; }
 
     /* Footer */
     .footer {
-      padding: 10px 14px;
+      padding: 10px 16px;
       text-align: center;
-      border-top: 1px solid rgba(255,255,255,0.04);
     }
-    .footer a {
+    .footer-link {
       font-size: 10px;
-      color: #00c896;
+      color: var(--green);
       text-decoration: none;
-      opacity: 0.7;
+      opacity: 0.6;
       transition: opacity 0.15s;
     }
-    .footer a:hover { opacity: 1; text-decoration: underline; }
+    .footer-link:hover { opacity: 1; }
+
+    /* Animation */
+    @keyframes fade-in {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .fade-in { animation: fade-in 0.2s ease-out; }
   </style>
 </head>
 <body>
+  <!-- Header -->
   <div class="header">
-    <div class="logo">
-      <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+    <div class="logo-wrap">
+      <div class="logo">
+        <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      </div>
+      <div class="logo-pulse"></div>
     </div>
     <div class="header-text">
-      <h1>Video Call Shield</h1>
+      <h1>Enclave Shield</h1>
       <p>Real-time deepfake detection</p>
     </div>
   </div>
 
-  <div class="toggle-row active" id="toggleRow">
-    <div class="toggle-left">
-      <div class="dot" id="statusDot"></div>
-      <span class="toggle-label" id="statusText">Active</span>
-    </div>
-    <button class="toggle on" id="shieldToggle" aria-label="Toggle shield"></button>
+  <!-- Connection status -->
+  <div class="conn-status" id="connStatus">
+    <div class="conn-dot"></div>
+    <span id="connText">Checking connection...</span>
   </div>
 
-  <div class="stats">
+  <!-- Main toggle -->
+  <div class="main-toggle active" id="mainToggle">
+    <div class="mt-left">
+      <div class="mt-icon">
+        <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      </div>
+      <div class="mt-text">
+        <h3 id="shieldLabel">Shield Active</h3>
+        <p id="shieldSub">Scanning video calls</p>
+      </div>
+    </div>
+    <button class="toggle-switch on" id="shieldToggle" aria-label="Toggle shield"></button>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-row">
     <div class="stat">
-      <div class="stat-val" id="scanCount">0</div>
+      <div class="stat-val green" id="scanCount">0</div>
       <div class="stat-lbl">Scans</div>
     </div>
     <div class="stat">
-      <div class="stat-val" id="threatCount">0</div>
+      <div class="stat-val red" id="threatCount">0</div>
       <div class="stat-lbl">Threats</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val" id="audioCount">0</div>
+      <div class="stat-lbl">Audio</div>
     </div>
   </div>
 
-  <div class="row">
-    <div class="row-label">Sensitivity</div>
-    <div class="sens-row">
+  <!-- Sensitivity -->
+  <div class="section">
+    <div class="section-title">Sensitivity</div>
+    <div class="sens-group">
       <button class="sens-btn" data-level="low">Low</button>
       <button class="sens-btn active" data-level="medium">Medium</button>
       <button class="sens-btn" data-level="high">High</button>
     </div>
   </div>
 
-  <div class="opt-row">
-    <span class="opt-label">Audio analysis</span>
-    <button id="audioToggle" class="mini-toggle on" aria-label="Toggle audio analysis"></button>
-  </div>
-
-  <div class="last-scan safe" id="lastScan">
-    <div class="ls-row">
-      <span class="ls-icon" id="lsIcon">✅</span>
-      <span class="ls-text" id="lsText">No threats</span>
+  <!-- Toggles -->
+  <div class="section">
+    <div class="section-title">Detection</div>
+    <div class="toggles-row">
+      <div class="toggle-item">
+        <span class="toggle-item-label">Audio analysis</span>
+        <button id="audioToggle" class="mini-toggle on" aria-label="Toggle audio"></button>
+      </div>
+      <div class="toggle-item">
+        <span class="toggle-item-label">Face matching</span>
+        <button id="faceToggle" class="mini-toggle on" aria-label="Toggle face matching"></button>
+      </div>
     </div>
-    <div class="ls-time" id="lsTime">Waiting for call...</div>
   </div>
 
+  <!-- API Token -->
+  <div class="token-section">
+    <div class="section-title">API Token</div>
+    <div class="token-input-wrap">
+      <input type="password" class="token-input" id="tokenInput" placeholder="Paste your JWT token..." />
+      <button class="token-btn" id="tokenSave">Save</button>
+    </div>
+  </div>
+
+  <!-- Last detection -->
+  <div class="last-detect safe" id="lastDetect">
+    <div class="ld-row">
+      <div class="ld-icon" id="ldIcon">✅</div>
+      <div class="ld-info">
+        <h4 id="ldTitle">No threats detected</h4>
+        <p id="ldSub">Waiting for video call...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
   <div class="footer">
-    <a href="https://enclave-react.vercel.app" target="_blank">Open Dashboard →</a>
+    <a href="https://enclave-react.vercel.app" target="_blank" class="footer-link">Open Dashboard →</a>
   </div>
 
   <script src="popup.js"></script>

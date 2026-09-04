@@ -85,7 +85,7 @@ router.post('/register', async (req, res) => {
       full_name: fullName, token_version: 0, created_at: now, updated_at: now
     });
     const token = await generateTokenForUser({ id, email });
-    return success(res, { token, user: { id, email, fullName } }, 'Account created', 201);
+    return success(res, { token, user: { id, email, fullName, emailVerified: false } }, 'Account created', 201);
   } catch (e) {
     console.error('[AUTH] Register error:', e);
     return error(res, e.message || 'Registration failed');
@@ -308,7 +308,7 @@ router.post('/change-password', authenticate, async (req, res) => {
       updated_at: new Date().toISOString()
     });
     const token = await generateTokenForUser({ id: user.id, email: user.email });
-    return success(res, { token, user: { id: user.id, email: user.email, fullName: user.full_name } }, 'Password changed');
+    return success(res, { token, user: { id: user.id, email: user.email, fullName: user.full_name, emailVerified: !!user.email_verified } }, 'Password changed');
   } catch (e) {
     return error(res, e.message || 'Change password failed');
   }
@@ -318,8 +318,19 @@ router.post('/change-password', authenticate, async (req, res) => {
 let speakeasy, qrcode;
 try { speakeasy = require('speakeasy'); qrcode = require('qrcode'); } catch (_) {}
 
-router.post('/2fa/setup', authenticate, async (req, res) => {
+// Get 2FA status
+router.get('/2fa/status', authenticate, async (req, res) => {
   try {
+    const users = await table('users');
+    const user = await users.find({ id: req.user.userId });
+    if (!user) return error(res, 'User not found', 404);
+    return success(res, { enabled: !!user.totp_enabled, hasSecret: !!user.totp_secret });
+  } catch (e) {
+    return error(res, e.message || 'Failed to get 2FA status');
+  }
+});
+
+router.post('/2fa/setup', authenticate, async (req, res) => {  try {
     if (!speakeasy) return error(res, '2FA module not installed', 500);
     const users = await table('users');
     const user = await users.find({ id: req.user.userId });
@@ -451,10 +462,202 @@ router.post('/login', async (req, res) => {
     const token = await generateTokenForUser({ id: user.id, email: user.email });
     return success(res, {
       token,
-      user: { id: user.id, email: user.email, fullName: user.full_name },
+      user: { id: user.id, email: user.email, fullName: user.full_name, emailVerified: !!user.email_verified, plan: user.subscription_tier },
     });
   } catch (e) {
     return error(res, e.message || 'Login failed');
+  }
+});
+
+// ─── Email Verification ───
+const verificationCodes = new Map(); // key: email+purpose, value: { code, expires, userId }
+
+// Send verification code (authenticated)
+router.post('/send-verification', authenticate, async (req, res) => {
+  try {
+    const { purpose = 'general' } = req.body; // general, change-password, delete-account, change-email
+    const users = await table('users');
+    const user = await users.find({ id: req.user.userId });
+    if (!user) return error(res, 'User not found', 404);
+
+    const code = String(crypto.randomInt(100000, 999999));
+    const key = `${user.email}:${purpose}`;
+    const expires = Date.now() + 10 * 60 * 1000; // 10 minutes
+    verificationCodes.set(key, { code, expires, userId: user.id });
+
+    const purposeLabels = {
+      general: 'account verification',
+      'change-password': 'password change',
+      'delete-account': 'account deletion',
+      'change-email': 'email change',
+    };
+    const label = purposeLabels[purpose] || 'verification';
+
+    const html = `
+      <div style="font-family:system-ui,sans-serif;max-width:600px;margin:0 auto;padding:24px;">
+        <div style="background:linear-gradient(135deg,#111113,#18181b);border-radius:16px;padding:32px;text-align:center;">
+          <div style="font-size:48px;margin-bottom:16px;">&#128737;</div>
+          <h2 style="color:#fafaf9;font-size:24px;margin:0 0 8px;">Enclave</h2>
+          <p style="color:#a1a1aa;font-size:14px;margin:0 0 24px;">Your ${label} code</p>
+          <div style="background:#050507;color:#34d399;font-family:monospace;font-size:36px;padding:20px;border-radius:12px;letter-spacing:8px;margin:0 0 24px;">${code}</div>
+          <p style="color:#71717a;font-size:13px;margin:0;">This code expires in 10 minutes.</p>
+          <p style="color:#71717a;font-size:13px;margin:8px 0 0;">If you didn't request this, ignore this email.</p>
+        </div>
+      </div>
+    `;
+
+    const result = await notify.sendEmail(user.email, `Enclave — ${label.charAt(0).toUpperCase() + label.slice(1)} Code`, html);
+    if (!result.sent) {
+      // SMTP not configured — log code for dev/testing
+      console.warn(`[AUTH] SMTP not configured — ${purpose} code for ${user.email}: ${code}`);
+      return success(res, { sent: true, debugCode: code }, `Verification code generated for ${user.email} (email not sent — SMTP not configured)`);
+    }
+    return success(res, { sent: true }, `Verification code sent to ${user.email}`);
+  } catch (e) {
+    return error(res, e.message || 'Failed to send verification code');
+  }
+});
+
+// Verify email code (authenticated)
+router.post('/verify-email', authenticate, async (req, res) => {
+  try {
+    const { code, purpose = 'general' } = req.body;
+    if (!code) return error(res, 'Verification code is required', 400);
+
+    const users = await table('users');
+    const user = await users.find({ id: req.user.userId });
+    if (!user) return error(res, 'User not found', 404);
+
+    const key = `${user.email}:${purpose}`;
+    const stored = verificationCodes.get(key);
+    if (!stored) return error(res, 'No verification request found. Request a new code.', 400);
+    if (Date.now() > stored.expires) {
+      verificationCodes.delete(key);
+      return error(res, 'Verification code expired. Request a new code.', 400);
+    }
+    if (stored.code !== code) return error(res, 'Invalid verification code', 400);
+
+    // Mark email as verified if this was general verification
+    if (purpose === 'general') {
+      await users.update({ id: user.id }, { email_verified: true, updated_at: new Date().toISOString() });
+    }
+
+    verificationCodes.delete(key);
+    return success(res, { verified: true }, 'Email verified successfully');
+  } catch (e) {
+    return error(res, e.message || 'Verification failed');
+  }
+});
+
+// Change email (authenticated, requires verification of current email)
+router.post('/change-email', authenticate, async (req, res) => {
+  try {
+    const { newEmail, code } = req.body;
+    if (!newEmail || !code) return error(res, 'New email and verification code required', 400);
+    if (!EMAIL_RE.test(newEmail)) return error(res, 'Invalid email format', 400);
+
+    const users = await table('users');
+    const user = await users.find({ id: req.user.userId });
+    if (!user) return error(res, 'User not found', 404);
+
+    // Verify current email code
+    const key = `${user.email}:change-email`;
+    const stored = verificationCodes.get(key);
+    if (!stored) return error(res, 'No verification request found', 400);
+    if (Date.now() > stored.expires) {
+      verificationCodes.delete(key);
+      return error(res, 'Verification code expired', 400);
+    }
+    if (stored.code !== code) return error(res, 'Invalid verification code', 400);
+
+    // Check if new email is already taken
+    const existing = await users.find({ email: newEmail.toLowerCase() });
+    if (existing && existing.id !== user.id) {
+      return error(res, 'Email already in use', 400);
+    }
+
+    await users.update({ id: user.id }, {
+      email: newEmail.toLowerCase(),
+      email_verified: false,
+      updated_at: new Date().toISOString(),
+    });
+
+    verificationCodes.delete(key);
+
+    // Send verification to new email
+    const verifyCode = String(crypto.randomInt(100000, 999999));
+    const verifyKey = `${newEmail.toLowerCase()}:general`;
+    verificationCodes.set(verifyKey, { code: verifyCode, expires: Date.now() + 10 * 60 * 1000, userId: user.id });
+
+    const html = `
+      <div style="font-family:system-ui,sans-serif;max-width:600px;margin:0 auto;padding:24px;">
+        <div style="background:linear-gradient(135deg,#111113,#18181b);border-radius:16px;padding:32px;text-align:center;">
+          <div style="font-size:48px;margin-bottom:16px;">&#128233;</div>
+          <h2 style="color:#fafaf9;font-size:24px;margin:0 0 8px;">Email Changed</h2>
+          <p style="color:#a1a1aa;font-size:14px;margin:0 0 24px;">Verify your new email address</p>
+          <div style="background:#050507;color:#34d399;font-family:monospace;font-size:36px;padding:20px;border-radius:12px;letter-spacing:8px;margin:0 0 24px;">${verifyCode}</div>
+          <p style="color:#71717a;font-size:13px;margin:0;">This code expires in 10 minutes.</p>
+        </div>
+      </div>
+    `;
+    await notify.sendEmail(newEmail, 'Enclave — Verify Your New Email', html);
+
+    return success(res, { changed: true }, 'Email changed. Verification sent to new email.');
+  } catch (e) {
+    return error(res, e.message || 'Failed to change email');
+  }
+});
+
+// Delete account (authenticated, requires password + verification code)
+router.post('/delete-account', authenticate, async (req, res) => {
+  try {
+    const { password, code } = req.body;
+    if (!password || !code) return error(res, 'Password and verification code required', 400);
+
+    const users = await table('users');
+    const user = await users.find({ id: req.user.userId });
+    if (!user) return error(res, 'User not found', 404);
+    if (!user.password_hash) return error(res, 'Account has no password set', 400);
+    if (!(await bcrypt.compare(password, user.password_hash))) {
+      return error(res, 'Incorrect password', 401);
+    }
+
+    // Verify code
+    const key = `${user.email}:delete-account`;
+    const stored = verificationCodes.get(key);
+    if (!stored) return error(res, 'No verification request found', 400);
+    if (Date.now() > stored.expires) {
+      verificationCodes.delete(key);
+      return error(res, 'Verification code expired', 400);
+    }
+    if (stored.code !== code) return error(res, 'Invalid verification code', 400);
+
+    // Soft delete - mark as deleted, keep data for 30 days
+    await users.update({ id: user.id }, {
+      deleted: true,
+      deleted_at: new Date().toISOString(),
+      token_version: (user.token_version ?? user.version ?? 0) + 1,
+      updated_at: new Date().toISOString(),
+    });
+
+    verificationCodes.delete(key);
+    return success(res, null, 'Account deleted. Data will be purged after 30 days.');
+  } catch (e) {
+    return error(res, e.message || 'Failed to delete account');
+  }
+});
+
+// Get login history (authenticated)
+router.get('/login-history', authenticate, async (req, res) => {
+  try {
+    const loginHistory = await table('login_history');
+    const logs = await loginHistory.filter({ user_id: req.user.userId });
+    const sorted = Array.isArray(logs)
+      ? logs.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 20)
+      : [];
+    return success(res, sorted);
+  } catch (e) {
+    return error(res, e.message || 'Failed to fetch login history');
   }
 });
 

@@ -1,9 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion } from "motion/react";
 import {
-  User,
-  Save,
-  Loader2,
   CreditCard,
   Bell,
   LogOut,
@@ -17,22 +14,20 @@ import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { StaggerContainer, StaggerItem, Kinetic, FadeIn } from "@/components/ui/motion";
 import { SectionHeader } from "@/components/ui/dashboard";
 import { FamilyPanel } from "./family-panel";
 import { ReferralPanel } from "./referral-panel";
+import { SecurityPanel } from "./security-panel";
+import { AccountPanel } from "./account-panel";
 import { PlanModal } from "@/components/shell/plan-modal";
 import { FeatureBoard } from "@/features/feedback/feature-board";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { timeAgo, cn } from "@/lib/utils";
 
 export function SettingsView() {
-  const { toast } = useApp();
-  const { user, setUser, logout } = useAuth();
-  const [fullName, setFullName] = useState(user?.fullName || "");
-  const [saving, setSaving] = useState(false);
+  const { user, logout } = useAuth();
   const [planOpen, setPlanOpen] = useState(false);
   const [sub, setSub] = useState<any>(null);
 
@@ -50,19 +45,6 @@ export function SettingsView() {
       active = false;
     };
   }, []);
-
-  async function saveProfile() {
-    setSaving(true);
-    try {
-      await api.updateProfile(fullName);
-      setUser({ ...user, fullName });
-      toast({ title: "Profile updated", variant: "success" });
-    } catch (e: any) {
-      toast({ title: "Update failed", body: e.message, variant: "error" });
-    } finally {
-      setSaving(false);
-    }
-  }
 
   const plan = sub?.tier || user?.plan || "free";
 
@@ -106,49 +88,17 @@ export function SettingsView() {
       </FadeIn>
 
       <StaggerContainer className="space-y-5">
-        {/* Profile */}
+        {/* Profile & Account */}
         <StaggerItem>
           <Kinetic>
-            <Card className="relative overflow-hidden border-white/[0.06]">
-              <div className="absolute inset-0 bg-gradient-to-br from-cyan/5 to-transparent" />
-              <div className="relative">
-                <CardHeader>
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan/15 text-cyan">
-                      <User className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <CardTitle>Profile</CardTitle>
-                      <CardDescription>Update your personal details</CardDescription>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div>
-                      <label className="mb-1.5 block text-xs font-medium text-ink-muted">
-                        Full name
-                      </label>
-                      <Input
-                        value={fullName}
-                        onChange={(e) => setFullName(e.target.value)}
-                        placeholder="Your name"
-                      />
-                    </div>
-                    <div>
-                      <label className="mb-1.5 block text-xs font-medium text-ink-muted">
-                        Email
-                      </label>
-                      <Input value={user?.email || ""} disabled />
-                    </div>
-                  </div>
-                  <Button onClick={saveProfile} disabled={saving}>
-                    {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                    Save changes
-                  </Button>
-                </CardContent>
-              </div>
-            </Card>
+            <AccountPanel />
+          </Kinetic>
+        </StaggerItem>
+
+        {/* Security */}
+        <StaggerItem>
+          <Kinetic>
+            <SecurityPanel />
           </Kinetic>
         </StaggerItem>
 

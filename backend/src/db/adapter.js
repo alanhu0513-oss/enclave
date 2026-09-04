@@ -49,7 +49,7 @@ function createJsonEngine() {
     return data;
   }
   function save() { fs.writeFileSync(DB_PATH, JSON.stringify(data, null, 2)); }
-  function emptyData() { return { users:[], faceprints:[], voiceprints:[], signatures:[], alerts:[], documents:[], auth_attempts:[], scan_sessions:[], notifications:[], takedowns:[], usage_tracking:[], referrals:[], referral_redemptions:[], email_digests:[], threat_shares:[], threat_votes:[], forum_posts:[], forum_votes:[], otdb_api_keys:[], webhooks:[], white_label:[], sso_configurations:[], sso_states:[], reports:[], report_schedules:[], partners:[], partner_conversions:[], family_members:[] }; }
+  function emptyData() { return { users:[], faceprints:[], voiceprints:[], signatures:[], alerts:[], documents:[], auth_attempts:[], scan_sessions:[], notifications:[], takedowns:[], usage_tracking:[], referrals:[], referral_redemptions:[], email_digests:[], threat_shares:[], threat_votes:[], forum_posts:[], forum_votes:[], otdb_api_keys:[], webhooks:[], white_label:[], sso_configurations:[], sso_states:[], reports:[], report_schedules:[], partners:[], partner_conversions:[], family_members:[], login_history:[] }; }
 
   function match(row, conditions) {
     if (!conditions) return true;
@@ -69,6 +69,7 @@ function createJsonEngine() {
         find: async (conditions) => tbl.find(r => match(r, conditions)) || null,
         filter: async (conditions) => tbl.filter(r => match(r, conditions)),
         insert: async (row) => { tbl.push(row); save(); return row; },
+        create: async (row) => { tbl.push(row); save(); return row; },
         update: async (conditions, updates) => {
           const idx = tbl.findIndex(r => match(r, conditions));
           if (idx === -1) return null;
@@ -144,6 +145,13 @@ function createPgEngine() {
           return this.query(`SELECT * FROM ${name} ${wc.clause}`, wc.values);
         },
         insert: async (row) => {
+          const cols = Object.keys(row);
+          const vals = cols.map(c => row[c]);
+          const ph = vals.map((_, i) => `$${i + 1}`).join(', ');
+          const rows = await this.query(`INSERT INTO ${name} (${cols.join(', ')}) VALUES (${ph}) RETURNING *`, vals);
+          return rows[0];
+        },
+        create: async (row) => {
           const cols = Object.keys(row);
           const vals = cols.map(c => row[c]);
           const ph = vals.map((_, i) => `$${i + 1}`).join(', ');

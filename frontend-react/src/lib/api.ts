@@ -97,6 +97,24 @@ export const api = {
   logout: () => post("/auth/logout"),
   changePassword: (currentPassword: string, newPassword: string) =>
     post("/auth/change-password", { currentPassword, newPassword }),
+  sendVerification: (purpose: string = "general") =>
+    post("/auth/send-verification", { purpose }),
+  verifyEmail: (code: string, purpose: string = "general") =>
+    post("/auth/verify-email", { code, purpose }),
+  changeEmail: (newEmail: string, code: string) =>
+    post("/auth/change-email", { newEmail, code }),
+  deleteAccount: (password: string, code: string) =>
+    post("/auth/delete-account", { password, code }),
+  getLoginHistory: () =>
+    apiFetch<any[]>("/auth/login-history"),
+  get2FAStatus: () =>
+    apiFetch<any>("/auth/2fa/status"),
+  setup2FA: () =>
+    post<any>("/auth/2fa/setup"),
+  verify2FA: (code: string) =>
+    post("/auth/2fa/verify", { code }),
+  disable2FA: (code: string, password: string) =>
+    post("/auth/2fa/disable", { code, password }),
 
   // Biometrics
   uploadFace: (file: File, width?: number, height?: number) => {

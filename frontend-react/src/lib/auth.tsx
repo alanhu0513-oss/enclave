@@ -68,6 +68,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         email,
         ...(data.user ?? {}),
         fullName: data.fullName || data.user?.fullName || email.split("@")[0],
+        emailVerified: !!data.user?.emailVerified,
       };
       setUser(u);
       sessionStorage.setItem("enclave_user", JSON.stringify(u));

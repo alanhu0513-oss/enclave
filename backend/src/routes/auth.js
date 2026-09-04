@@ -119,7 +119,7 @@ router.post('/register', async (req, res) => {
  */
 router.post('/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, totpToken } = req.body;
     if (!email || !password) return error(res, 'Email and password required', 400);
     if (!EMAIL_RE.test(email)) return error(res, 'Invalid email format', 400);
 
@@ -135,8 +135,38 @@ router.post('/login', async (req, res) => {
       ip_address: req.ip, attempted_at: new Date().toISOString()
     });
 
-    const token = await generateTokenForUser(user);
-    return success(res, { token, user: { id: user.id, email: user.email, fullName: user.full_name } }, 'Login successful');
+    // Check 2FA
+    if (user.totp_enabled && user.totp_secret) {
+      if (!totpToken) return error(res, '2FA token required', 403, { requires2FA: true });
+      const verified = speakeasy?.totp.verify({
+        secret: user.totp_secret,
+        encoding: 'base32',
+        token: totpToken,
+        window: 1,
+      });
+      if (!verified) return error(res, 'Invalid 2FA token', 401);
+    }
+
+    // Log login history
+    try {
+      const loginHistory = await table('login_history');
+      await loginHistory.create({
+        id: uuidv4(),
+        user_id: user.id,
+        ip_address: req.ip || req.connection?.remoteAddress || 'unknown',
+        user_agent: req.headers['user-agent'] || 'unknown',
+        success: true,
+        created_at: new Date().toISOString(),
+      });
+    } catch (e) {
+      console.warn('[AUTH] Login history insert failed:', e.message);
+    }
+
+    const token = await generateTokenForUser({ id: user.id, email: user.email });
+    return success(res, {
+      token,
+      user: { id: user.id, email: user.email, fullName: user.full_name, emailVerified: !!user.email_verified, plan: user.subscription_tier },
+    }, 'Login successful');
   } catch (e) {
     console.error('[AUTH] Login error:', e);
     return error(res, e.message || 'Login failed');
@@ -417,58 +447,6 @@ router.post('/2fa/disable', authenticate, async (req, res) => {
     return success(res, { message: '2FA disabled' });
   } catch (e) {
     return error(res, e.message || '2FA disable failed');
-  }
-});
-
-// Login with 2FA check
-router.post('/login', async (req, res) => {
-  try {
-    const { email, password, totpToken } = req.body;
-    if (!email || !password) return error(res, 'Email and password required', 400);
-
-    const users = await table('users');
-    const user = await users.find({ email: email.toLowerCase() });
-    if (!user) return error(res, 'Invalid credentials', 401);
-
-    if (!(await bcrypt.compare(password, user.password_hash))) {
-      return error(res, 'Invalid credentials', 401);
-    }
-
-    // Check 2FA
-    if (user.totp_enabled && user.totp_secret) {
-      if (!totpToken) return error(res, '2FA token required', 403, { requires2FA: true });
-
-      const verified = speakeasy?.totp.verify({
-        secret: user.totp_secret,
-        encoding: 'base32',
-        token: totpToken,
-        window: 1,
-      });
-      if (!verified) return error(res, 'Invalid 2FA token', 401);
-    }
-
-    // Log login history
-    try {
-      const loginHistory = await table('login_history');
-      await loginHistory.create({
-        id: uuidv4(),
-        user_id: user.id,
-        ip_address: req.ip || req.connection?.remoteAddress || 'unknown',
-        user_agent: req.headers['user-agent'] || 'unknown',
-        success: true,
-        created_at: new Date().toISOString(),
-      });
-    } catch (e) {
-      console.warn('[AUTH] Login history insert failed:', e.message);
-    }
-
-    const token = await generateTokenForUser({ id: user.id, email: user.email });
-    return success(res, {
-      token,
-      user: { id: user.id, email: user.email, fullName: user.full_name, emailVerified: !!user.email_verified, plan: user.subscription_tier },
-    });
-  } catch (e) {
-    return error(res, e.message || 'Login failed');
   }
 });
 

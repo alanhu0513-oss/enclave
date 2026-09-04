@@ -7,131 +7,150 @@
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-      width: 260px;
-      background: #0a0a0f;
+      width: 280px;
+      background: #0c0c10;
       color: #e0e0e0;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      -webkit-font-smoothing: antialiased;
     }
 
     /* Header */
     .header {
       display: flex;
       align-items: center;
-      gap: 8px;
-      padding: 10px 12px;
+      gap: 10px;
+      padding: 12px 14px;
+      background: linear-gradient(135deg, rgba(0,200,150,0.08), rgba(0,150,255,0.05));
       border-bottom: 1px solid rgba(255,255,255,0.06);
     }
     .logo {
-      width: 28px; height: 28px;
+      width: 30px; height: 30px;
       background: linear-gradient(135deg, #00c896, #0096ff);
-      border-radius: 7px;
+      border-radius: 8px;
       display: flex; align-items: center; justify-content: center;
       flex-shrink: 0;
+      box-shadow: 0 2px 8px rgba(0,200,150,0.25);
     }
-    .logo svg { width: 14px; height: 14px; stroke: white; fill: none; stroke-width: 2.5; }
-    .header-text h1 { font-size: 13px; font-weight: 600; color: #fff; line-height: 1.2; }
-    .header-text p { font-size: 10px; color: #666; }
+    .logo svg { width: 16px; height: 16px; stroke: white; fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+    .header-text h1 { font-size: 13px; font-weight: 600; color: #fff; line-height: 1.2; letter-spacing: -0.01em; }
+    .header-text p { font-size: 10px; color: #666; margin-top: 1px; }
 
     /* Toggle row */
     .toggle-row {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 8px 12px;
-      background: rgba(0,200,150,0.06);
+      padding: 10px 14px;
+      background: rgba(0,200,150,0.04);
       border-bottom: 1px solid rgba(255,255,255,0.06);
+      transition: background 0.2s;
     }
-    .toggle-left { display: flex; align-items: center; gap: 6px; }
-    .dot { width: 6px; height: 6px; border-radius: 50%; background: #00c896; }
+    .toggle-row.active { background: rgba(0,200,150,0.08); }
+    .toggle-left { display: flex; align-items: center; gap: 7px; }
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: #00c896; transition: background 0.2s; }
     .dot.off { background: #555; }
-    .toggle-label { font-size: 12px; font-weight: 500; }
+    .toggle-label { font-size: 12px; font-weight: 600; color: #ccc; }
     .toggle {
-      width: 36px; height: 20px; border-radius: 10px;
+      width: 40px; height: 22px; border-radius: 11px;
       background: #333; border: none; cursor: pointer;
       position: relative; transition: background 0.2s;
+      outline: none;
     }
     .toggle.on { background: #00c896; }
     .toggle::after {
       content: ''; position: absolute;
       top: 2px; left: 2px;
-      width: 16px; height: 16px;
+      width: 18px; height: 18px;
       border-radius: 50%; background: white;
       transition: transform 0.2s;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
     }
-    .toggle.on::after { transform: translateX(16px); }
+    .toggle.on::after { transform: translateX(18px); }
+    .toggle:hover { filter: brightness(1.1); }
 
     /* Stats */
     .stats {
       display: grid; grid-template-columns: 1fr 1fr;
       border-bottom: 1px solid rgba(255,255,255,0.06);
     }
-    .stat { padding: 8px 12px; text-align: center; }
-    .stat-val { font-size: 16px; font-weight: 700; color: #fff; }
-    .stat-lbl { font-size: 9px; color: #555; text-transform: uppercase; letter-spacing: 0.5px; }
+    .stat { padding: 10px 14px; text-align: center; }
+    .stat-val { font-size: 18px; font-weight: 700; color: #fff; font-variant-numeric: tabular-nums; }
+    .stat-lbl { font-size: 9px; color: #555; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
 
     /* Sensitivity */
-    .row { padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,0.06); }
-    .row-label { font-size: 9px; color: #555; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
-    .sens-row { display: flex; gap: 4px; }
+    .row { padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+    .row-label { font-size: 9px; color: #555; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 7px; }
+    .sens-row { display: flex; gap: 5px; }
     .sens-btn {
-      flex: 1; padding: 5px 4px;
+      flex: 1; padding: 6px 4px;
       background: rgba(255,255,255,0.03);
       border: 1px solid rgba(255,255,255,0.06);
-      border-radius: 5px; color: #666;
+      border-radius: 6px; color: #666;
       font-size: 10px; font-weight: 600;
       cursor: pointer; transition: all 0.15s;
       text-align: center;
+      outline: none;
     }
     .sens-btn.active {
       background: rgba(0,200,150,0.12);
       border-color: rgba(0,200,150,0.3);
       color: #00c896;
     }
-    .sens-btn:hover { border-color: rgba(255,255,255,0.12); }
+    .sens-btn:hover { border-color: rgba(255,255,255,0.12); color: #aaa; }
+    .sens-btn.active:hover { color: #00c896; }
 
     /* Audio toggle */
     .opt-row {
       display: flex; align-items: center; justify-content: space-between;
-      padding: 6px 12px;
+      padding: 8px 14px;
       border-bottom: 1px solid rgba(255,255,255,0.06);
     }
     .opt-label { font-size: 11px; color: #888; }
     .mini-toggle {
-      width: 28px; height: 16px; border-radius: 8px;
+      width: 32px; height: 18px; border-radius: 9px;
       background: #333; border: none; cursor: pointer;
       position: relative; transition: background 0.2s;
+      outline: none;
     }
     .mini-toggle.on { background: #00c896; }
     .mini-toggle::after {
       content: ''; position: absolute;
       top: 2px; left: 2px;
-      width: 12px; height: 12px;
+      width: 14px; height: 14px;
       border-radius: 50%; background: white;
       transition: transform 0.2s;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.2);
     }
-    .mini-toggle.on::after { transform: translateX(12px); }
+    .mini-toggle.on::after { transform: translateX(14px); }
+    .mini-toggle:hover { filter: brightness(1.1); }
 
     /* Last scan */
     .last-scan {
-      padding: 8px 12px;
+      padding: 10px 14px;
       border-bottom: 1px solid rgba(255,255,255,0.06);
+      transition: background 0.2s;
     }
+    .last-scan.safe { background: rgba(0,200,150,0.03); }
+    .last-scan.danger { background: rgba(220,38,38,0.06); }
     .ls-row { display: flex; align-items: center; gap: 6px; }
-    .ls-icon { font-size: 12px; }
-    .ls-text { font-size: 11px; font-weight: 500; }
-    .ls-time { font-size: 9px; color: #555; margin-top: 2px; }
+    .ls-icon { font-size: 13px; }
+    .ls-text { font-size: 11px; font-weight: 500; color: #ccc; }
+    .ls-time { font-size: 9px; color: #555; margin-top: 3px; }
 
     /* Footer */
     .footer {
-      padding: 8px 12px;
+      padding: 10px 14px;
       text-align: center;
+      border-top: 1px solid rgba(255,255,255,0.04);
     }
     .footer a {
       font-size: 10px;
-      color: #00ff88;
+      color: #00c896;
       text-decoration: none;
+      opacity: 0.7;
+      transition: opacity 0.15s;
     }
-    .footer a:hover { text-decoration: underline; }
+    .footer a:hover { opacity: 1; text-decoration: underline; }
   </style>
 </head>
 <body>
@@ -145,12 +164,12 @@
     </div>
   </div>
 
-  <div class="toggle-row">
+  <div class="toggle-row active" id="toggleRow">
     <div class="toggle-left">
       <div class="dot" id="statusDot"></div>
       <span class="toggle-label" id="statusText">Active</span>
     </div>
-    <button class="toggle on" id="shieldToggle"></button>
+    <button class="toggle on" id="shieldToggle" aria-label="Toggle shield"></button>
   </div>
 
   <div class="stats">
@@ -168,19 +187,19 @@
     <div class="row-label">Sensitivity</div>
     <div class="sens-row">
       <button class="sens-btn" data-level="low">Low</button>
-      <button class="sens-btn active" data-level="medium">Med</button>
+      <button class="sens-btn active" data-level="medium">Medium</button>
       <button class="sens-btn" data-level="high">High</button>
     </div>
   </div>
 
   <div class="opt-row">
     <span class="opt-label">Audio analysis</span>
-    <div id="audioToggle" class="mini-toggle on"></div>
+    <button id="audioToggle" class="mini-toggle on" aria-label="Toggle audio analysis"></button>
   </div>
 
-  <div class="last-scan">
+  <div class="last-scan safe" id="lastScan">
     <div class="ls-row">
-      <span class="ls-icon" id="lsIcon">🛡️</span>
+      <span class="ls-icon" id="lsIcon">✅</span>
       <span class="ls-text" id="lsText">No threats</span>
     </div>
     <div class="ls-time" id="lsTime">Waiting for call...</div>

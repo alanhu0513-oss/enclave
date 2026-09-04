@@ -79,9 +79,9 @@ function createPNG(width, height, r, g, b) {
 const outDir = path.join(__dirname, 'icons');
 if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
 
-// Red shield icon (#e94560)
+// Green/cyan shield icon (brand colors)
 for (const size of [16, 48, 128]) {
-  const png = createPNG(size, size, 233, 69, 96);
+  const png = createPNG(size, size, 0, 200, 150);
   fs.writeFileSync(path.join(outDir, `icon${size}.png`), png);
   console.log(`Created icon${size}.png (${png.length} bytes)`);
 }

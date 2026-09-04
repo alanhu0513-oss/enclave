@@ -4,7 +4,7 @@ let apiToken = null;
 let apiBase = 'https://enclave-production-d818.up.railway.app';
 let shieldActive = false;
 let scanInterval = null;
-let activeTabs = new Map(); // tabId -> { lastScan, participantIndex }
+let activeTabs = new Map();
 let settings = {
   sensitivity: 'medium',
   autoScan: true,
@@ -22,15 +22,17 @@ const SENSITIVITY = {
 chrome.runtime.onInstalled.addListener(() => {
   chrome.storage.local.set({
     settings,
-    stats: { scans: 0, threats: 0, audioScans: 0, sessions: [] },
+    stats: { scans: 0, threats: 0, audioScans: 0 },
     lastDetection: null,
+    shieldActive: false,
   });
 });
 
-chrome.storage.local.get(['apiToken', 'apiBase', 'settings'], (data) => {
+chrome.storage.local.get(['apiToken', 'apiBase', 'settings', 'shieldActive'], (data) => {
   if (data.apiToken) apiToken = data.apiToken;
   if (data.apiBase) apiBase = data.apiBase;
   if (data.settings) settings = { ...settings, ...data.settings };
+  if (data.shieldActive) shieldActive = data.shieldActive;
 });
 
 /* ─── Message Router ─── */
@@ -48,11 +50,13 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       return true;
 
     case 'GET_STATUS':
-      sendResponse({
-        active: shieldActive,
-        stats: getStats(),
-        settings,
-        lastDetection: null,
+      chrome.storage.local.get(['stats', 'lastDetection'], (data) => {
+        sendResponse({
+          active: shieldActive,
+          stats: data.stats || { scans: 0, threats: 0, audioScans: 0 },
+          settings,
+          lastDetection: data.lastDetection,
+        });
       });
       return true;
 
@@ -85,7 +89,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       return true;
 
     case 'GET_STATS':
-      sendResponse(getStats());
+      chrome.storage.local.get('stats', (data) => {
+        sendResponse(data.stats || { scans: 0, threats: 0, audioScans: 0 });
+      });
       return true;
 
     case 'START_AUDIO_CAPTURE':
@@ -103,22 +109,20 @@ function startScanning(tabId) {
 
   scanInterval = setInterval(() => {
     const now = Date.now();
-    for (const [tabId, state] of activeTabs) {
-      if (now - state.lastScan >= 2000) {
+    for (const [id, state] of activeTabs) {
+      if (now - state.lastScan >= 3000) {
         state.lastScan = now;
-        chrome.tabs.sendMessage(tabId, { type: 'CAPTURE_FRAME' }).catch(() => {
-          activeTabs.delete(tabId);
+        chrome.tabs.sendMessage(id, { type: 'CAPTURE_FRAME' }).catch(() => {
+          activeTabs.delete(id);
         });
       }
     }
-  }, 1000);
+  }, 1500);
 
-  // Track tab close
   chrome.tabs.onRemoved.addListener((closedTabId) => {
     activeTabs.delete(closedTabId);
   });
 
-  // Add any existing call tabs
   if (tabId) {
     chrome.tabs.sendMessage(tabId, { type: 'CAPTURE_FRAME' }).catch(() => {});
   }
@@ -138,33 +142,34 @@ async function handleFrame(dataUrl, source, tabId) {
   try {
     const result = await detectImage(dataUrl, source || 'video_call');
     const threshold = SENSITIVITY[settings.sensitivity]?.threshold || 75;
+    const confidence = result.confidence || 0;
 
-    if (result.confidence >= threshold) {
+    // Always save last detection
+    const detection = {
+      time: Date.now(),
+      confidence,
+      verdict: result.verdict || 'Analyzing...',
+      source,
+      isDeepfake: confidence >= threshold,
+    };
+    chrome.storage.local.set({ lastDetection: detection });
+
+    if (confidence >= threshold) {
       incrementStat('threats');
-      const detection = {
-        time: Date.now(),
-        confidence: result.confidence,
-        verdict: result.verdict,
-        source,
-        isDeepfake: true,
-      };
-      chrome.storage.local.set({ lastDetection: detection });
 
-      // Chrome notification
       chrome.notifications.create(`threat-${Date.now()}`, {
         type: 'basic',
         iconUrl: 'icons/icon128.png',
         title: 'Deepfake Detected',
-        message: `Confidence: ${result.confidence}% — ${result.verdict || 'Potential manipulation detected'}`,
+        message: `Confidence: ${confidence}% — ${result.verdict || 'Potential manipulation detected'}`,
         priority: 2,
         requireInteraction: true,
       });
 
-      // Forward to content script for in-page alert
       if (tabId) {
         chrome.tabs.sendMessage(tabId, {
           type: 'ALERT_DEEPFAKE',
-          confidence: result.confidence,
+          confidence,
           verdict: result.verdict,
         }).catch(() => {});
       }
@@ -183,23 +188,25 @@ async function handleAudioChunk(audioData, tabId) {
   try {
     const result = await detectAudio(audioData);
     const threshold = SENSITIVITY[settings.sensitivity]?.threshold || 75;
+    const confidence = result.confidence || 0;
 
-    if (result.confidence >= threshold) {
+    const detection = {
+      time: Date.now(),
+      confidence,
+      verdict: result.verdict || 'Audio analyzing...',
+      source: 'audio',
+      isDeepfake: confidence >= threshold,
+    };
+    chrome.storage.local.set({ lastDetection: detection });
+
+    if (confidence >= threshold) {
       incrementStat('threats');
-      const detection = {
-        time: Date.now(),
-        confidence: result.confidence,
-        verdict: result.verdict,
-        source: 'audio',
-        isDeepfake: true,
-      };
-      chrome.storage.local.set({ lastDetection: detection });
 
       chrome.notifications.create(`audio-threat-${Date.now()}`, {
         type: 'basic',
         iconUrl: 'icons/icon128.png',
         title: 'Audio Deepfake Detected',
-        message: `Voice manipulation detected — Confidence: ${result.confidence}%`,
+        message: `Voice manipulation detected — Confidence: ${confidence}%`,
         priority: 2,
         requireInteraction: true,
       });
@@ -207,7 +214,7 @@ async function handleAudioChunk(audioData, tabId) {
       if (tabId) {
         chrome.tabs.sendMessage(tabId, {
           type: 'ALERT_DEEPFAKE',
-          confidence: result.confidence,
+          confidence,
           verdict: result.verdict,
           source: 'audio',
         }).catch(() => {});
@@ -225,48 +232,61 @@ function startAudioCapture(tabId) {
   } catch (_) {}
 }
 
-/* ─── API Calls ─── */
+/* ─── API Calls (multipart form data) ─── */
 async function detectImage(dataUrl, source) {
-  const headers = { 'Content-Type': 'application/json' };
+  // Convert base64 data URL to blob
+  const res = await fetch(dataUrl);
+  const blob = await res.blob();
+
+  const formData = new FormData();
+  formData.append('image', blob, 'frame.jpg');
+  if (source) formData.append('source', source);
+
+  const headers = {};
   if (apiToken) headers['Authorization'] = `Bearer ${apiToken}`;
 
   const resp = await fetch(`${apiBase}/api/detect/image`, {
     method: 'POST',
     headers,
-    body: JSON.stringify({ image: dataUrl, source }),
+    body: formData,
   });
 
-  if (!resp.ok) throw new Error(`API ${resp.status}`);
+  if (!resp.ok) {
+    const text = await resp.text().catch(() => '');
+    throw new Error(`API ${resp.status}: ${text}`);
+  }
   const json = await resp.json();
   return json.data || json;
 }
 
 async function detectAudio(audioBase64) {
-  const headers = { 'Content-Type': 'application/json' };
+  // Convert base64 to blob
+  const binary = atob(audioBase64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  const blob = new Blob([bytes], { type: 'audio/wav' });
+
+  const formData = new FormData();
+  formData.append('audio', blob, 'audio.wav');
+
+  const headers = {};
   if (apiToken) headers['Authorization'] = `Bearer ${apiToken}`;
 
   const resp = await fetch(`${apiBase}/api/detect/audio`, {
     method: 'POST',
     headers,
-    body: JSON.stringify({ audio: audioBase64, source: 'video_call_shield' }),
+    body: formData,
   });
 
-  if (!resp.ok) throw new Error(`API ${resp.status}`);
+  if (!resp.ok) {
+    const text = await resp.text().catch(() => '');
+    throw new Error(`API ${resp.status}: ${text}`);
+  }
   const json = await resp.json();
   return json.data || json;
 }
 
 /* ─── Stats ─── */
-function getStats() {
-  return {
-    scans: 0,
-    threats: 0,
-    audioScans: 0,
-    blocked: 0,
-    activeTabs: activeTabs.size,
-  };
-}
-
 function incrementStat(key) {
   chrome.storage.local.get('stats', (data) => {
     const stats = data.stats || { scans: 0, threats: 0, audioScans: 0 };

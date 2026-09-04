@@ -2,9 +2,12 @@
 
 let settings = { sensitivity: 'medium', autoScan: true, audioAnalysis: true, faceMatching: true };
 
-chrome.storage.local.get(['shieldActive', 'settings', 'stats', 'lastDetection'], (data) => {
-  if (data.settings) settings = { ...settings, ...data.settings };
-  updateUI(data.shieldActive, data.stats, data.lastDetection);
+// Load state from background
+chrome.runtime.sendMessage({ type: 'GET_STATUS' }, (res) => {
+  if (res) {
+    if (res.settings) settings = { ...settings, ...res.settings };
+    updateUI(res.active, res.stats, res.lastDetection);
+  }
 });
 
 // Shield toggle
@@ -39,18 +42,22 @@ function updateUI(active, stats, lastDetection) {
     document.getElementById('threatCount').textContent = stats.threats || 0;
   }
 
+  // Highlight active sensitivity button
   document.querySelectorAll('.sens-btn').forEach((btn) => {
     btn.classList.toggle('active', btn.dataset.level === (settings.sensitivity || 'medium'));
   });
 
   document.getElementById('audioToggle').classList.toggle('on', settings.audioAnalysis !== false);
 
+  // Last detection
   if (lastDetection) {
-    document.getElementById('lsIcon').textContent = lastDetection.isDeepfake ? '🚨' : '🛡️';
-    document.getElementById('lsText').textContent = lastDetection.isDeepfake
-      ? `Deepfake: ${lastDetection.confidence}%`
+    const isThreat = lastDetection.isDeepfake;
+    document.getElementById('lsIcon').textContent = isThreat ? '🚨' : '✅';
+    document.getElementById('lsText').textContent = isThreat
+      ? `${lastDetection.confidence}% — ${lastDetection.verdict || 'Threat'}`
       : 'No threats';
     document.getElementById('lsTime').textContent = formatTime(lastDetection.time);
+    document.getElementById('lastScan').className = `last-scan ${isThreat ? 'danger' : 'safe'}`;
   }
 }
 

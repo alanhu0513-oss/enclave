@@ -82,7 +82,8 @@ router.post('/register', async (req, res) => {
     const now = new Date().toISOString();
     const userRow = await users.insert({
       id, email: email.toLowerCase(), password_hash: hash,
-      full_name: fullName, token_version: 0, created_at: now, updated_at: now
+      full_name: fullName, token_version: 0, subscription_tier: 'free',
+      created_at: now, updated_at: now
     });
     const token = await generateTokenForUser({ id, email });
     return success(res, { token, user: { id, email, fullName, emailVerified: false } }, 'Account created', 201);
@@ -259,6 +260,7 @@ router.post('/google', async (req, res) => {
         full_name: name || email.split('@')[0],
         provider: 'google', provider_id: googleId,
         avatar_url: picture || null,
+        subscription_tier: 'free',
         created_at: now, updated_at: now
       });
       user = { id, email: email.toLowerCase(), full_name: name || email.split('@')[0] };

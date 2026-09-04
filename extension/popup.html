@@ -4,317 +4,416 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Enclave Shield</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #0a0a0f;
-      --surface: #12121a;
+      --surface-0: #111113;
+      --surface-1: #18181b;
+      --surface-2: #1f1f23;
+      --surface-3: #27272a;
+      --surface-4: #303035;
+      --green: #34d399;
+      --cyan: #67e8f9;
+      --red: #f87171;
+      --amber: #fbbf24;
+      --ink: #fafaf9;
+      --ink-muted: #a1a1aa;
+      --ink-faint: #71717a;
       --border: rgba(255,255,255,0.06);
-      --green: #00ff88;
-      --cyan: #00bfff;
-      --red: #ff4466;
-      --amber: #ffaa00;
-      --text: #e8e8f0;
-      --text-dim: #888;
-      --text-faint: #555;
+      --border-hover: rgba(255,255,255,0.1);
+      --radius: 12px;
+      --radius-sm: 8px;
+      --font: 'DM Sans', ui-sans-serif, system-ui, -apple-system, sans-serif;
     }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-      width: 300px;
-      min-height: 200px;
-      background: var(--bg);
-      color: var(--text);
-      font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif;
+      width: 340px;
+      min-height: 100px;
+      background: var(--surface-0);
+      color: var(--ink);
+      font-family: var(--font);
       -webkit-font-smoothing: antialiased;
-      overflow: hidden;
+      overflow-x: hidden;
     }
 
-    /* Header */
+    /* Noise texture overlay */
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      opacity: 0.04;
+      pointer-events: none;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      background-size: 256px 256px;
+      z-index: 9999;
+    }
+
+    /* Grid texture */
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        linear-gradient(rgba(250,250,249,0.015) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(250,250,249,0.015) 1px, transparent 1px);
+      background-size: 32px 32px;
+      mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 20%, transparent 70%);
+      z-index: 0;
+    }
+
+    /* ─── Header ─── */
     .header {
+      position: relative;
       display: flex;
       align-items: center;
-      gap: 10px;
-      padding: 14px 16px;
-      background: linear-gradient(135deg, rgba(0,255,136,0.06), rgba(0,191,255,0.04));
+      gap: 12px;
+      padding: 16px 18px;
+      background: linear-gradient(135deg, rgba(52,211,153,0.05), rgba(103,232,249,0.03));
       border-bottom: 1px solid var(--border);
+      z-index: 1;
     }
     .logo-wrap {
       position: relative;
-      width: 32px; height: 32px;
+      width: 36px; height: 36px;
       flex-shrink: 0;
     }
     .logo {
-      width: 32px; height: 32px;
+      width: 36px; height: 36px;
       background: linear-gradient(135deg, var(--green), var(--cyan));
-      border-radius: 9px;
+      border-radius: 10px;
       display: flex; align-items: center; justify-content: center;
-      box-shadow: 0 2px 12px rgba(0,255,136,0.2);
+      box-shadow: 0 2px 12px rgba(52,211,153,0.2);
+      position: relative;
+      z-index: 1;
     }
-    .logo svg { width: 18px; height: 18px; stroke: #000; fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+    .logo svg { width: 20px; height: 20px; stroke: var(--surface-0); fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
     .logo-pulse {
       position: absolute;
-      inset: -3px;
-      border-radius: 12px;
-      border: 1.5px solid rgba(0,255,136,0.3);
-      animation: logo-pulse 2s ease-in-out infinite;
+      inset: -4px;
+      border-radius: 14px;
+      border: 1.5px solid rgba(52,211,153,0.25);
+      animation: logo-pulse 2.4s cubic-bezier(0.215,0.61,0.355,1) infinite;
       pointer-events: none;
     }
     @keyframes logo-pulse {
-      0%, 100% { opacity: 0.3; transform: scale(1); }
-      50% { opacity: 0.6; transform: scale(1.05); }
+      0% { transform: scale(0.95); opacity: 0.5; }
+      70% { transform: scale(1.08); opacity: 0; }
+      100% { opacity: 0; }
     }
     .header-text h1 {
-      font-size: 14px;
+      font-size: 15px;
       font-weight: 700;
-      color: #fff;
+      color: var(--ink);
       letter-spacing: -0.02em;
     }
     .header-text p {
-      font-size: 10px;
-      color: var(--text-dim);
+      font-size: 11px;
+      color: var(--ink-muted);
       margin-top: 1px;
     }
 
-    /* Connection status */
-    .conn-status {
+    /* ─── Connection ─── */
+    .conn-bar {
       display: flex;
       align-items: center;
-      gap: 6px;
-      padding: 8px 16px;
-      font-size: 10px;
-      color: var(--text-dim);
+      gap: 7px;
+      padding: 8px 18px;
+      font-size: 11px;
+      color: var(--ink-faint);
       border-bottom: 1px solid var(--border);
-      transition: all 0.2s;
+      transition: all 0.3s ease;
+      position: relative;
+      z-index: 1;
     }
-    .conn-status.connected { color: var(--green); background: rgba(0,255,136,0.03); }
-    .conn-status.error { color: var(--red); background: rgba(255,68,102,0.03); }
+    .conn-bar.ok { color: var(--green); background: rgba(52,211,153,0.03); }
+    .conn-bar.err { color: var(--red); background: rgba(248,113,113,0.03); }
     .conn-dot {
       width: 6px; height: 6px;
       border-radius: 50%;
-      background: var(--text-faint);
-      transition: background 0.2s;
+      background: var(--ink-faint);
+      transition: all 0.3s ease;
     }
-    .conn-status.connected .conn-dot { background: var(--green); box-shadow: 0 0 6px rgba(0,255,136,0.4); }
-    .conn-status.error .conn-dot { background: var(--red); }
+    .conn-bar.ok .conn-dot { background: var(--green); box-shadow: 0 0 8px rgba(52,211,153,0.4); }
+    .conn-bar.err .conn-dot { background: var(--red); box-shadow: 0 0 8px rgba(248,113,113,0.4); }
 
-    /* Login form */
-    .login-section {
-      padding: 16px;
-      border-bottom: 1px solid var(--border);
+    /* ─── Login ─── */
+    .login-wrap {
+      padding: 20px 18px;
+      position: relative;
+      z-index: 1;
     }
-    .login-section h3 {
-      font-size: 12px;
+    .login-wrap h3 {
+      font-size: 13px;
       font-weight: 600;
-      color: #fff;
-      margin-bottom: 10px;
+      color: var(--ink);
+      margin-bottom: 14px;
+      letter-spacing: -0.01em;
     }
-    .form-group {
-      margin-bottom: 8px;
-    }
-    .form-group label {
+    .field { margin-bottom: 10px; }
+    .field label {
       display: block;
-      font-size: 9px;
-      color: var(--text-faint);
+      font-size: 10px;
+      font-weight: 500;
+      color: var(--ink-faint);
       text-transform: uppercase;
-      letter-spacing: 0.5px;
-      margin-bottom: 4px;
+      letter-spacing: 0.6px;
+      margin-bottom: 5px;
     }
-    .form-input {
+    .field input {
       width: 100%;
-      padding: 8px 10px;
-      background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 6px;
-      color: var(--text);
-      font-size: 12px;
+      padding: 10px 12px;
+      background: var(--surface-1);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--ink);
+      font-family: var(--font);
+      font-size: 13px;
       outline: none;
-      transition: border-color 0.15s;
+      transition: border-color 0.2s, box-shadow 0.2s;
     }
-    .form-input:focus { border-color: rgba(0,255,136,0.3); }
-    .form-input::placeholder { color: var(--text-faint); }
-    .login-btn {
+    .field input:focus {
+      border-color: rgba(52,211,153,0.4);
+      box-shadow: 0 0 0 3px rgba(52,211,153,0.08);
+    }
+    .field input::placeholder { color: var(--ink-faint); }
+    .btn-primary {
       width: 100%;
-      padding: 9px;
+      padding: 11px;
       background: linear-gradient(135deg, var(--green), var(--cyan));
       border: none;
-      border-radius: 6px;
-      color: #000;
-      font-size: 12px;
+      border-radius: var(--radius-sm);
+      color: var(--surface-0);
+      font-family: var(--font);
+      font-size: 13px;
       font-weight: 700;
       cursor: pointer;
-      transition: opacity 0.15s;
+      transition: opacity 0.2s, transform 0.15s;
       margin-top: 4px;
+      letter-spacing: -0.01em;
     }
-    .login-btn:hover { opacity: 0.9; }
-    .login-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-    .login-error {
-      font-size: 10px;
+    .btn-primary:hover { opacity: 0.92; }
+    .btn-primary:active { transform: scale(0.98); }
+    .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+    .login-err {
+      font-size: 11px;
       color: var(--red);
-      margin-top: 6px;
+      margin-top: 8px;
       display: none;
+      padding: 8px 10px;
+      background: rgba(248,113,113,0.06);
+      border-radius: var(--radius-sm);
+      border: 1px solid rgba(248,113,113,0.12);
     }
     .login-links {
       display: flex;
       justify-content: space-between;
-      margin-top: 8px;
+      margin-top: 10px;
     }
     .login-links a {
-      font-size: 10px;
-      color: var(--text-dim);
+      font-size: 11px;
+      color: var(--ink-faint);
       text-decoration: none;
+      transition: color 0.15s;
     }
     .login-links a:hover { color: var(--green); }
 
-    /* Main toggle */
-    .main-toggle {
+    /* ─── Dashboard ─── */
+    .dash { position: relative; z-index: 1; }
+
+    /* Shield toggle */
+    .shield-row {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 12px 16px;
-      background: rgba(0,255,136,0.03);
+      padding: 14px 18px;
       border-bottom: 1px solid var(--border);
       cursor: pointer;
-      transition: background 0.15s;
+      transition: background 0.2s;
     }
-    .main-toggle:hover { background: rgba(0,255,136,0.05); }
-    .main-toggle.active { background: rgba(0,255,136,0.06); }
-    .mt-left { display: flex; align-items: center; gap: 10px; }
-    .mt-icon {
-      width: 36px; height: 36px;
+    .shield-row:hover { background: rgba(52,211,153,0.02); }
+    .shield-row.on { background: rgba(52,211,153,0.04); }
+    .sr-left { display: flex; align-items: center; gap: 12px; }
+    .sr-icon {
+      width: 40px; height: 40px;
       border-radius: 10px;
       display: flex; align-items: center; justify-content: center;
-      background: rgba(0,255,136,0.1);
-      transition: all 0.2s;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      transition: all 0.3s ease;
     }
-    .main-toggle.active .mt-icon {
-      background: linear-gradient(135deg, rgba(0,255,136,0.2), rgba(0,191,255,0.15));
-      box-shadow: 0 0 16px rgba(0,255,136,0.15);
+    .shield-row.on .sr-icon {
+      background: linear-gradient(135deg, rgba(52,211,153,0.15), rgba(103,232,249,0.1));
+      border-color: rgba(52,211,153,0.2);
+      box-shadow: 0 0 20px rgba(52,211,153,0.1);
     }
-    .mt-icon svg { width: 18px; height: 18px; stroke: var(--green); fill: none; stroke-width: 2; }
-    .mt-text h3 { font-size: 13px; font-weight: 600; color: #fff; }
-    .mt-text p { font-size: 10px; color: var(--text-dim); margin-top: 1px; }
-    .toggle-switch {
-      width: 44px; height: 24px; border-radius: 12px;
-      background: #333; border: none; cursor: pointer;
-      position: relative; transition: background 0.2s;
+    .sr-icon svg { width: 20px; height: 20px; stroke: var(--green); fill: none; stroke-width: 2; }
+    .sr-text h3 { font-size: 14px; font-weight: 600; color: var(--ink); letter-spacing: -0.01em; }
+    .sr-text p { font-size: 11px; color: var(--ink-muted); margin-top: 2px; }
+    .toggle {
+      width: 46px; height: 26px; border-radius: 13px;
+      background: var(--surface-3); border: 1px solid var(--border);
+      cursor: pointer; position: relative; transition: all 0.25s ease;
       outline: none; flex-shrink: 0;
     }
-    .toggle-switch.on { background: var(--green); }
-    .toggle-switch::after {
-      content: ''; position: absolute;
-      top: 2px; left: 2px;
-      width: 20px; height: 20px;
-      border-radius: 50%; background: #fff;
-      transition: transform 0.2s;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+    .toggle.on {
+      background: linear-gradient(135deg, var(--green), var(--cyan));
+      border-color: transparent;
+      box-shadow: 0 0 16px rgba(52,211,153,0.2);
     }
-    .toggle-switch.on::after { transform: translateX(20px); }
+    .toggle::after {
+      content: ''; position: absolute;
+      top: 3px; left: 3px;
+      width: 18px; height: 18px;
+      border-radius: 50%; background: #fff;
+      transition: transform 0.25s cubic-bezier(0.34,1.56,0.64,1);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+    }
+    .toggle.on::after { transform: translateX(20px); }
 
-    /* Stats row */
-    .stats-row {
-      display: grid; grid-template-columns: 1fr 1fr 1fr;
+    /* Stats grid */
+    .stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
       border-bottom: 1px solid var(--border);
     }
     .stat {
-      padding: 10px 12px;
+      padding: 12px 14px;
       text-align: center;
       border-right: 1px solid var(--border);
+      transition: background 0.2s;
     }
     .stat:last-child { border-right: none; }
+    .stat:hover { background: rgba(255,255,255,0.015); }
     .stat-val {
-      font-size: 18px; font-weight: 700; color: #fff;
+      font-size: 22px; font-weight: 700; color: var(--ink);
       font-variant-numeric: tabular-nums;
-      line-height: 1.2;
+      line-height: 1.1;
+      letter-spacing: -0.02em;
     }
-    .stat-val.green { color: var(--green); }
-    .stat-val.red { color: var(--red); }
-    .stat-lbl { font-size: 9px; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
+    .stat-val.g { color: var(--green); }
+    .stat-val.r { color: var(--red); }
+    .stat-lbl {
+      font-size: 9px; color: var(--ink-faint);
+      text-transform: uppercase; letter-spacing: 0.6px;
+      margin-top: 3px; font-weight: 500;
+    }
 
-    /* Settings */
-    .section {
-      padding: 10px 16px;
+    /* Sections */
+    .sec {
+      padding: 12px 18px;
       border-bottom: 1px solid var(--border);
     }
-    .section-title {
+    .sec-title {
       font-size: 9px;
-      color: var(--text-faint);
+      color: var(--ink-faint);
       text-transform: uppercase;
       letter-spacing: 0.8px;
-      margin-bottom: 8px;
+      margin-bottom: 10px;
       font-weight: 600;
     }
-    .sens-group { display: flex; gap: 4px; }
+
+    /* Sensitivity */
+    .sens-row { display: flex; gap: 5px; }
     .sens-btn {
-      flex: 1; padding: 7px 4px;
-      background: rgba(255,255,255,0.03);
-      border: 1px solid rgba(255,255,255,0.06);
-      border-radius: 6px; color: var(--text-dim);
-      font-size: 10px; font-weight: 600;
-      cursor: pointer; transition: all 0.15s;
+      flex: 1; padding: 8px 4px;
+      background: var(--surface-1);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--ink-muted);
+      font-family: var(--font);
+      font-size: 11px; font-weight: 600;
+      cursor: pointer; transition: all 0.2s ease;
       text-align: center; outline: none;
+      letter-spacing: -0.01em;
     }
-    .sens-btn:hover { border-color: rgba(255,255,255,0.12); color: #aaa; }
+    .sens-btn:hover { border-color: var(--border-hover); color: var(--ink); background: var(--surface-2); }
     .sens-btn.active {
-      background: rgba(0,255,136,0.1);
-      border-color: rgba(0,255,136,0.3);
+      background: rgba(52,211,153,0.08);
+      border-color: rgba(52,211,153,0.25);
       color: var(--green);
+      box-shadow: 0 0 12px rgba(52,211,153,0.06);
     }
-    .toggles-row { display: flex; flex-direction: column; gap: 8px; }
-    .toggle-item { display: flex; align-items: center; justify-content: space-between; }
-    .toggle-item-label { font-size: 11px; color: var(--text-dim); }
-    .mini-toggle {
-      width: 32px; height: 18px; border-radius: 9px;
-      background: #333; border: none; cursor: pointer;
-      position: relative; transition: background 0.2s;
+
+    /* Toggle rows */
+    .tog-rows { display: flex; flex-direction: column; gap: 10px; }
+    .tog-row { display: flex; align-items: center; justify-content: space-between; }
+    .tog-label { font-size: 12px; color: var(--ink-muted); font-weight: 500; }
+    .tog {
+      width: 36px; height: 20px; border-radius: 10px;
+      background: var(--surface-3); border: 1px solid var(--border);
+      cursor: pointer; position: relative; transition: all 0.25s ease;
       outline: none; flex-shrink: 0;
     }
-    .mini-toggle.on { background: var(--green); }
-    .mini-toggle::after {
+    .tog.on {
+      background: var(--green);
+      border-color: transparent;
+    }
+    .tog::after {
       content: ''; position: absolute;
       top: 2px; left: 2px;
       width: 14px; height: 14px;
       border-radius: 50%; background: #fff;
-      transition: transform 0.2s;
-      box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+      transition: transform 0.25s cubic-bezier(0.34,1.56,0.64,1);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
     }
-    .mini-toggle.on::after { transform: translateX(14px); }
+    .tog.on::after { transform: translateX(16px); }
 
     /* Last detection */
-    .last-detect {
-      padding: 10px 16px;
+    .last-det {
+      padding: 12px 18px;
       border-bottom: 1px solid var(--border);
-      transition: background 0.2s;
+      transition: background 0.3s ease;
     }
-    .last-detect.safe { background: rgba(0,255,136,0.02); }
-    .last-detect.danger { background: rgba(255,68,102,0.04); }
-    .ld-row { display: flex; align-items: center; gap: 8px; }
+    .last-det.safe { background: rgba(52,211,153,0.02); }
+    .last-det.danger { background: rgba(248,113,113,0.03); }
+    .ld-row { display: flex; align-items: center; gap: 10px; }
     .ld-icon {
-      width: 24px; height: 24px;
-      border-radius: 6px;
+      width: 28px; height: 28px;
+      border-radius: 7px;
       display: flex; align-items: center; justify-content: center;
-      font-size: 12px;
+      font-size: 14px;
       flex-shrink: 0;
+      transition: all 0.3s ease;
     }
-    .last-detect.safe .ld-icon { background: rgba(0,255,136,0.1); }
-    .last-detect.danger .ld-icon { background: rgba(255,68,102,0.1); }
-    .ld-info h4 { font-size: 11px; font-weight: 600; color: var(--text); }
-    .ld-info p { font-size: 9px; color: var(--text-dim); margin-top: 1px; }
+    .last-det.safe .ld-icon { background: rgba(52,211,153,0.1); }
+    .last-det.danger .ld-icon { background: rgba(248,113,113,0.1); }
+    .ld-info h4 { font-size: 12px; font-weight: 600; color: var(--ink); letter-spacing: -0.01em; }
+    .ld-info p { font-size: 10px; color: var(--ink-faint); margin-top: 2px; }
 
     /* Footer */
-    .footer {
-      padding: 10px 16px;
-      text-align: center;
+    .foot {
+      padding: 12px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      position: relative;
+      z-index: 1;
     }
-    .footer-link {
-      font-size: 10px;
-      color: var(--green);
+    .foot a, .foot span {
+      font-size: 11px;
+      color: var(--ink-faint);
       text-decoration: none;
-      opacity: 0.6;
-      transition: opacity 0.15s;
+      transition: color 0.15s;
+      cursor: pointer;
     }
-    .footer-link:hover { opacity: 1; }
+    .foot a:hover, .foot span:hover { color: var(--green); }
+    .foot-sep { color: var(--surface-4); }
 
-    /* Hidden */
+    /* Utility */
     .hidden { display: none !important; }
+
+    /* Smooth transitions */
+    .fade-in {
+      animation: fadeIn 0.3s ease-out;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
   </style>
 </head>
 <body>
@@ -332,92 +431,92 @@
     </div>
   </div>
 
-  <!-- Connection status -->
-  <div class="conn-status" id="connStatus">
+  <!-- Connection -->
+  <div class="conn-bar" id="connBar">
     <div class="conn-dot"></div>
-    <span id="connText">Checking connection...</span>
+    <span id="connText">Checking server...</span>
   </div>
 
-  <!-- Login form (shown when not logged in) -->
-  <div class="login-section" id="loginSection">
+  <!-- Login -->
+  <div class="login-wrap" id="loginView">
     <h3>Sign in to Enclave</h3>
-    <div class="form-group">
+    <div class="field">
       <label>Email</label>
-      <input type="email" class="form-input" id="loginEmail" placeholder="you@example.com" />
+      <input type="email" id="inputEmail" placeholder="you@example.com" autocomplete="email" />
     </div>
-    <div class="form-group">
+    <div class="field">
       <label>Password</label>
-      <input type="password" class="form-input" id="loginPassword" placeholder="Your password" />
+      <input type="password" id="inputPass" placeholder="Your password" autocomplete="current-password" />
     </div>
-    <button class="login-btn" id="loginBtn">Sign In</button>
-    <div class="login-error" id="loginError"></div>
+    <button class="btn-primary" id="btnLogin">Sign In</button>
+    <div class="login-err" id="loginErr"></div>
     <div class="login-links">
       <a href="https://enclave-react.vercel.app" target="_blank">Create account</a>
       <a href="https://enclave-react.vercel.app" target="_blank">Forgot password?</a>
     </div>
   </div>
 
-  <!-- Dashboard (shown when logged in) -->
-  <div id="dashboardSection" class="hidden">
-    <!-- Main toggle -->
-    <div class="main-toggle active" id="mainToggle">
-      <div class="mt-left">
-        <div class="mt-icon">
+  <!-- Dashboard -->
+  <div class="dash hidden" id="dashView">
+    <!-- Shield toggle -->
+    <div class="shield-row on" id="shieldRow">
+      <div class="sr-left">
+        <div class="sr-icon">
           <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
         </div>
-        <div class="mt-text">
+        <div class="sr-text">
           <h3 id="shieldLabel">Shield Active</h3>
           <p id="shieldSub">Scanning video calls</p>
         </div>
       </div>
-      <button class="toggle-switch on" id="shieldToggle" aria-label="Toggle shield"></button>
+      <button class="toggle on" id="shieldToggle" aria-label="Toggle shield"></button>
     </div>
 
     <!-- Stats -->
-    <div class="stats-row">
+    <div class="stats">
       <div class="stat">
-        <div class="stat-val green" id="scanCount">0</div>
+        <div class="stat-val g" id="statScans">0</div>
         <div class="stat-lbl">Scans</div>
       </div>
       <div class="stat">
-        <div class="stat-val red" id="threatCount">0</div>
+        <div class="stat-val r" id="statThreats">0</div>
         <div class="stat-lbl">Threats</div>
       </div>
       <div class="stat">
-        <div class="stat-val" id="audioCount">0</div>
+        <div class="stat-val" id="statAudio">0</div>
         <div class="stat-lbl">Audio</div>
       </div>
     </div>
 
     <!-- Sensitivity -->
-    <div class="section">
-      <div class="section-title">Sensitivity</div>
-      <div class="sens-group">
+    <div class="sec">
+      <div class="sec-title">Sensitivity</div>
+      <div class="sens-row">
         <button class="sens-btn" data-level="low">Low</button>
         <button class="sens-btn active" data-level="medium">Medium</button>
         <button class="sens-btn" data-level="high">High</button>
       </div>
     </div>
 
-    <!-- Toggles -->
-    <div class="section">
-      <div class="section-title">Detection</div>
-      <div class="toggles-row">
-        <div class="toggle-item">
-          <span class="toggle-item-label">Audio analysis</span>
-          <button id="audioToggle" class="mini-toggle on" aria-label="Toggle audio"></button>
+    <!-- Detection toggles -->
+    <div class="sec">
+      <div class="sec-title">Detection</div>
+      <div class="tog-rows">
+        <div class="tog-row">
+          <span class="tog-label">Audio analysis</span>
+          <button id="togAudio" class="tog on" aria-label="Toggle audio"></button>
         </div>
-        <div class="toggle-item">
-          <span class="toggle-item-label">Face matching</span>
-          <button id="faceToggle" class="mini-toggle on" aria-label="Toggle face matching"></button>
+        <div class="tog-row">
+          <span class="tog-label">Face matching</span>
+          <button id="togFace" class="tog on" aria-label="Toggle face matching"></button>
         </div>
       </div>
     </div>
 
     <!-- Last detection -->
-    <div class="last-detect safe" id="lastDetect">
+    <div class="last-det safe" id="lastDet">
       <div class="ld-row">
-        <div class="ld-icon" id="ldIcon">✅</div>
+        <div class="ld-icon" id="ldIcon">&#10003;</div>
         <div class="ld-info">
           <h4 id="ldTitle">No threats detected</h4>
           <p id="ldSub">Waiting for video call...</p>
@@ -427,9 +526,10 @@
   </div>
 
   <!-- Footer -->
-  <div class="footer">
-    <a href="https://enclave-react.vercel.app" target="_blank" class="footer-link">Open Dashboard →</a>
-    <span id="logoutBtn" class="footer-link" style="margin-left:12px;cursor:pointer;color:var(--text-faint)">Sign Out</span>
+  <div class="foot">
+    <a href="https://enclave-react.vercel.app" target="_blank">Dashboard</a>
+    <span class="foot-sep">&middot;</span>
+    <span id="btnLogout">Sign Out</span>
   </div>
 
   <script src="popup.js"></script>

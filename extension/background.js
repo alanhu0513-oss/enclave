@@ -1,4 +1,4 @@
-/* ─── ENCLAVE Video Call Shield — Background Service Worker ─── */
+/* ─── Enclave Shield — Background Service Worker ─── */
 
 let apiToken = null;
 let apiBase = 'https://enclave-production-d818.up.railway.app';
@@ -32,14 +32,29 @@ chrome.storage.local.get(['apiToken', 'apiBase', 'settings', 'shieldActive'], (d
   if (data.apiToken) apiToken = data.apiToken;
   if (data.apiBase) apiBase = data.apiBase;
   if (data.settings) settings = { ...settings, ...data.settings };
-  if (data.shieldActive) shieldActive = data.shieldActive;
+  if (data.shieldActive != null) shieldActive = data.shieldActive;
 });
 
 /* ─── Message Router ─── */
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   switch (msg.type) {
-    case 'TOGGLE_SHIELD':
-      shieldActive = !shieldActive;
+    case 'TOGGLE_SHIELD': {
+      // Read from storage to stay in sync with popup
+      chrome.storage.local.get('shieldActive', (data) => {
+        shieldActive = !data.shieldActive;
+        if (shieldActive) {
+          startScanning(sender.tab?.id);
+        } else {
+          stopScanning();
+        }
+        chrome.storage.local.set({ shieldActive });
+        sendResponse({ active: shieldActive });
+      });
+      return true;
+    }
+
+    case 'SET_SHIELD': {
+      shieldActive = !!msg.active;
       if (shieldActive) {
         startScanning(sender.tab?.id);
       } else {
@@ -48,8 +63,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       chrome.storage.local.set({ shieldActive });
       sendResponse({ active: shieldActive });
       return true;
+    }
 
-    case 'GET_STATUS':
+    case 'GET_STATUS': {
       chrome.storage.local.get(['stats', 'lastDetection'], (data) => {
         sendResponse({
           active: shieldActive,
@@ -59,6 +75,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         });
       });
       return true;
+    }
 
     case 'FRAME_CAPTURED':
       handleFrame(msg.dataUrl, msg.source, sender.tab?.id);
@@ -77,55 +94,57 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       return true;
 
     case 'SET_TOKEN':
-      apiToken = msg.token;
-      chrome.storage.local.set({ apiToken: msg.token });
+      apiToken = msg.token || null;
+      chrome.storage.local.set({ apiToken: msg.token || null });
       sendResponse({ ok: true });
       return true;
 
     case 'SET_API_BASE':
-      apiBase = msg.url;
-      chrome.storage.local.set({ apiBase: msg.url });
+      apiBase = msg.url || apiBase;
+      chrome.storage.local.set({ apiBase });
       sendResponse({ ok: true });
       return true;
 
-    case 'GET_STATS':
+    case 'GET_STATS': {
       chrome.storage.local.get('stats', (data) => {
         sendResponse(data.stats || { scans: 0, threats: 0, audioScans: 0 });
       });
       return true;
+    }
 
     case 'START_AUDIO_CAPTURE':
       startAudioCapture(sender.tab?.id);
       sendResponse({ ok: true });
       return true;
+
+    default:
+      return false;
   }
 });
 
 /* ─── Scanning ─── */
 function startScanning(tabId) {
   if (scanInterval) clearInterval(scanInterval);
-  activeTabs.clear();
-  if (tabId) activeTabs.set(tabId, { lastScan: 0, participantIndex: 0 });
 
   scanInterval = setInterval(() => {
-    const now = Date.now();
-    for (const [id, state] of activeTabs) {
-      if (now - state.lastScan >= 3000) {
-        state.lastScan = now;
-        chrome.tabs.sendMessage(id, { type: 'CAPTURE_FRAME' }).catch(() => {
-          activeTabs.delete(id);
-        });
+    chrome.tabs.query({}, (tabs) => {
+      for (const tab of tabs) {
+        if (!tab.url) continue;
+        const isVideoCall =
+          tab.url.includes('zoom.us') ||
+          tab.url.includes('meet.google.com') ||
+          tab.url.includes('teams.microsoft.com') ||
+          tab.url.includes('web.webex.com');
+
+        if (isVideoCall && tab.id) {
+          chrome.tabs.sendMessage(tab.id, { type: 'CAPTURE_FRAME' }).catch(() => {});
+          if (settings.audioAnalysis) {
+            startAudioCapture(tab.id);
+          }
+        }
       }
-    }
-  }, 1500);
-
-  chrome.tabs.onRemoved.addListener((closedTabId) => {
-    activeTabs.delete(closedTabId);
-  });
-
-  if (tabId) {
-    chrome.tabs.sendMessage(tabId, { type: 'CAPTURE_FRAME' }).catch(() => {});
-  }
+    });
+  }, 3000);
 }
 
 function stopScanning() {
@@ -144,12 +163,12 @@ async function handleFrame(dataUrl, source, tabId) {
     const threshold = SENSITIVITY[settings.sensitivity]?.threshold || 75;
     const confidence = result.confidence || 0;
 
-    // Always save last detection
     const detection = {
       time: Date.now(),
       confidence,
       verdict: result.verdict || 'Analyzing...',
       source,
+      provider: result.provider || 'local',
       isDeepfake: confidence >= threshold,
     };
     chrome.storage.local.set({ lastDetection: detection });
@@ -161,7 +180,7 @@ async function handleFrame(dataUrl, source, tabId) {
         type: 'basic',
         iconUrl: 'icons/icon128.png',
         title: 'Deepfake Detected',
-        message: `Confidence: ${confidence}% — ${result.verdict || 'Potential manipulation detected'}`,
+        message: `${confidence}% — ${result.verdict || 'Potential manipulation detected'}`,
         priority: 2,
         requireInteraction: true,
       });
@@ -195,6 +214,7 @@ async function handleAudioChunk(audioData, tabId) {
       confidence,
       verdict: result.verdict || 'Audio analyzing...',
       source: 'audio',
+      provider: result.provider || 'local',
       isDeepfake: confidence >= threshold,
     };
     chrome.storage.local.set({ lastDetection: detection });
@@ -206,7 +226,7 @@ async function handleAudioChunk(audioData, tabId) {
         type: 'basic',
         iconUrl: 'icons/icon128.png',
         title: 'Audio Deepfake Detected',
-        message: `Voice manipulation detected — Confidence: ${confidence}%`,
+        message: `Voice manipulation — ${confidence}% confidence`,
         priority: 2,
         requireInteraction: true,
       });
@@ -232,9 +252,8 @@ function startAudioCapture(tabId) {
   } catch (_) {}
 }
 
-/* ─── API Calls (multipart form data) ─── */
+/* ─── API Calls ─── */
 async function detectImage(dataUrl, source) {
-  // Convert base64 data URL to blob
   const res = await fetch(dataUrl);
   const blob = await res.blob();
 
@@ -252,20 +271,20 @@ async function detectImage(dataUrl, source) {
   });
 
   if (!resp.ok) {
-    const text = await resp.text().catch(() => '');
-    throw new Error(`API ${resp.status}: ${text}`);
+    const err = await resp.json().catch(() => ({}));
+    throw new Error(err.message || `HTTP ${resp.status}`);
   }
-  const json = await resp.json();
-  return json.data || json;
+
+  const data = await resp.json();
+  return data.data || data;
 }
 
-async function detectAudio(audioBase64) {
-  // Convert base64 to blob
-  const binary = atob(audioBase64);
+async function detectAudio(audioData) {
+  const binary = atob(audioData);
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-  const blob = new Blob([bytes], { type: 'audio/wav' });
 
+  const blob = new Blob([bytes], { type: 'audio/wav' });
   const formData = new FormData();
   formData.append('audio', blob, 'audio.wav');
 
@@ -279,11 +298,12 @@ async function detectAudio(audioBase64) {
   });
 
   if (!resp.ok) {
-    const text = await resp.text().catch(() => '');
-    throw new Error(`API ${resp.status}: ${text}`);
+    const err = await resp.json().catch(() => ({}));
+    throw new Error(err.message || `HTTP ${resp.status}`);
   }
-  const json = await resp.json();
-  return json.data || json;
+
+  const data = await resp.json();
+  return data.data || data;
 }
 
 /* ─── Stats ─── */

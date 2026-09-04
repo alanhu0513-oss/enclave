@@ -6,29 +6,29 @@
   --font-display: "DM Sans", "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
-  /* Brand palette — warm, muted, grounded */
-  --color-green: #34d399;
-  --color-cyan: #67e8f9;
-  --color-red: #f87171;
+  /* Brand palette — cybertech accents matching landing (electric cyan / hyper teal / coral) */
+  --color-green: #05F2C7;
+  --color-cyan: #00F2FE;
+  --color-red: #FF3366;
   --color-amber: #fbbf24;
   --color-purple: #c084fc;
   --color-violet: #8b5cf6;
 
-  /* Surface scale — warm charcoal, not cold blue */
-  --color-surface-0: #111113;
-  --color-surface-1: #18181b;
-  --color-surface-2: #1f1f23;
-  --color-surface-3: #27272a;
-  --color-surface-4: #303035;
+  /* Surface scale — obsidian surfaces matching landing page */
+  --color-surface-0: #050507;
+  --color-surface-1: #0D0E12;
+  --color-surface-2: #121318;
+  --color-surface-3: #1a1b22;
+  --color-surface-4: #232430;
 
-  /* ink — warm white on warm surfaces */
-  --color-ink: #fafaf9;
-  --color-ink-muted: #a1a1aa;
-  --color-ink-faint: #71717a;
+  /* ink — cool white on obsidian surfaces */
+  --color-ink: #f4f6fb;
+  --color-ink-muted: #9aa0b5;
+  --color-ink-faint: #6b7087;
 
-  --shadow-glow-green: 0 0 20px rgba(52, 211, 153, 0.15);
-  --shadow-glow-cyan: 0 0 20px rgba(103, 232, 249, 0.15);
-  --shadow-glow-red: 0 0 20px rgba(248, 113, 113, 0.15);
+  --shadow-glow-green: 0 0 20px rgba(5, 242, 199, 0.15);
+  --shadow-glow-cyan: 0 0 20px rgba(0, 242, 254, 0.15);
+  --shadow-glow-red: 0 0 20px rgba(255, 51, 102, 0.15);
 
   --radius-xl: 1rem;
   --radius-2xl: 1.25rem;
@@ -140,11 +140,11 @@ small { @apply text-sm; color: color-mix(in oklab, var(--color-ink) 50%, transpa
 }
 
 .glass-strong {
-  background: rgba(24, 24, 27, 0.85);
+  background: rgba(18, 19, 24, 0.85);
   border: 1px solid rgba(255, 255, 255, 0.07);
 }
 
-/* Gradient text — warmer, less neon */
+/* Gradient text — cybertech, crisper */
 .text-gradient {
   background: linear-gradient(135deg, var(--color-green), var(--color-cyan));
   -webkit-background-clip: text;
@@ -153,9 +153,9 @@ small { @apply text-sm; color: color-mix(in oklab, var(--color-ink) 50%, transpa
 }
 
 /* Hover accent — subtle, not glowy */
-.glow-green:hover { box-shadow: 0 2px 8px rgba(52, 211, 153, 0.12); }
-.glow-cyan:hover { box-shadow: 0 2px 8px rgba(103, 232, 249, 0.12); }
-.glow-red:hover { box-shadow: 0 2px 8px rgba(248, 113, 113, 0.12); }
+.glow-green:hover { box-shadow: 0 2px 8px rgba(5, 242, 199, 0.12); }
+.glow-cyan:hover { box-shadow: 0 2px 8px rgba(0, 242, 254, 0.12); }
+.glow-red:hover { box-shadow: 0 2px 8px rgba(255, 51, 102, 0.12); }
 
 /* Scrollbar */
 ::-webkit-scrollbar { width: 10px; height: 10px; }

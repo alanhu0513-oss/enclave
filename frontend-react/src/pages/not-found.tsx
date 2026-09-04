@@ -7,7 +7,7 @@ export function NotFoundPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-[#111113] px-6 text-center">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-[#050507] px-6 text-center">
       <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-green/10 mb-6">
         <Shield className="h-8 w-8 text-green" />
       </div>

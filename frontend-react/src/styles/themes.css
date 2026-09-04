@@ -14,16 +14,16 @@
 }
 
 .dark {
-  --bg: #04060a;
-  --surface: #0a0e14;
-  --surface-1: #111820;
+  --bg: #050507;
+  --surface: #0D0E12;
+  --surface-1: #121318;
   --border: rgba(255, 255, 255, 0.07);
-  --ink: #f0f4f8;
-  --ink-muted: #8899aa;
-  --ink-faint: #556677;
-  --green: #00ff88;
-  --cyan: #00bfff;
+  --ink: #f4f6fb;
+  --ink-muted: #9aa0b5;
+  --ink-faint: #6b7087;
+  --green: #05F2C7;
+  --cyan: #00F2FE;
   --amber: #fbbf24;
-  --red: #ef4444;
+  --red: #FF3366;
   --purple: #a78bfa;
 }

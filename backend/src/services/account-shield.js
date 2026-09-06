@@ -335,6 +335,40 @@ function playbookFor(site) {
   };
 }
 
+/* ─── Per-account hardening checklist ───
+ * Seven defensive steps that make up a fortified wall. Each is
+ * evaluated against live account state so the UI can show exactly
+ * what is left to do.
+ */
+
+function checklistFor(account, openFindings = 0) {
+  const hasCred = !!account.credential_enc;
+  const strong = (account.strength_score ?? 0) >= 3;
+  const pwned = (account.pwned_count ?? 0) > 0;
+  const mfa = account.mfa_enabled === true;
+  let stale = false;
+  if (account.password_set_at) {
+    const days = (Date.now() - new Date(account.password_set_at).getTime()) / 86400000;
+    stale = days > 90;
+  }
+  const monitored = !!account.last_checked_at && account.last_result !== 'pending';
+  const noOpen = openFindings === 0;
+
+  return [
+    { key: 'credential', label: 'Store the account password in the vault', met: hasCred, weight: 2 },
+    { key: 'strong_password', label: 'Use a strong, unique password', met: hasCred && strong, weight: 2 },
+    { key: 'not_in_breach', label: 'Password is not in known breach corpora', met: hasCred && !pwned, weight: 3 },
+    { key: 'mfa', label: 'Enable two-factor authentication', met: mfa, weight: 2 },
+    { key: 'fresh_rotation', label: 'Rotate the password within 90 days', met: hasCred && !stale, weight: 1 },
+    { key: 'monitored', label: 'Dark-web and leak sweep has run', met: monitored, weight: 1 },
+    { key: 'no_open_findings', label: 'No unresolved breach findings', met: noOpen, weight: 2 },
+  ];
+}
+
+function getSiteGuide(site) {
+  return playbookFor(site);
+}
+
 /* ─── Core account ops ─── */
 
 async function addAccount(userId, { site, identifier, label }) {
@@ -367,7 +401,17 @@ async function listAccounts(userId) {
   const tbl = await table('account_watchlist');
   const rows = await tbl.filter({ user_id: userId });
   rows.sort((a, b) => (a.created_at > b.created_at ? -1 : 1));
-  return rows.map((r) => ({ ...r, wall: wallState(r), credential_enc: !!r.credential_enc }));
+  const breaches = await listBreaches(userId);
+  const openByAccount = {};
+  for (const b of breaches) {
+    if (b.status !== 'resolved') openByAccount[b.account_id] = (openByAccount[b.account_id] || 0) + 1;
+  }
+  return rows.map((r) => ({
+    ...r,
+    wall: wallState(r),
+    credential_enc: !!r.credential_enc,
+    checklist: checklistFor(r, openByAccount[r.id] || 0),
+  }));
 }
 
 async function removeAccount(userId, accountId) {
@@ -598,7 +642,7 @@ async function setCredential(userId, accountId, { password, mfaEnabled }) {
   return credentialStatus(updated);
 }
 
-async function credentialStatus(account) {
+async function credentialStatus(account, openFindings = 0) {
   const enc = !!account.credential_enc;
   let stale = null;
   if (account.password_set_at) {
@@ -615,6 +659,7 @@ async function credentialStatus(account) {
     rotation_stale_days: stale,
     wall: wallState(account),
     checked_at: account.credential_checked_at || null,
+    checklist: checklistFor(account, openFindings),
   };
 }
 
@@ -622,7 +667,10 @@ async function getCredentialStatus(userId, accountId) {
   const tbl = await table('account_watchlist');
   const account = await tbl.find({ id: accountId, user_id: userId });
   if (!account) throw new Error('Account not found');
-  return credentialStatus(account);
+  const breachTbl = await table('account_breaches');
+  const open = await breachTbl.filter({ account_id: accountId });
+  const openFindings = open.filter((b) => b.status !== 'resolved').length;
+  return credentialStatus(account, openFindings);
 }
 
 /* Re-run the pwned-password check for stored credentials (auto-sweep).
@@ -762,4 +810,6 @@ module.exports = {
   completeLockdown,
   wallState,
   WALL_COPY,
+  checklistFor,
+  getSiteGuide,
 };

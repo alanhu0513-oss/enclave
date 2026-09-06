@@ -322,6 +322,8 @@ export const api = {
 
   // Account Shield (anti-hacker protection)
   getAccountShieldSites: () => apiFetch("/account-shield/sites"),
+  getAccountShieldSiteGuide: (site: string) =>
+    apiFetch(`/account-shield/sites/${encodeURIComponent(site)}/guide`),
   getAccountShieldAccounts: () => apiFetch("/account-shield/accounts"),
   addAccountShieldAccount: (data: { site: string; identifier: string; label?: string }) =>
     post("/account-shield/accounts", data),

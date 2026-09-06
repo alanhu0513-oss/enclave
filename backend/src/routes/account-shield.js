@@ -83,6 +83,12 @@ router.get('/sites', async (req, res) => {
   return success(res, { sites: shield.SITES });
 });
 
+/** Provider hardening guide (steps + links) for a site */
+router.get('/sites/:site/guide', async (req, res) => {
+  const guide = shield.getSiteGuide(req.params.site);
+  return success(res, { site: req.params.site, guide });
+});
+
 /** Set / harden the credential for a watched account */
 router.put('/accounts/:id/credential', async (req, res) => {
   try {

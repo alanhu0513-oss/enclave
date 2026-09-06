@@ -10,15 +10,9 @@ import {
   Lock,
   PanelLeftClose,
   Radar,
-  Users,
-  IdCard,
-  DollarSign,
-  Heart,
-  Brain,
   Activity,
   Globe,
   GraduationCap,
-  BookOpen,
   ChevronRight,
   Menu,
   History,
@@ -46,49 +40,33 @@ const NAV_SECTIONS: NavSection[] = [
   {
     items: [
       { id: "home", label: "Home", icon: Home },
+      { id: "account-shield", label: "Account Shield", icon: Lock },
       { id: "scan", label: "Scan", icon: ScanSearch },
       { id: "alerts", label: "Alerts", icon: Bell },
-    ],
-  },
-  {
-    label: "Protection",
-    items: [
-      { id: "shield", label: "Shields", icon: Shield },
-      { id: "account-shield", label: "Account Shield", icon: Lock },
-      { id: "monitoring", label: "Monitoring", icon: Radar },
-      { id: "threat-intel", label: "Threat Intel", icon: Globe },
-      { id: "platforms", label: "Platforms", icon: Globe },
+      { id: "settings", label: "Settings", icon: Settings },
     ],
   },
   {
     label: "Tools",
     items: [
+      { id: "monitoring", label: "Monitoring", icon: Radar },
+      { id: "shield-dashboard", label: "Shields", icon: Shield },
       { id: "reports", label: "Reports", icon: FileText },
       { id: "activity", label: "Activity", icon: Activity },
       { id: "scan-history", label: "Scan History", icon: History },
+      { id: "insights", label: "Insights", icon: BarChart3 },
+      { id: "threat-intel", label: "Threat Intel", icon: Globe },
       { id: "education", label: "Education", icon: GraduationCap },
     ],
   },
-  {
-    label: "Premium",
-    items: [
-      { id: "family", label: "Family", icon: Users, plans: ["family"] },
-      { id: "insurance", label: "Insurance", icon: Shield, plans: ["pro", "shield", "family", "business"] },
-      { id: "passport", label: "Passport", icon: IdCard, plans: ["pro", "shield", "family", "business"] },
-      { id: "bounty", label: "Bounty", icon: DollarSign, plans: ["pro", "shield", "family", "business"] },
-      { id: "estate", label: "Estate", icon: Heart, plans: ["pro", "shield", "family", "business"] },
-      { id: "ml", label: "ML Command", icon: Brain, plans: ["pro", "shield", "family", "business"] },
-    ],
-  },
-  {
-    label: "Admin",
-    items: [
-      { id: "analytics", label: "Analytics", icon: BarChart3 },
-      { id: "blog", label: "Blog", icon: BookOpen },
-      { id: "enterprise", label: "Enterprise", icon: Shield, plans: ["business"] },
-      { id: "admin", label: "Admin", icon: BarChart3, plans: ["business"] },
-    ],
-  },
+];
+
+// Features that exist in the app but are gated out of primary navigation.
+// Reachable only via deep links — audit decision to focus the product.
+const GATED_TABS: string[] = [
+  "family", "insurance", "passport", "bounty", "estate", "ml",
+  "analytics", "admin", "enterprise", "demo", "bug-bounty", "blog",
+  "comparison", "platforms",
 ];
 
 interface SidebarProps {
@@ -109,13 +87,14 @@ export function Sidebar({
   const { tab, setTab, unread } = useApp();
   const { user, lock } = useAuth();
   const [planModalOpen, setPlanModalOpen] = useState(false);
-  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(["Premium", "Admin"]));
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(["Tools"]));
 
   const filteredSections = useMemo(() => {
     const plan = user?.plan || "free";
     return NAV_SECTIONS.map((section) => ({
       ...section,
       items: section.items.filter((item) => {
+        if (GATED_TABS.includes(item.id)) return false;
         if (!item.plans) return true;
         return item.plans.includes(plan);
       }),

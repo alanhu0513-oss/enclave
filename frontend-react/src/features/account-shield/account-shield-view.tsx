@@ -51,6 +51,20 @@ interface WatchAccount {
   last_lockdown_at?: string | null;
   wall?: WallTone;
   created_at: string;
+  checklist?: ChecklistItem[];
+}
+
+interface ChecklistItem {
+  key: string;
+  label: string;
+  met: boolean;
+  weight: number;
+}
+
+interface SiteGuide {
+  title: string;
+  steps: string[];
+  links: [string, string][];
 }
 
 interface WallBreakdown {
@@ -167,6 +181,9 @@ export function AccountShieldView() {
   const [password, setPassword] = useState("");
   const [mfa, setMfa] = useState(true);
   const [hardeningId, setHardeningId] = useState<string | null>(null);
+  const [guide, setGuide] = useState<Record<string, SiteGuide | null>>({});
+  const [loadingGuide, setLoadingGuide] = useState<string | null>(null);
+  const [showGuide, setShowGuide] = useState<Record<string, boolean>>({});
 
   const loadAll = useCallback(async () => {
     try {
@@ -310,6 +327,23 @@ export function AccountShieldView() {
       await loadAll();
     } catch (e: any) {
       toast({ title: "Failed to complete", body: e.message, variant: "error" });
+    }
+  }
+
+  async function loadGuide(site: string, accountId: string) {
+    if (guide[site]) {
+      setShowGuide((s) => ({ ...s, [accountId]: !s[accountId] }));
+      return;
+    }
+    setLoadingGuide(site);
+    try {
+      const data = await api.getAccountShieldSiteGuide(site);
+      setGuide((g) => ({ ...g, [site]: (data as any)?.guide }));
+      setShowGuide((s) => ({ ...s, [accountId]: true }));
+    } catch (e: any) {
+      toast({ title: "Could not load guide", body: e.message, variant: "error" });
+    } finally {
+      setLoadingGuide(null);
     }
   }
 
@@ -524,6 +558,84 @@ export function AccountShieldView() {
                         <Badge variant="green">Not pwned</Badge>
                       ) : null}
                       {stale && <Badge variant="amber">Rotation stale</Badge>}
+                    </div>
+
+                    {/* Hardening checklist */}
+                    {acc.checklist && (
+                      <div className="space-y-1.5 rounded-xl border border-white/10 bg-surface-0/60 p-3">
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs font-semibold uppercase tracking-wider text-ink-muted">Hardening checklist</p>
+                          <span className={cn(
+                            "text-xs font-bold",
+                            acc.checklist.filter((c) => c.met).length >= 6 ? "text-green" : "text-amber",
+                          )}>
+                            {acc.checklist.filter((c) => c.met).length}/{acc.checklist.length}
+                          </span>
+                        </div>
+                        <div className="flex gap-2">
+                          {acc.checklist.map((c) => (
+                            <span
+                              key={c.key}
+                              title={c.label}
+                              className={cn(
+                                "h-2 flex-1 rounded-full",
+                                c.met ? "bg-green" : "bg-white/10",
+                              )}
+                            />
+                          ))}
+                        </div>
+                        <div className="pt-1">
+                          {acc.checklist.filter((c) => !c.met).map((c) => (
+                            <p key={c.key} className="flex items-start gap-1.5 text-xs text-ink-muted">
+                              <span className="mt-0.5 text-amber">●</span> {c.label}
+                            </p>
+                          ))}
+                          {acc.checklist.every((c) => c.met) && (
+                            <p className="text-xs text-green">All defensive steps met — wall is standing.</p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Provider guide */}
+                    <div>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="px-0 text-xs text-cyan hover:text-cyan"
+                        onClick={() => loadGuide(acc.site, acc.id)}
+                        disabled={loadingGuide === acc.site}
+                      >
+                        {loadingGuide === acc.site ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <ScanSearch className="h-3.5 w-3.5" />
+                        )}
+                        {guide[acc.site] ? (showGuide[acc.id] ? `Hide ${formatSite(acc.site)} hardening guide` : `Show ${formatSite(acc.site)} hardening guide`) : `Show ${formatSite(acc.site)} hardening guide`}
+                      </Button>
+                      {showGuide[acc.id] && guide[acc.site] && (
+                        <div className="mt-2 space-y-2 rounded-xl border border-white/10 bg-surface-0/60 p-3">
+                          <p className="text-xs font-semibold text-ink">{guide[acc.site]!.title}</p>
+                          <ol className="list-decimal space-y-1 pl-4">
+                            {guide[acc.site]!.steps.map((step, i) => (
+                              <li key={i} className="text-xs text-ink-muted">{step}</li>
+                            ))}
+                          </ol>
+                          <div className="flex flex-wrap gap-2 pt-1">
+                            {guide[acc.site]!.links.map(([label, href]) => (
+                              <a
+                                key={href}
+                                href={href}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="rounded-lg border border-white/10 bg-surface-1 px-2.5 py-1 text-xs text-green transition-colors hover:border-green/40"
+                              >
+                                {label}
+                              </a>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     {acc.last_checked_at && (

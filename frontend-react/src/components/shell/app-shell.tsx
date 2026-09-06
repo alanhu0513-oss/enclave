@@ -15,7 +15,7 @@ import { OfflineBanner } from "@/components/performance/offline-banner";
 import { FadeIn } from "@/components/ui/motion";
 import { updateSEO } from "@/lib/seo";
 import { SeoJsonLd } from "@/components/seo-json-ld";
-import { Loader2, Home, ScanSearch, Bell, Shield, Settings } from "lucide-react";
+import { Loader2, Home, ScanSearch, Bell, Lock, Settings } from "lucide-react";
 
 const HomeView = lazy(() => import("@/features/home/home-view").then((m) => ({ default: m.HomeView })));
 const ShieldsView = lazy(() => import("@/features/shields/shields-view").then((m) => ({ default: m.ShieldsView })));
@@ -164,9 +164,9 @@ export function AppShell() {
         <div className="flex items-center justify-around px-2 py-2">
           {[
             { id: "home", icon: Home, label: "Home" },
+            { id: "account-shield", icon: Lock, label: "Shield" },
             { id: "scan", icon: ScanSearch, label: "Scan" },
             { id: "alerts", icon: Bell, label: "Alerts", badge: unread },
-            { id: "shield", icon: Shield, label: "Shields" },
             { id: "settings", icon: Settings, label: "Settings" },
           ].map((item) => {
             const Icon = item.icon;

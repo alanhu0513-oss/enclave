@@ -329,6 +329,18 @@ export const api = {
     apiFetch(`/account-shield/accounts/${id}`, { method: "DELETE" }),
   scanAccountShieldAccount: (id: string) =>
     post(`/account-shield/accounts/${id}/scan`),
+  setAccountShieldCredential: (id: string, password: string, mfaEnabled: boolean) =>
+    apiFetch(`/account-shield/accounts/${id}/credential`, {
+      method: "PUT",
+      body: JSON.stringify({ password, mfaEnabled }),
+    }),
+  getAccountShieldCredential: (id: string) =>
+    apiFetch(`/account-shield/accounts/${id}/credential`),
+  lockdownAccountShieldAccount: (id: string) =>
+    post(`/account-shield/accounts/${id}/lockdown`),
+  getAccountShieldLockdowns: () => apiFetch("/account-shield/lockdowns"),
+  completeAccountShieldLockdown: (id: string) =>
+    apiFetch(`/account-shield/lockdowns/${id}/complete`, { method: "PATCH" }),
   getAccountShieldBreaches: (accountId?: string) => {
     const qs = accountId ? "?accountId=" + encodeURIComponent(accountId) : "";
     return apiFetch("/account-shield/breaches" + qs);

@@ -1000,3 +1000,24 @@ CREATE TABLE IF NOT EXISTS account_scan_logs (
   status TEXT DEFAULT 'pending'
 );
 CREATE INDEX IF NOT EXISTS idx_account_scan_logs_account ON account_scan_logs(account_id);
+
+-- Account Shield barrier layer
+ALTER TABLE account_watchlist ADD COLUMN IF NOT EXISTS credential_enc TEXT;
+ALTER TABLE account_watchlist ADD COLUMN IF NOT EXISTS mfa_enabled BOOLEAN DEFAULT FALSE;
+ALTER TABLE account_watchlist ADD COLUMN IF NOT EXISTS pwned_count INTEGER DEFAULT 0;
+ALTER TABLE account_watchlist ADD COLUMN IF NOT EXISTS strength_score INTEGER DEFAULT 0;
+ALTER TABLE account_watchlist ADD COLUMN IF NOT EXISTS password_set_at TEXT;
+ALTER TABLE account_watchlist ADD COLUMN IF NOT EXISTS credential_checked_at TEXT;
+ALTER TABLE account_watchlist ADD COLUMN IF NOT EXISTS last_lockdown_at TEXT;
+
+CREATE TABLE IF NOT EXISTS account_lockdowns (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  account_id TEXT NOT NULL,
+  site TEXT,
+  identifier TEXT,
+  playbook TEXT NOT NULL,
+  created_at TEXT,
+  status TEXT DEFAULT 'active'
+);
+CREATE INDEX IF NOT EXISTS idx_account_lockdowns_user ON account_lockdowns(user_id);

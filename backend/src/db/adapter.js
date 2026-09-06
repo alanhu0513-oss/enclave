@@ -18,7 +18,7 @@ const VALID_TABLES = new Set([
   'bug_bounty_leaderboard', 'ioc_indicators', 'shield_stats', 'voice_analyses',
   'insurance_plans', 'identity_passports', 'organizations', 'org_invites', 'org_members',
   'newsletter_subscribers', 'webhook_delivery_logs', 'login_history', 'integrations',
-  'account_watchlist', 'account_breaches', 'account_scan_logs',
+  'account_watchlist', 'account_breaches', 'account_scan_logs', 'account_lockdowns',
 ]);
 
 function validateTableName(name) {
@@ -50,7 +50,7 @@ function createJsonEngine() {
     return data;
   }
   function save() { fs.writeFileSync(DB_PATH, JSON.stringify(data, null, 2)); }
-  function emptyData() { return { users:[], faceprints:[], voiceprints:[], signatures:[], alerts:[], documents:[], auth_attempts:[], scan_sessions:[], notifications:[], takedowns:[], usage_tracking:[], referrals:[], referral_redemptions:[], email_digests:[], threat_shares:[], threat_votes:[], forum_posts:[], forum_votes:[], otdb_api_keys:[], webhooks:[], white_label:[], sso_configurations:[], sso_states:[], reports:[], report_schedules:[], partners:[], partner_conversions:[], family_members:[], login_history:[], account_watchlist:[], account_breaches:[], account_scan_logs:[] }; }
+  function emptyData() { return { users:[], faceprints:[], voiceprints:[], signatures:[], alerts:[], documents:[], auth_attempts:[], scan_sessions:[], notifications:[], takedowns:[], usage_tracking:[], referrals:[], referral_redemptions:[], email_digests:[], threat_shares:[], threat_votes:[], forum_posts:[], forum_votes:[], otdb_api_keys:[], webhooks:[], white_label:[], sso_configurations:[], sso_states:[], reports:[], report_schedules:[], partners:[], partner_conversions:[], family_members:[], login_history:[], account_watchlist:[], account_breaches:[], account_scan_logs:[], account_lockdowns:[] }; }
 
   function match(row, conditions) {
     if (!conditions) return true;

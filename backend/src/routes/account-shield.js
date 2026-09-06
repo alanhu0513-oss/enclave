@@ -83,4 +83,55 @@ router.get('/sites', async (req, res) => {
   return success(res, { sites: shield.SITES });
 });
 
+/** Set / harden the credential for a watched account */
+router.put('/accounts/:id/credential', async (req, res) => {
+  try {
+    const { password, mfaEnabled } = req.body;
+    const result = await shield.setCredential(req.user.userId, req.params.id, { password, mfaEnabled });
+    return success(res, result, 'Credential hardened and stored');
+  } catch (e) {
+    return error(res, e.message || 'Failed to store credential', 400);
+  }
+});
+
+/** Credential defense status for a watched account */
+router.get('/accounts/:id/credential', async (req, res) => {
+  try {
+    const result = await shield.getCredentialStatus(req.user.userId, req.params.id);
+    return success(res, result);
+  } catch (e) {
+    return error(res, e.message || 'Failed to load credential status', 400);
+  }
+});
+
+/** Escalate a suspected breach into a lockdown playbook */
+router.post('/accounts/:id/lockdown', async (req, res) => {
+  try {
+    const result = await shield.lockdownAccount(req.user.userId, req.params.id);
+    return success(res, result, 'Lockdown initiated — recovery steps sent');
+  } catch (e) {
+    return error(res, e.message || 'Failed to initiate lockdown', 400);
+  }
+});
+
+/** List lockdown playbooks for the user */
+router.get('/lockdowns', async (req, res) => {
+  try {
+    const lockdowns = await shield.listLockdowns(req.user.userId);
+    return success(res, { lockdowns });
+  } catch (e) {
+    return error(res, e.message || 'Failed to list lockdowns', 500);
+  }
+});
+
+/** Mark a lockdown playbook as completed */
+router.patch('/lockdowns/:id/complete', async (req, res) => {
+  try {
+    const result = await shield.completeLockdown(req.user.userId, req.params.id);
+    return success(res, result, 'Lockdown marked complete');
+  } catch (e) {
+    return error(res, e.message || 'Failed to complete lockdown', 400);
+  }
+});
+
 module.exports = router;

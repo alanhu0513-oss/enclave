@@ -70,6 +70,10 @@ async function sendViaBrevoApi(to, subject, html) {
 }
 
 async function sendEmail(to, subject, html) {
+  if (process.env.SMTP_DISABLED === '1' || process.env.NODE_ENV === 'test') {
+    console.log(`[Notify] Skipped email to ${to} (${subject}) — SMTP disabled in this env`);
+    return { sent: false, reason: 'smtp-disabled' };
+  }
   // Prefer the HTTPS API (works even where SMTP egress is blocked).
   if (process.env.BREVO_API_KEY) {
     const viaApi = await sendViaBrevoApi(to, subject, html);

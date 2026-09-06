@@ -54,6 +54,7 @@ const NAV_SECTIONS: NavSection[] = [
     label: "Protection",
     items: [
       { id: "shield", label: "Shields", icon: Shield },
+      { id: "account-shield", label: "Account Shield", icon: Lock },
       { id: "monitoring", label: "Monitoring", icon: Radar },
       { id: "threat-intel", label: "Threat Intel", icon: Globe },
       { id: "platforms", label: "Platforms", icon: Globe },

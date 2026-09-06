@@ -44,6 +44,7 @@ const DemoView = lazy(() => import("@/features/demo/demo-view").then((m) => ({ d
 const AnalyticsView = lazy(() => import("@/features/analytics/analytics-view").then((m) => ({ default: m.AnalyticsView })));
 const PlatformsView = lazy(() => import("@/features/platforms/platforms-view").then((m) => ({ default: m.PlatformsView })));
 const ScanHistoryView = lazy(() => import("@/features/scan-history/scan-history-view").then((m) => ({ default: m.ScanHistoryView })));
+const AccountShieldView = lazy(() => import("@/features/account-shield/account-shield-view").then((m) => ({ default: m.AccountShieldView })));
 
 const COLLAPSE_KEY = "enclave_sidebar_collapsed";
 
@@ -144,6 +145,7 @@ export function AppShell() {
                 {tab === "analytics" && <AnalyticsView />}
                 {tab === "platforms" && <PlatformsView />}
                 {tab === "scan-history" && <ScanHistoryView />}
+                {tab === "account-shield" && <AccountShieldView />}
               </Suspense>
             </FadeIn>
           </main>

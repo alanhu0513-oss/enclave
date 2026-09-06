@@ -30,7 +30,8 @@ export type TabId =
   | "demo"
   | "analytics"
   | "platforms"
-  | "scan-history";
+  | "scan-history"
+  | "account-shield";
 
 interface Toast {
   id: number;

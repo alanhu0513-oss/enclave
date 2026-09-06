@@ -38,6 +38,7 @@ const TITLES: Record<TabId, string> = {
   "bug-bounty": "Bug Bounty",
   platforms: "Platform Coverage",
   "scan-history": "Scan History",
+  "account-shield": "Account Shield",
 };
 
 export function Topbar({

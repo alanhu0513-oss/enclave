@@ -320,6 +320,23 @@ export const api = {
   recordShieldEvent: (type: string, detail: string, status: string) =>
     post("/shields/record", { type, detail, status }),
 
+  // Account Shield (anti-hacker protection)
+  getAccountShieldSites: () => apiFetch("/account-shield/sites"),
+  getAccountShieldAccounts: () => apiFetch("/account-shield/accounts"),
+  addAccountShieldAccount: (data: { site: string; identifier: string; label?: string }) =>
+    post("/account-shield/accounts", data),
+  removeAccountShieldAccount: (id: string) =>
+    apiFetch(`/account-shield/accounts/${id}`, { method: "DELETE" }),
+  scanAccountShieldAccount: (id: string) =>
+    post(`/account-shield/accounts/${id}/scan`),
+  getAccountShieldBreaches: (accountId?: string) => {
+    const qs = accountId ? "?accountId=" + encodeURIComponent(accountId) : "";
+    return apiFetch("/account-shield/breaches" + qs);
+  },
+  resolveAccountShieldBreach: (id: string) =>
+    apiFetch(`/account-shield/breaches/${id}/resolve`, { method: "PATCH" }),
+  getAccountShieldSummary: () => apiFetch("/account-shield/summary"),
+
   // Community
   getThreatShares: (opts?: { limit?: number; type?: string }) => {
     const params: string[] = [];

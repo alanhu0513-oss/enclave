@@ -26,6 +26,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
   const items: CommandItem[] = [
     { id: "home", label: "Go to Home", hint: "tab", action: () => go("home") },
     { id: "shield", label: "Open Shields", hint: "tab", action: () => go("shield") },
+    { id: "account-shield", label: "Open Account Shield", hint: "tab", action: () => go("account-shield") },
     { id: "scan", label: "Run a Scan", hint: "tab", action: () => go("scan") },
     { id: "alerts", label: "View Alerts", hint: "tab", action: () => go("alerts") },
     { id: "insights", label: "Insights & Reports", hint: "tab", action: () => go("insights") },

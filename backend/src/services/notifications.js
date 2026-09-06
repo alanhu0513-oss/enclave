@@ -1,6 +1,6 @@
 /* ─── Enclave Notification Service ───
- * Email alerts (Nodemailer + Gmail SMTP), push (Firebase Cloud Messaging),
- * and in-app notification persistence.
+ * Email alerts (Brevo HTTP API preferred / Nodemailer SMTP fallback),
+ * push (Firebase Cloud Messaging), and in-app notification persistence.
  */
 
 const nodemailer = require('nodemailer');
@@ -21,11 +21,61 @@ function getTransporter() {
     port: parseInt(SMTP_PORT || '587'),
     secure: (SMTP_PORT === '465'),
     auth: { user: SMTP_USER, pass: SMTP_PASS },
+    connectionTimeout: 15000,
+    greetingTimeout: 15000,
+    socketTimeout: 20000,
   });
   return _transporter;
 }
 
+async function sendViaBrevoApi(to, subject, html) {
+  const apiKey = process.env.BREVO_API_KEY;
+  if (!apiKey) return { sent: false, reason: 'BREVO_API_KEY not set' };
+  const sender = {
+    email: process.env.SMTP_USER || 'b5a753001@smtp-brevo.com',
+    name: process.env.SMTP_FROM_NAME || 'Enclave',
+  };
+  const controller = new AbortController();
+  const toTimeout = setTimeout(() => controller.abort(), 20000);
+  try {
+    const resp = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'api-key': apiKey,
+        Accept: 'application/json',
+      },
+      body: JSON.stringify({
+        sender,
+        to: [{ email: to }],
+        subject,
+        htmlContent: html,
+      }),
+      signal: controller.signal,
+    });
+    if (!resp.ok) {
+      const text = await resp.text().catch(() => '');
+      console.error(`[Notify] Brevo API error ${resp.status}:`, text.slice(0, 300));
+      return { sent: false, reason: `Brevo API HTTP ${resp.status}` };
+    }
+    const data = await resp.json().catch(() => ({}));
+    console.log(`[Notify] Email sent to ${to}: ${data.messageId || 'ok'}`);
+    return { sent: true, messageId: data.messageId };
+  } catch (e) {
+    console.error(`[Notify] Brevo API failed to ${to}:`, e.message);
+    return { sent: false, reason: e.message };
+  } finally {
+    clearTimeout(toTimeout);
+  }
+}
+
 async function sendEmail(to, subject, html) {
+  // Prefer the HTTPS API (works even where SMTP egress is blocked).
+  if (process.env.BREVO_API_KEY) {
+    const viaApi = await sendViaBrevoApi(to, subject, html);
+    if (viaApi.sent) return viaApi;
+    console.warn('[Notify] Brevo API failed, falling back to SMTP:', viaApi.reason);
+  }
   const transporter = getTransporter();
   if (!transporter) return { sent: false, reason: 'SMTP not configured' };
   try {

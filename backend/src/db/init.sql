@@ -955,3 +955,48 @@ CREATE INDEX IF NOT EXISTS idx_org_invites_email ON org_invites(email);
 
 -- Add org_id to audit_logs for org-scoped logging
 ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS org_id TEXT;
+
+-- ─── Account Shield (anti-hacker watchlists) ───
+CREATE TABLE IF NOT EXISTS account_watchlist (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  site TEXT NOT NULL,
+  identifier TEXT NOT NULL,
+  label TEXT,
+  status TEXT DEFAULT 'monitoring',
+  last_checked_at TEXT,
+  last_result TEXT,
+  security_score INTEGER DEFAULT 100,
+  created_at TEXT,
+  updated_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_account_watchlist_user ON account_watchlist(user_id);
+
+CREATE TABLE IF NOT EXISTS account_breaches (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  account_id TEXT,
+  source TEXT,
+  type TEXT,
+  indicator TEXT,
+  headline TEXT,
+  detail TEXT,
+  severity TEXT DEFAULT 'medium',
+  status TEXT DEFAULT 'new',
+  first_seen TEXT,
+  created_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_account_breaches_user ON account_breaches(user_id);
+CREATE INDEX IF NOT EXISTS idx_account_breaches_status ON account_breaches(status);
+
+CREATE TABLE IF NOT EXISTS account_scan_logs (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  account_id TEXT,
+  sources TEXT DEFAULT '{}',
+  findings INTEGER DEFAULT 0,
+  started_at TEXT,
+  finished_at TEXT,
+  status TEXT DEFAULT 'pending'
+);
+CREATE INDEX IF NOT EXISTS idx_account_scan_logs_account ON account_scan_logs(account_id);

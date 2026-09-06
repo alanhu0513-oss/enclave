@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import {
   ShieldCheck,
   Plus,
@@ -381,45 +382,68 @@ export function AccountShieldView() {
       />
 
       {/* Barrier status banner */}
-      <Card className={cn(
-        "border",
-        breachedCount > 0 ? "border-red/30 bg-gradient-to-r from-red/10 to-transparent" : "border-green/20 bg-gradient-to-r from-green/10 to-transparent",
-      )}>
-        <CardContent className="flex flex-wrap items-center justify-between gap-3 pt-6">
-          <div className="flex items-center gap-3">
-            <div className={cn(
-              "flex h-11 w-11 items-center justify-center rounded-xl",
-              breachedCount > 0 ? "bg-red/15 text-red" : "bg-green/15 text-green",
-            )}>
-              {breachedCount > 0 ? <Siren className="h-5 w-5" /> : <ShieldCheck className="h-5 w-5" />}
-            </div>
-            <div>
-              <p className="font-display text-lg font-bold text-ink">
-                {breachedCount > 0 ? "Breach incident active — lockdown recommended" : "Barrier standing"}
-              </p>
-              <p className="text-sm text-ink-muted">
-                {breachedCount > 0
-                  ? `${walls.breached || 0} breached and ${walls.at_risk || 0} at-risk accounts need your attention.`
-                  : `${walls.fortified || 0} fortified · ${walls.at_risk || 0} at risk · ${walls.open || 0} open walls.`}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-4">
-            {breachedCount > 0 && (
-              <Button variant="destructive" onClick={() => {
-                const breached = accounts.find((a) => a.wall === "breached" || a.wall === "at_risk");
-                if (breached) lockDown(breached.id, formatSite(breached.site));
-              }}>
-                <Siren className="h-4 w-4" /> Initiate lockdown
-              </Button>
-            )}
-            <div className="flex items-center gap-3">
-              <span className="text-sm font-bold text-ink">Shield</span>
-              <ProgressRing value={score} size={52} strokeWidth={6} />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={breachedCount > 0 ? "breached" : "standing"}
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 8 }}
+          transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+        >
+          <Card className={cn(
+            "border transition-all duration-500",
+            breachedCount > 0 ? "border-red/30 bg-gradient-to-r from-red/10 to-transparent" : "border-green/20 bg-gradient-to-r from-green/10 to-transparent",
+          )}>
+            <CardContent className="flex flex-wrap items-center justify-between gap-3 pt-6">
+              <div className="flex items-center gap-3">
+                <div className={cn(
+                  "relative flex h-11 w-11 items-center justify-center rounded-xl transition-colors duration-500",
+                  breachedCount > 0 ? "bg-red/15 text-red" : "bg-green/15 text-green",
+                )}>
+                  {breachedCount > 0 ? <Siren className="h-5 w-5" /> : <ShieldCheck className="h-5 w-5" />}
+                  {breachedCount > 0 && (
+                    <motion.span
+                      className="absolute inset-0 rounded-xl bg-red/25"
+                      animate={{ opacity: [0, 0.5, 0], scale: [1, 1.25, 1.25] }}
+                      transition={{ duration: 2, repeat: Infinity, ease: "easeOut" }}
+                    />
+                  )}
+                </div>
+                <div>
+                  <p className="font-display text-lg font-bold text-ink">
+                    {breachedCount > 0 ? "Breach incident active — lockdown recommended" : "Barrier standing"}
+                  </p>
+                  <p className="text-sm text-ink-muted">
+                    {breachedCount > 0
+                      ? `${walls.breached || 0} breached and ${walls.at_risk || 0} at-risk accounts need your attention.`
+                      : `${walls.fortified || 0} fortified · ${walls.at_risk || 0} at risk · ${walls.open || 0} open walls.`}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-4">
+                {breachedCount > 0 && (
+                  <Button variant="destructive" onClick={() => {
+                    const breached = accounts.find((a) => a.wall === "breached" || a.wall === "at_risk");
+                    if (breached) lockDown(breached.id, formatSite(breached.site));
+                  }}>
+                    <Siren className="h-4 w-4" /> Initiate lockdown
+                  </Button>
+                )}
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-bold text-ink">Shield</span>
+                  <motion.div
+                    key={score}
+                    animate={{ scale: [0.96, 1, 0.96] }}
+                    transition={{ duration: 1.2, ease: "easeInOut" }}
+                  >
+                    <ProgressRing value={score} size={52} strokeWidth={6} />
+                  </motion.div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      </AnimatePresence>
 
       {/* Summary row */}
       <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-5">
@@ -507,7 +531,7 @@ export function AccountShieldView() {
                 (Date.now() - new Date(acc.password_set_at).getTime()) / 86400000 > 90;
               return (
                 <Card key={acc.id} className={cn(
-                  "group",
+                  "group transition-[border-color] duration-500",
                   acc.wall === "breached" && "border-red/30",
                   acc.wall === "at_risk" && "border-amber/20",
                 )}>
@@ -515,7 +539,7 @@ export function AccountShieldView() {
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-3">
                         <div className={cn(
-                          "flex h-10 w-10 items-center justify-center rounded-xl",
+                          "flex h-10 w-10 items-center justify-center rounded-xl transition-colors duration-500",
                           acc.wall === "open" ? "bg-cyan/15 text-cyan" :
                             acc.wall === "breached" ? "bg-red/15 text-red" :
                               acc.wall === "at_risk" ? "bg-amber/15 text-amber" : "bg-green/15 text-green",
@@ -528,20 +552,42 @@ export function AccountShieldView() {
                               {formatSite(acc.site)}
                               {acc.label ? <span className="text-ink-muted"> · {acc.label}</span> : null}
                             </p>
-                            <span className={cn("inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider", wallMeta.cls)}>
-                              <span className={cn("h-1.5 w-1.5 rounded-full", wallMeta.dot)} />
-                              {wallMeta.label}
-                            </span>
+                            <AnimatePresence mode="popLayout">
+                              <motion.span
+                                key={acc.wall || "open"}
+                                initial={{ opacity: 0, y: -6, scale: 0.8 }}
+                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.8 }}
+                                transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                                className={cn("relative inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider", wallMeta.cls)}
+                              >
+                                {(acc.wall === "breached" || acc.wall === "at_risk") && (
+                                  <motion.span
+                                    className={cn("absolute inset-0 rounded-full opacity-60", acc.wall === "breached" ? "bg-red/30" : "bg-amber/30")}
+                                    animate={{ opacity: [0.15, 0.5, 0.15], scale: [1, 1.06, 1] }}
+                                    transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
+                                  />
+                                )}
+                                <span className={cn("relative h-1.5 w-1.5 rounded-full", wallMeta.dot)} />
+                                <span className="relative">{wallMeta.label}</span>
+                              </motion.span>
+                            </AnimatePresence>
                           </div>
                           <p className="font-mono text-xs text-ink-muted">{acc.identifier}</p>
                         </div>
                       </div>
-                      <span className={cn(
-                        "font-mono text-lg font-bold",
-                        acc.security_score >= 80 ? "text-green" : acc.security_score >= 50 ? "text-amber" : "text-red",
-                      )}>
+                      <motion.span
+                        key={acc.security_score}
+                        initial={{ opacity: 0.5, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ duration: 0.35 }}
+                        className={cn(
+                          "font-mono text-lg font-bold transition-colors duration-500",
+                          acc.security_score >= 80 ? "text-green" : acc.security_score >= 50 ? "text-amber" : "text-red",
+                        )}
+                      >
                         {acc.security_score}
-                      </span>
+                      </motion.span>
                     </div>
 
                     {/* Defense checklist */}

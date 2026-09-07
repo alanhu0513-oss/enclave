@@ -47,6 +47,16 @@ router.post('/accounts/:id/scan', async (req, res) => {
   }
 });
 
+/** Run the automatic shield sweep now (all due accounts + fresh-corpus recheck) */
+router.post('/sweep', async (req, res) => {
+  try {
+    const result = await shield.runAutoSweep(req.user.userId);
+    return success(res, result, 'Shield sweep complete');
+  } catch (e) {
+    return error(res, e.message || 'Sweep failed', 400);
+  }
+});
+
 /** Re-run the pwned-password sweep on all stored credentials */
 router.post('/accounts/recheck', async (req, res) => {
   try {

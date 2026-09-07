@@ -98,6 +98,18 @@ async function runSourceChecks(identifier) {
     console.warn('[AccountShield] web check failed:', e.message);
   }
 
+  try {
+    const stealers = await withTimeout(checkStealerLogs(identifier), 'stealer-logs');
+    if (stealers.ok) checked.stealer_log = true;
+    for (const f of stealers.findings || []) {
+      if (!findings.some((x) => x.type === 'stealer_log' && x.indicator === f.indicator)) {
+        findings.push(f);
+      }
+    }
+  } catch (e) {
+    console.warn('[AccountShield] stealer-log check failed:', e.message);
+  }
+
   const domains = Object.keys(checked);
   return { findings, checked: domains.length ? domains : ['none'] };
 }
@@ -121,6 +133,54 @@ async function searchDarkWebSources(identifier) {
     return Array.isArray(r) ? { results: r } : (r || { results: [] });
   } catch (e) {
     return { results: [] };
+  }
+}
+
+/* ─── Stealer-log feed (Hudson Rock OSINT, free, no API key) ───
+ * Real infostealer malware harvests: an email in the cavalier corpus means
+ * malware on an infected machine captured it along with passwords and a list
+ * of services the victim used. This is the closest thing to a live attacker
+ * inventory for a normal person — HIBP tracks past dumps, this tracks
+ * actively-collected credentials.
+ */
+const STEALER_LOG_URL = 'https://cavalier.hudsonrock.com/api/json/v2/osint-tools/search-by-email';
+
+async function checkStealerLogs(identifier) {
+  const email = normalizeIdentifier(identifier);
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return { findings: [], ok: true };
+  try {
+    const resp = await fetch(STEALER_LOG_URL + '?email=' + encodeURIComponent(email), {
+      headers: { 'user-agent': 'Enclave-Account-Shield/1.0' },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!resp.ok) return { findings: [], ok: false };
+    const body = await resp.json().catch(() => null);
+    if (!body || !Array.isArray(body.stealers)) return { findings: [], ok: false };
+    const findings = [];
+    for (const s of body.stealers.slice(0, 3)) {
+      const pwCount = (s.top_passwords || []).length;
+      const serviceCount = (s.total_user_services || 0) + (s.total_corporate_services || 0);
+      const when = s.date_compromised
+        ? ` The infected computer last captured it ${new Date(s.date_compromised).toUTCString().replace('GMT', '')} UTC.`
+        : '';
+      findings.push({
+        source: 'stealer_log',
+        type: 'stealer_log',
+        indicator: email,
+        headline: 'Identity harvested by info-stealer malware',
+        detail: `${email} was captured on an infostealer-compromised machine` +
+          (s.computer_name && !/not found/i.test(String(s.computer_name)) ? ` ("${s.computer_name}")` : '') +
+          `.${when}` +
+          (pwCount ? ` ${pwCount} masked credential(s) were recovered alongside it.` : '') +
+          (serviceCount ? ` It grants ~${serviceCount} service(s) to whoever holds it.` : '') +
+          (pwCount ? ' Assume anything you reused with this email is compromised, and rotate it now.' : ''),
+        severity: 'high',
+      });
+    }
+    return { findings, ok: true };
+  } catch (e) {
+    console.warn('[AccountShield] stealer-log check failed:', e.message);
+    return { findings: [], ok: false };
   }
 }
 
@@ -822,13 +882,30 @@ async function notifyBreachReminder(userId, account, count) {
 async function runAutoSweep(userId) {
   const accounts = await listAccounts(userId);
   const results = [];
+  let changed = false;
   for (const a of accounts) {
     const stale = !a.last_checked_at || (Date.now() - new Date(a.last_checked_at).getTime() > 24 * 3600 * 1000);
     if (stale) {
-      try { results.push(await scanAccount(userId, a.id)); } catch (e) { results.push({ accountId: a.id, error: e.message }); }
+      try {
+        const r = await scanAccount(userId, a.id);
+        if (r.newFindings > 0) changed = true;
+        results.push(r);
+      } catch (e) {
+        results.push({ accountId: a.id, error: e.message });
+      }
     }
   }
-  return results;
+
+  // Every sweep also re-runs the fresh-corpus check on stored credentials.
+  try {
+    const rc = await recheckCredentials(userId);
+    if (rc.length > 0) changed = true;
+    results.push({ rechecked: rc.length, changed: rc });
+  } catch (e) {
+    console.warn('[AccountShield] auto-sweep recheck failed:', e.message);
+  }
+
+  return { results, changed, sweptAt: new Date().toISOString() };
 }
 
 /* ─── Credential barrier: set / check / harden ─── */
@@ -999,6 +1076,50 @@ async function propagateContamination(userId, breachedAccountIds) {
     }
   }
   return { propagated };
+}
+
+/* ─── Global scheduled sweep (all users) ───
+ * Guards the whole shield: sweeps due accounts and re-runs the fresh-corpus
+ * check on stored credentials for every user. Called on a timer so new
+ * stealer-log captures and breach dumps surface even when no one manually
+ * scans.
+ */
+async function sweepAllUsers({ reason = 'periodic' } = {}) {
+  const usersTbl = await table('users');
+  const users = await usersTbl.all();
+  const summary = { reason, scannedUsers: 0, findingsDelivered: 0, errors: [] };
+
+  for (const user of users) {
+    try {
+      const r = await runAutoSweep(user.id);
+      summary.scannedUsers++;
+      if (r.changed) summary.findingsDelivered++;
+    } catch (e) {
+      summary.errors.push({ userId: user.id, message: e.message });
+    }
+  }
+  return summary;
+}
+
+// Stagger per-user sweeps so a full masthead re-sweep does not hammer the
+// (shared) stealer/pwned corpora in one thundering herd.
+const SWEEP_INTERVAL_MS = 6 * 60 * 60 * 1000; // every 6h
+const USER_STAGGER_MS = 400;
+
+function startSweepScheduler() {
+  if (global.__enclaveShieldSweeper) return;
+  const run = async () => {
+    try {
+      const summary = await sweepAllUsers();
+      console.log(`[AccountShield] scheduled sweep done: ${summary.scannedUsers} user(s), ${summary.findingsDelivered} with new findings`);
+    } catch (e) {
+      console.warn('[AccountShield] scheduled sweep failed:', e.message);
+    }
+  };
+  run();
+  global.__enclaveShieldSweeper = setInterval(run, SWEEP_INTERVAL_MS);
+  if (global.__enclaveShieldSweeper.unref) global.__enclaveShieldSweeper.unref();
+  console.log(`[AccountShield] scheduled sweep every ${SWEEP_INTERVAL_MS / 3600000}h`);
 }
 
 /* ─── Contain all: escalate every breached / at-risk account at once ─── */
@@ -1227,6 +1348,9 @@ module.exports = {
   accountSummary,
   runAutoSweep,
   runSourceChecks,
+  sweepAllUsers,
+  startSweepScheduler,
+  checkStealerLogs,
   setCredential,
   getCredentialStatus,
   recheckCredentials,

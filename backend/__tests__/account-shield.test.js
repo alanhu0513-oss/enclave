@@ -43,6 +43,10 @@ beforeAll(async () => {
         : "AAAAA:1\n";
       return { ok: true, status: 200, text: async () => body };
     }
+    // Hudson Rock stealer-log corpus is stubbed so scans stay hermetic.
+    if (u.includes("cavalier.hudsonrock.com")) {
+      return { ok: true, status: 200, json: async () => ({ steerers: [], stealers: [] }) };
+    }
     return realFetch(url, opts);
   };
   const res = await request(app)
@@ -448,6 +452,99 @@ describe("Account Shield Routes", () => {
       const active = lds.body.data.lockdowns.some((l) => l.status === "active");
       expect(active).toBe(true);
     }, 60000);
+  });
+
+  describe("Shield sweep (auto + manual)", () => {
+    it("runs a manual shield sweep and reports a clean summary", async () => {
+      const reg = await request(app)
+        .post("/api/auth/register")
+        .send({ email: "sweep.master@test.com", password: "TestPass123!", fullName: "Sweep Master" });
+      const t2 = reg.body.data.token;
+      await request(app)
+        .post("/api/account-shield/accounts")
+        .set("Authorization", `Bearer ${t2}`)
+        .send({ site: "steam", identifier: "sweep.master" });
+
+      const res = await request(app)
+        .post("/api/account-shield/sweep")
+        .set("Authorization", `Bearer ${t2}`)
+        .timeout(120000);
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.changed).toBe(false);
+      expect(res.body.data.sweptAt).toBeDefined();
+      const scanned = res.body.data.results.filter((r) => r.newFindings !== undefined);
+      expect(scanned).toHaveLength(1);
+    }, 120000);
+  });
+});
+
+describe("Stealer-log feed (Hudson Rock OSINT)", () => {
+  const shield = require("../src/services/account-shield");
+
+  it("parses a hit into a high-severity finding with malware context", async () => {
+    const fake = jest.fn(async () => ({
+      ok: true,
+      json: async () => ({
+        message: "associated with an infected computer",
+        stealers: [
+          {
+            total_corporate_services: 2,
+            total_user_services: 14,
+            date_compromised: "2026-09-06T19:27:05.000Z",
+            computer_name: "DESKTOP-TEST (kl)",
+            operating_system: "Windows 10 Pro 22H2",
+            malware_path: "Not Found",
+            antiviruses: ["Windows Defender"],
+            top_passwords: ["P@ssw0rd1", "Tr0ub4dor"],
+            top_logins: ["victim@test.com", "victim"],
+          },
+        ],
+        total_corporate_services: 2,
+        total_user_services: 14,
+      }),
+    }));
+    const real = global.fetch;
+    global.fetch = fake;
+    try {
+      const { findings, ok } = await shield.checkStealerLogs("victim@test.com");
+      expect(ok).toBe(true);
+      expect(findings.length).toBeGreaterThan(0);
+      expect(findings[0].source).toBe("stealer_log");
+      expect(findings[0].severity).toBe("high");
+      expect(findings[0].headline).toMatch(/info-stealer/i);
+      expect(findings[0].detail).toMatch(/2 masked credential/i);
+      expect(findings[0].detail).toMatch(/16 service\(s\)/);
+      expect(findings[0].detail).toMatch(/DESKTOP-TEST/);
+    } finally {
+      global.fetch = real;
+    }
+  });
+
+  it("returns empty (with ok:false) when the corpus is unreachable", async () => {
+    const real = global.fetch;
+    global.fetch = async () => ({ ok: false });
+    try {
+      const { findings, ok } = await shield.checkStealerLogs("other@test.com");
+      expect(ok).toBe(false);
+      expect(findings).toHaveLength(0);
+    } finally {
+      global.fetch = real;
+    }
+  });
+
+  it("skips non-email identifiers", async () => {
+    const real = global.fetch;
+    let called = false;
+    global.fetch = async () => { called = true; return { ok: true, json: async () => ({}) }; };
+    try {
+      const { findings, ok } = await shield.checkStealerLogs("steamuser123");
+      expect(called).toBe(false);
+      expect(ok).toBe(true);
+      expect(findings).toHaveLength(0);
+    } finally {
+      global.fetch = real;
+    }
   });
 });
 

@@ -244,8 +244,8 @@ export function AccountShieldView() {
   const [loadingGuide, setLoadingGuide] = useState<string | null>(null);
   const [showGuide, setShowGuide] = useState<Record<string, boolean>>({});
   const [intel, setIntel] = useState<ShieldIntelligence | null>(null);
-  const [rechecking, setRechecking] = useState(false);
   const [containing, setContaining] = useState(false);
+  const [sweeping, setSweeping] = useState(false);
 
   const loadAll = useCallback(async () => {
     try {
@@ -364,26 +364,6 @@ export function AccountShieldView() {
     }
   }
 
-  async function recheckAll() {
-    setRechecking(true);
-    try {
-      const r: any = await api.recheckAccountShield();
-      const changed = r?.changed || [];
-      toast({
-        title: changed.length ? "Re-sweep found exposure" : "Re-sweep clean",
-        body: changed.length
-          ? `${changed.length} stored credential(s) now appear in breach corpora.`
-          : "No stored credential appeared in a new breach corpus.",
-        variant: changed.length ? "error" : "success",
-      });
-      await loadAll();
-    } catch (e: any) {
-      toast({ title: "Re-sweep failed", body: e.message, variant: "error" });
-    } finally {
-      setRechecking(false);
-    }
-  }
-
   async function containAll() {
     setContaining(true);
     try {
@@ -401,6 +381,25 @@ export function AccountShieldView() {
       toast({ title: "Containment failed", body: e.message, variant: "error" });
     } finally {
       setContaining(false);
+    }
+  }
+
+  async function runSweep() {
+    setSweeping(true);
+    try {
+      const r: any = await api.sweepAccountShield();
+      toast({
+        title: r?.changed ? "Sweep flagged exposure" : "Shield sweep clean",
+        body: r?.changed
+          ? "New breach or stealer exposure found — review findings."
+          : "All watched accounts re-swept against breaches and stealer logs.",
+        variant: r?.changed ? "error" : "success",
+      });
+      await loadAll();
+    } catch (e: any) {
+      toast({ title: "Sweep failed", body: e.message, variant: "error" });
+    } finally {
+      setSweeping(false);
     }
   }
 
@@ -533,12 +532,12 @@ export function AccountShieldView() {
                 <Button
                   size="sm"
                   variant="ghost"
-                  onClick={recheckAll}
-                  disabled={rechecking || accounts.length === 0}
-                  title="Re-run the pwned-password sweep on every stored credential"
+                  onClick={runSweep}
+                  disabled={sweeping || accounts.length === 0}
+                  title="Re-sweep all watched accounts against breaches, stealer logs, and pwned credentials"
                 >
-                  {rechecking ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-                  Re-check
+                  {sweeping ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                  Sweep now
                 </Button>
                 <div className="flex items-center gap-3">
                   <span className="text-sm font-bold text-ink">Shield</span>

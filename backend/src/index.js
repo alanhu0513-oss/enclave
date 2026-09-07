@@ -432,6 +432,15 @@ async function start() {
     console.warn('[QUEUE] Worker init warning:', e.message);
   }
 
+  // Start the Account Shield auto-sweep scheduler (periodic breach + stealer
+  // re-sweep across all watched accounts).
+  try {
+    const shield = require('./services/account-shield');
+    shield.startSweepScheduler();
+  } catch (e) {
+    console.warn('[ACCOUNT-SHIELD] scheduler init warning:', e.message);
+  }
+
   server.listen(PORT, () => {
     console.log(`Enclave API running on http://localhost:${PORT}`);
   });

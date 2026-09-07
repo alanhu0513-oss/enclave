@@ -351,6 +351,7 @@ export const api = {
     apiFetch(`/account-shield/breaches/${id}/resolve`, { method: "PATCH" }),
   getAccountShieldSummary: () => apiFetch("/account-shield/summary"),
   recheckAccountShield: () => post("/account-shield/accounts/recheck"),
+  sweepAccountShield: () => post("/account-shield/sweep"),
   containAllAccountShield: () => post("/account-shield/accounts/contain-all"),
   getAccountShieldIntelligence: () =>
     apiFetch("/account-shield/intelligence"),

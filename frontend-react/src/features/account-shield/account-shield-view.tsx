@@ -21,6 +21,8 @@ import {
   KeyRound,
   Fingerprint,
   Siren,
+  Network,
+  ShieldAlert,
 } from "lucide-react";
 import { useApp } from "@/lib/app-context";
 import { api } from "@/lib/api";
@@ -53,6 +55,32 @@ interface WatchAccount {
   wall?: WallTone;
   created_at: string;
   checklist?: ChecklistItem[];
+  exploitability?: Exploitability;
+  reuse?: {
+    password_reused: boolean;
+    password_with: string[];
+    identifier_shared: boolean;
+    identifier_with: string[];
+  };
+  contamination?: ContaminationLink[];
+}
+
+type RiskBand = "high" | "medium" | "low";
+
+interface Exploitability {
+  score: number;
+  risk_band: RiskBand;
+  value: number;
+  blast_radius?: boolean;
+  summary: string;
+  attack_steps: string[];
+}
+
+interface ContaminationLink {
+  accountId: string;
+  site: string;
+  identifier: string;
+  reason: "password" | "identity";
 }
 
 interface ChecklistItem {
@@ -111,6 +139,36 @@ interface ShieldSummary {
   status: string;
   walls: WallBreakdown;
   lockdowns: number;
+  intelligence?: {
+    blast_radius: number;
+    exposed: number;
+    exposure: { high: number; medium: number; low: number };
+    weakest?: { id: string; site: string; identifier: string; score: number; band: RiskBand } | null;
+  };
+}
+
+interface ShieldIntelligence {
+  accounts: {
+    id: string;
+    site: string;
+    identifier: string;
+    wall: WallTone;
+    value: number;
+    self_breached: boolean;
+    exploitation: Exploitability;
+    contaminated: ContaminationLink[];
+  }[];
+  edges: {
+    source: string;
+    target: string;
+    reason: "password" | "identity";
+    source_site: string;
+    target_site: string;
+  }[];
+  blast_radius: number;
+  exposed: number;
+  exposure: { high: number; medium: number; low: number };
+  weakest: { id: string; site: string; identifier: string; score: number; band: RiskBand } | null;
 }
 
 interface CredentialStatus {
@@ -185,21 +243,26 @@ export function AccountShieldView() {
   const [guide, setGuide] = useState<Record<string, SiteGuide | null>>({});
   const [loadingGuide, setLoadingGuide] = useState<string | null>(null);
   const [showGuide, setShowGuide] = useState<Record<string, boolean>>({});
+  const [intel, setIntel] = useState<ShieldIntelligence | null>(null);
+  const [rechecking, setRechecking] = useState(false);
+  const [containing, setContaining] = useState(false);
 
   const loadAll = useCallback(async () => {
     try {
-      const [accs, br, sum, sts, lds] = await Promise.all([
+      const [accs, br, sum, sts, lds, ig] = await Promise.all([
         api.getAccountShieldAccounts(),
         api.getAccountShieldBreaches(),
         api.getAccountShieldSummary(),
         api.getAccountShieldSites(),
         api.getAccountShieldLockdowns(),
+        api.getAccountShieldIntelligence(),
       ]);
       setAccounts((accs as any)?.accounts || []);
       setBreaches((br as any)?.breaches || []);
       setSummary(sum);
       setSites((sts as any)?.sites || []);
       setLockdowns((lds as any)?.lockdowns || []);
+      setIntel(ig as any);
     } catch (e: any) {
       toast({ title: "Could not load Account Shield", body: e.message, variant: "error" });
     } finally {
@@ -298,6 +361,46 @@ export function AccountShieldView() {
       toast({ title: "Lockdown failed", body: e.message, variant: "error" });
     } finally {
       setLockingId(null);
+    }
+  }
+
+  async function recheckAll() {
+    setRechecking(true);
+    try {
+      const r: any = await api.recheckAccountShield();
+      const changed = r?.changed || [];
+      toast({
+        title: changed.length ? "Re-sweep found exposure" : "Re-sweep clean",
+        body: changed.length
+          ? `${changed.length} stored credential(s) now appear in breach corpora.`
+          : "No stored credential appeared in a new breach corpus.",
+        variant: changed.length ? "error" : "success",
+      });
+      await loadAll();
+    } catch (e: any) {
+      toast({ title: "Re-sweep failed", body: e.message, variant: "error" });
+    } finally {
+      setRechecking(false);
+    }
+  }
+
+  async function containAll() {
+    setContaining(true);
+    try {
+      const r: any = await api.containAllAccountShield();
+      const n = r?.initiated?.length ?? 0;
+      toast({
+        title: n ? "Full containment initiated" : "Nothing new to contain",
+        body: n
+          ? `${n} lockdown playbook(s) opened across the blast radius.`
+          : "Every at-risk account already has an active lockdown.",
+        variant: n ? "error" : "success",
+      });
+      await loadAll();
+    } catch (e: any) {
+      toast({ title: "Containment failed", body: e.message, variant: "error" });
+    } finally {
+      setContaining(false);
     }
   }
 
@@ -422,13 +525,21 @@ export function AccountShieldView() {
               </div>
               <div className="flex items-center gap-4">
                 {breachedCount > 0 && (
-                  <Button variant="destructive" onClick={() => {
-                    const breached = accounts.find((a) => a.wall === "breached" || a.wall === "at_risk");
-                    if (breached) lockDown(breached.id, formatSite(breached.site));
-                  }}>
-                    <Siren className="h-4 w-4" /> Initiate lockdown
+                  <Button variant="destructive" onClick={containAll} disabled={containing}>
+                    {containing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Siren className="h-4 w-4" />}
+                    Contain all
                   </Button>
                 )}
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={recheckAll}
+                  disabled={rechecking || accounts.length === 0}
+                  title="Re-run the pwned-password sweep on every stored credential"
+                >
+                  {rechecking ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                  Re-check
+                </Button>
                 <div className="flex items-center gap-3">
                   <span className="text-sm font-bold text-ink">Shield</span>
                   <motion.div
@@ -453,6 +564,87 @@ export function AccountShieldView() {
         <BarrierStat label="Open findings" value={openBreaches.length} tone="amber" />
         <BarrierStat label="Lockdowns" value={summary?.lockdowns ?? 0} tone="cyan" />
       </div>
+
+      {/* Threat intelligence (offender model) */}
+      {intel && accounts.length > 0 && (
+        <Card className="border-cyan/20 bg-gradient-to-r from-cyan/[0.04] to-transparent">
+          <CardContent className="space-y-4 pt-6">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan/15 text-cyan">
+                  <Network className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="font-display text-sm font-bold text-ink">Barrier intelligence</p>
+                  <p className="text-xs text-ink-muted">
+                    Offender model — how each account falls, and how far one compromise reaches.
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                {(Object.keys(intel.exposure) as RiskBand[]).filter((b) => (intel.exposure[b] || 0) > 0).map((b) => (
+                  <ExploitBadge key={b} band={b} score={intel.exposure[b] || 0} />
+                ))}
+                <Badge variant={intel.blast_radius > 0 ? "red" : "muted"}>
+                  <ShieldAlert className="h-3 w-3" /> Blast radius: {intel.blast_radius} contaminated
+                </Badge>
+              </div>
+            </div>
+
+            {intel.edges.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {intel.edges.map((e, i) => (
+                  <span
+                    key={i}
+                    className={cn(
+                      "rounded-full border px-2 py-0.5 text-[10px] font-medium tracking-wide",
+                      e.reason === "password"
+                        ? "border-amber/30 bg-amber/10 text-amber"
+                        : "border-white/10 bg-surface-1 text-ink-muted",
+                    )}
+                    title={`${e.source_site} ⇄ ${e.target_site} share ${e.reason}`}
+                  >
+                    {e.source_site} ⇄ {e.target_site} · shared {e.reason}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {intel.weakest && intel.exposed > 0 && (
+              <div className="flex flex-col gap-3 rounded-xl border border-red/20 bg-red/[0.04] p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-start gap-3">
+                  <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-red/15 text-red">
+                    <ShieldAlert className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-ink">Weakest link: {formatSite(intel.weakest.site)}</p>
+                    <p className="font-mono text-xs text-ink-muted">{intel.weakest.identifier}</p>
+                    <p className="mt-1 text-xs text-ink-muted">
+                      {accounts.find((a) => a.id === intel.weakest!.id)?.exploitability?.attack_steps?.join(" → ") ||
+                        "Exploitability path pending."}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="text-right">
+                    <p className="font-mono text-lg font-bold text-red">{intel.weakest.score}</p>
+                    <p className="text-[10px] uppercase tracking-wider text-ink-muted">Exploitability</p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={() => lockDown(intel.weakest!.id, formatSite(intel.weakest!.site))}
+                    disabled={lockingId === intel.weakest.id}
+                  >
+                    {lockingId === intel.weakest.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Siren className="h-3.5 w-3.5" />}
+                    Lockdown
+                  </Button>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Add form */}
       {showForm && (
@@ -606,6 +798,29 @@ export function AccountShieldView() {
                       {stale && <Badge variant="amber">Rotation stale</Badge>}
                     </div>
 
+                    {/* Barrier intelligence */}
+                    {acc.exploitability && (acc.exploitability.score > 0 || (acc.contamination?.length ?? 0) > 0) && (
+                      <div className="space-y-1.5 rounded-xl border border-white/10 bg-surface-0/60 p-3">
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs font-semibold uppercase tracking-wider text-ink-muted">Barrier intel</p>
+                          <ExploitBadge band={acc.exploitability.risk_band} score={acc.exploitability.score} />
+                        </div>
+                        {(acc.contamination?.length ?? 0) > 0 && (
+                          <p className="text-xs text-amber">
+                            <ShieldAlert className="mr-1 inline h-3 w-3" />
+                            In blast radius via {acc.contamination!.map((c) => `${formatSite(c.site)} (${c.reason})`).join(", ")}
+                          </p>
+                        )}
+                        {acc.reuse?.password_reused && (
+                          <p className="text-xs text-amber">
+                            <KeyRound className="mr-1 inline h-3 w-3" />
+                            Password shared with {acc.reuse.password_with.length} other account{acc.reuse.password_with.length === 1 ? "" : "s"}
+                          </p>
+                        )}
+                        <p className="text-xs text-ink-muted">Attacker path: {acc.exploitability.attack_steps[0]}</p>
+                      </div>
+                    )}
+
                     {/* Hardening checklist */}
                     {acc.checklist && (
                       <div className="space-y-1.5 rounded-xl border border-white/10 bg-surface-0/60 p-3">
@@ -613,7 +828,7 @@ export function AccountShieldView() {
                           <p className="text-xs font-semibold uppercase tracking-wider text-ink-muted">Hardening checklist</p>
                           <span className={cn(
                             "text-xs font-bold",
-                            acc.checklist.filter((c) => c.met).length >= 6 ? "text-green" : "text-amber",
+                            acc.checklist.filter((c) => c.met).length >= acc.checklist.length - 2 ? "text-green" : "text-amber",
                           )}>
                             {acc.checklist.filter((c) => c.met).length}/{acc.checklist.length}
                           </span>
@@ -899,5 +1114,20 @@ function DefenseIcon({ ok, okText, failText, icon: Icon }: {
     <Badge variant="green"><Icon className="h-3 w-3" /> {okText}</Badge>
   ) : (
     <Badge variant="muted"><Icon className="h-3 w-3" /> {failText}</Badge>
+  );
+}
+
+function ExploitBadge({ band, score }: { band: RiskBand; score: number }) {
+  const meta: Record<RiskBand, { label: string; cls: string }> = {
+    high: { label: "High exploitability", cls: "bg-red/15 text-red border-red/30" },
+    medium: { label: "Medium exploitability", cls: "bg-amber/15 text-amber border-amber/30" },
+    low: { label: "Low exploitability", cls: "bg-green/15 text-green border-green/30" },
+  };
+  const m = meta[band];
+  return (
+    <span className={cn("inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider", m.cls)}>
+      <span className={cn("h-1.5 w-1.5 rounded-full", band === "high" ? "bg-red" : band === "medium" ? "bg-amber" : "bg-green")} />
+      {m.label} · {score}
+    </span>
   );
 }

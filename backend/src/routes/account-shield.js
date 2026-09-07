@@ -47,6 +47,36 @@ router.post('/accounts/:id/scan', async (req, res) => {
   }
 });
 
+/** Re-run the pwned-password sweep on all stored credentials */
+router.post('/accounts/recheck', async (req, res) => {
+  try {
+    const result = await shield.recheckCredentials(req.user.userId);
+    return success(res, { changed: result }, 'Credential re-sweep complete');
+  } catch (e) {
+    return error(res, e.message || 'Re-sweep failed', 400);
+  }
+});
+
+/** Contain all breached / at-risk accounts with lockdown playbooks at once */
+router.post('/accounts/contain-all', async (req, res) => {
+  try {
+    const result = await shield.containAll(req.user.userId);
+    return success(res, result, 'Full containment initiated');
+  } catch (e) {
+    return error(res, e.message || 'Containment failed', 400);
+  }
+});
+
+/** Barrier intelligence: exploitability scores + contamination graph */
+router.get('/intelligence', async (req, res) => {
+  try {
+    const result = await shield.getIntelligence(req.user.userId);
+    return success(res, result);
+  } catch (e) {
+    return error(res, e.message || 'Failed to load intelligence', 500);
+  }
+});
+
 /** List breach findings (optionally per account) */
 router.get('/breaches', async (req, res) => {
   try {

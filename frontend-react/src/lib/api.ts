@@ -350,6 +350,10 @@ export const api = {
   resolveAccountShieldBreach: (id: string) =>
     apiFetch(`/account-shield/breaches/${id}/resolve`, { method: "PATCH" }),
   getAccountShieldSummary: () => apiFetch("/account-shield/summary"),
+  recheckAccountShield: () => post("/account-shield/accounts/recheck"),
+  containAllAccountShield: () => post("/account-shield/accounts/contain-all"),
+  getAccountShieldIntelligence: () =>
+    apiFetch("/account-shield/intelligence"),
 
   // Community
   getThreatShares: (opts?: { limit?: number; type?: string }) => {

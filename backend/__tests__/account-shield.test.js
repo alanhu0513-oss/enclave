@@ -309,18 +309,21 @@ describe("Account Shield Routes", () => {
   });
 
   describe("Hardening checklist in account listings", () => {
-    it("exposes the 7-item checklist with met flags", async () => {
+    it("exposes the 10-item checklist with met flags", async () => {
       const list = await request(app)
         .get("/api/account-shield/accounts")
         .set("Authorization", `Bearer ${token}`);
       const account = list.body.data.accounts.find((a) => a.identifier === "barrier.good@test.com");
       expect(account).toBeDefined();
       expect(Array.isArray(account.checklist)).toBe(true);
-      expect(account.checklist.length).toBe(7);
+      expect(account.checklist.length).toBe(10);
       const keys = account.checklist.map((c) => c.key);
       expect(keys).toContain("credential");
       expect(keys).toContain("mfa");
       expect(keys).toContain("not_in_breach");
+      expect(keys).toContain("no_reuse");
+      expect(keys).toContain("no_contamination");
+      expect(keys).toContain("recent_sweep");
       const fortifiedItem = account.checklist.find((c) => c.key === "credential");
       expect(fortifiedItem.met).toBe(true);
       expect(typeof fortifiedItem.weight).toBe("number");
@@ -359,5 +362,142 @@ describe("Account Shield Routes", () => {
         .set("Authorization", `Bearer ${token}`);
       expect(list.body.data.accounts.find((a) => a.id === accountId)).toBeUndefined();
     });
+  });
+
+  describe("Barrier intelligence — blast radius & exploitability", () => {
+    it("flags an account as contaminated when a credential it shares becomes pwned", async () => {
+      const accA = await addAccount("google", "contam.shared@gmail.com");
+      const accB = await addAccount("steam", "contam.shared@gmail.com");
+      const set = await request(app)
+        .put(`/api/account-shield/accounts/${accA.id}/credential`)
+        .set("Authorization", `Bearer ${token}`)
+        .send({ password: "Solo#Pr1me!Z9x", mfaEnabled: true });
+      expect(set.status).toBe(200);
+
+      const before = await request(app)
+        .get("/api/account-shield/intelligence")
+        .set("Authorization", `Bearer ${token}`);
+      const bBefore = before.body.data.accounts.find((a) => a.id === accB.id);
+      expect(bBefore).toBeDefined();
+      expect(bBefore.contamination).toHaveLength(0);
+      expect(bBefore.exploitability.score).toBeGreaterThanOrEqual(0);
+      expect(["high", "medium", "low"]).toContain(bBefore.exploitability.risk_band);
+
+      // Simulate the credential appearing in a fresh breach corpus after the gate.
+      addPwned("Solo#Pr1me!Z9x", 3);
+      const rc = await request(app)
+        .post("/api/account-shield/accounts/recheck")
+        .set("Authorization", `Bearer ${token}`)
+        .timeout(60000);
+      expect(rc.status).toBe(200);
+      expect(rc.body.data.changed.length).toBeGreaterThan(0);
+
+      const after = await request(app)
+        .get("/api/account-shield/intelligence")
+        .set("Authorization", `Bearer ${token}`);
+      const bAfter = after.body.data.accounts.find((a) => a.id === accB.id);
+      expect(bAfter.contamination.some((c) => c.accountId === accA.id)).toBe(true);
+      expect(bAfter.exploitability.blast_radius).toBe(true);
+      expect(bAfter.wall).toBe("at_risk");
+
+      const breaches = await request(app)
+        .get("/api/account-shield/breaches")
+        .set("Authorization", `Bearer ${token}`);
+      const blast = breaches.body.data.breaches.find(
+        (b) => b.type === "blast_radius" && b.account_id === accB.id,
+      );
+      expect(blast).toBeDefined();
+      expect(blast.severity).toBe("high");
+    }, 60000);
+
+    it("reports contamination graph edges and exposure bands", async () => {
+      const intel = await request(app)
+        .get("/api/account-shield/intelligence")
+        .set("Authorization", `Bearer ${token}`);
+      expect(intel.status).toBe(200);
+      expect(Array.isArray(intel.body.data.edges)).toBe(true);
+      const identityEdge = intel.body.data.edges.find((e) => e.reason === "identity");
+      expect(identityEdge).toBeDefined();
+      expect(typeof intel.body.data.blast_radius).toBe("number");
+      expect(intel.body.data.exposure).toBeDefined();
+    });
+
+    it("summarizes intelligence on the summary endpoint", async () => {
+      const res = await request(app)
+        .get("/api/account-shield/summary")
+        .set("Authorization", `Bearer ${token}`);
+      expect(res.status).toBe(200);
+      expect(res.body.data.intelligence).toBeDefined();
+      expect(typeof res.body.data.intelligence.blast_radius).toBe("number");
+      expect(res.body.data.intelligence.weakest).toBeDefined();
+    });
+  });
+
+  describe("Contain all (bulk lockdown)", () => {
+    it("initiates lockdowns for breached and at-risk accounts in one action", async () => {
+      const res = await request(app)
+        .post("/api/account-shield/accounts/contain-all")
+        .set("Authorization", `Bearer ${token}`);
+      expect(res.status).toBe(200);
+      expect(res.body.data.initiated.length).toBeGreaterThan(0);
+
+      const lds = await request(app)
+        .get("/api/account-shield/lockdowns")
+        .set("Authorization", `Bearer ${token}`);
+      expect(lds.status).toBe(200);
+      const active = lds.body.data.lockdowns.some((l) => l.status === "active");
+      expect(active).toBe(true);
+    }, 60000);
+  });
+});
+
+describe("Barrier intelligence engine (pure analysis)", () => {
+  const base = {
+    user_id: "u",
+    site: "google",
+    identifier: "owner@test.com",
+    status: "monitoring",
+    credential_enc: null,
+    mfa_enabled: false,
+    strength_score: 0,
+    pwned_count: 0,
+    last_checked_at: null,
+    last_lockdown_at: null,
+    security_score: 100,
+    created_at: "2026-01-01T00:00:00Z",
+  };
+
+  const shield = require("../src/services/account-shield");
+
+  it("scores a breached no-2FA account high and maps its attacker path", () => {
+    const bank = { ...base, id: "bank", site: "bank", pwned_count: 5, credential_enc: "v1:stub" };
+    const gmail = { ...base, id: "gmail", site: "gmail", identifier: "owner@test.com" };
+    const { byAccount } = shield.analyzeAccounts([bank, gmail], []);
+
+    const bankInfo = byAccount.get("bank");
+    expect(bankInfo.self_breached).toBe(true);
+    expect(bankInfo.exploitation.risk_band).toBe("high");
+    expect(bankInfo.exploitation.attack_steps.length).toBeGreaterThan(0);
+    expect(bankInfo.exploitation.value).toBeGreaterThanOrEqual(100);
+
+    // Identity sharing puts gmail inside the banking blast radius.
+    const gmailInfo = byAccount.get("gmail");
+    expect(gmailInfo.contaminated.some((c) => c.accountId === "bank")).toBe(true);
+    expect(gmailInfo.exploitation.blast_radius).toBe(true);
+  });
+
+  it("keeps a fortified pairing low-risk with no false contamination", () => {
+    const a = {
+      ...base, id: "a", site: "paypal", credential_enc: "v1:stub",
+      mfa_enabled: true, strength_score: 4,
+    };
+    const b = {
+      ...base, id: "b", site: "xbox", identifier: "gamer@other.com",
+      credential_enc: "v1:stub", mfa_enabled: true, strength_score: 4,
+    };
+    const { byAccount } = shield.analyzeAccounts([a, b], []);
+    expect(byAccount.get("a").exploitation.risk_band).toBe("low");
+    expect(byAccount.get("a").contaminated).toHaveLength(0);
+    expect(byAccount.get("b").contaminated).toHaveLength(0);
   });
 });

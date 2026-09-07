@@ -258,6 +258,194 @@ const WALL_COPY = {
   open: { label: 'Open', tone: 'cue' },
 };
 
+/* ─── Barrier Intelligence engine ───
+ * Beyond passive monitoring, the shield models the *attacker's path*:
+ * it builds a reuse graph across watched accounts (shared passwords and
+ * shared identifiers), computes an exploitability score per account, and
+ * when one credential is breached it propagates a blast-radius warning to
+ * every account it can reach. This is the kill-chain view that password
+ * managers and HIBP-style tools do not provide.
+ */
+
+// Monetary / access value of an account if it falls to an attacker.
+// Weighted so the weakest link is surfaced by real-world impact, not just
+// by password strength alone.
+const ACCOUNT_VALUE = {
+  bank: 100, 'credit-card': 100, gmail: 90, google: 85, work: 85, paypal: 80,
+  crypto: 75, twitter: 65, steam: 60, playstation: 55, xbox: 55, discord: 50,
+  epic: 50, nintendo: 45, roblox: 40, instagram: 70, facebook: 70, other: 40,
+};
+
+function accountValue(site) {
+  return ACCOUNT_VALUE[site] || 40;
+}
+
+function isBreached(account, breachesByAccount) {
+  if ((account.pwned_count || 0) > 0) return true;
+  const list = breachesByAccount.get(account.id);
+  if (!list) return false;
+  // Blast-radius warnings describe exposure through a *linked* account, not a
+  // confirmed compromise of this account's own credentials — so they do not
+  // elevate the wall to breached.
+  return list.some((b) => b.status !== 'resolved' && b.type !== 'blast_radius');
+}
+
+/* Pure, deterministic analysis over the accounts a user is defending.
+ * Both listAccounts and getIntelligence share this so the UI, offender
+ * model, and cleanup workflows agree on the same picture.
+ */
+function analyzeAccounts(accounts, breaches) {
+  const breachesByAccount = new Map();
+  for (const b of breaches) {
+    if (!breachesByAccount.has(b.account_id)) breachesByAccount.set(b.account_id, []);
+    breachesByAccount.get(b.account_id).push(b);
+  }
+
+  // Reuse index: normalized identifiers and SHA-256(password) buckets.
+  const idIndex = new Map();
+  const pwIndex = new Map();
+  for (const a of accounts) {
+    if (a.identifier) {
+      if (!idIndex.has(a.identifier)) idIndex.set(a.identifier, []);
+      idIndex.get(a.identifier).push(a.id);
+    }
+    if (a.credential_enc) {
+      const pw = decryptSecret(a.credential_enc);
+      if (pw) {
+        const h = sha256Hex('pw:' + pw);
+        if (!pwIndex.has(h)) pwIndex.set(h, []);
+        pwIndex.get(h).push(a.id);
+      }
+    }
+  }
+
+  const byId = new Map(accounts.map((a) => [a.id, a]));
+  const byAccount = new Map();
+  const graphEdges = [];
+  const seenPairs = new Set();
+
+  for (const a of accounts) {
+    const pw = a.credential_enc ? decryptSecret(a.credential_enc) : null;
+    const password_with = (pw ? pwIndex.get(sha256Hex('pw:' + pw)) : [])
+      .filter((oid) => oid !== a.id);
+    const identifier_with = ((idIndex.get(a.identifier) || [])).filter((oid) => oid !== a.id);
+
+    const selfBreached = isBreached(a, breachesByAccount);
+    const contaminatedVia = [];
+    const linked = [...new Set([...password_with, ...identifier_with])];
+    for (const lid of linked) {
+      const other = byId.get(lid);
+      if (other && isBreached(other, breachesByAccount)) {
+        contaminatedVia.push({
+          accountId: lid,
+          site: other.site,
+          identifier: other.identifier,
+          reason: password_with.includes(lid) ? 'password' : 'identity',
+        });
+      }
+    }
+
+    const contaminated = [];
+    const seen = new Set();
+    for (const v of contaminatedVia) {
+      if (seen.has(v.accountId)) continue;
+      seen.add(v.accountId);
+      contaminated.push(v);
+    }
+
+    byAccount.set(a.id, {
+      self_breached: selfBreached,
+      password_reused: password_with.length > 0,
+      password_with,
+      identifier_shared: identifier_with.length > 0,
+      identifier_with,
+      contaminated,
+      exploitation: exploitabilityOf(a, {
+        selfBreached,
+        pwReused: password_with.length > 0,
+        idShared: identifier_with.length > 0,
+        contaminated: contaminated.length > 0,
+      }),
+    });
+  }
+
+  for (const a of accounts) {
+    const info = byAccount.get(a.id);
+    for (const oid of [...info.password_with, ...info.identifier_with]) {
+      const pair = a.id < oid ? a.id + '|' + oid : oid + '|' + a.id;
+      if (seenPairs.has(pair)) continue;
+      seenPairs.add(pair);
+      const reason = info.password_with.includes(oid) ? 'password' : 'identity';
+      graphEdges.push({ source: a.id, target: oid, reason });
+    }
+  }
+
+  return { byAccount, graphEdges };
+}
+
+function exploitabilityOf(account, { selfBreached, pwReused, idShared, contaminated }) {
+  let score = 0;
+  const reasons = [];
+  const hasCred = !!account.credential_enc;
+
+  if (selfBreached) { score += 45; reasons.push('Breached credentials are already in the wild'); }
+  if ((account.pwned_count || 0) > 0) { score += (account.pwned_count || 0) > 10 ? 20 : 12; }
+  if (!hasCred) { score += 25; reasons.push('No credential stored — defense posture unknown'); }
+  else if ((account.strength_score || 0) < 3) { score += 12; reasons.push('Stored password is weak'); }
+  if (!account.mfa_enabled) { score += 15; reasons.push('No 2FA — a single leaked password unlocks the account'); }
+  if (pwReused) { score += 15; reasons.push('Password is reused across accounts'); }
+  if (contaminated) { score += 20; reasons.push('Linked to a breached account — blast radius exposure'); }
+  if (idShared) { score += 5; reasons.push('Identity used on multiple accounts'); }
+  if (!selfBreached && (account.pwned_count || 0) > 0) { /* counted above */ }
+
+  // Recent lockdown/hardening lowers exploitability: the attacker path was
+  // already walked once and the credential was rolled.
+  if (account.last_lockdown_at && !selfBreached) { score = Math.max(0, score - 10); }
+
+  score = Math.min(100, Math.round(score));
+  const risk_band = score >= 60 ? 'high' : score >= 30 ? 'medium' : 'low';
+
+  const attack_steps = [];
+  if (selfBreached) attack_steps.push('Obtain the leaked credential from a public breach corpus');
+  if (pwReused && (selfBreached || contaminated)) {
+    attack_steps.push('Replay that credential against linked accounts sharing the same password');
+  }
+  if (idShared && (selfBreached || contaminated)) {
+    attack_steps.push('Use the shared email/username to pivot via password-reset recovery lanes');
+  }
+  if (!account.mfa_enabled && hasCred) {
+    attack_steps.push('Autonomously authenticate — MFA is absent, so a single secret is enough');
+  }
+  if (attack_steps.length === 0 && contaminated) {
+    attack_steps.push('Exploit the leaked password or recovery email to reach this account');
+  }
+  if (attack_steps.length === 0 && !hasCred) {
+    attack_steps.push('Attempt credential stuffing with the leaked value against this account');
+  }
+  if (attack_steps.length === 0) {
+    attack_steps.push('No viable attacker path identified from current data');
+  }
+
+  return {
+    score,
+    risk_band,
+    value: accountValue(account.site),
+    blast_radius: contaminated,
+    summary: reasons.length ? reasons[0] : 'No known exploitable path',
+    attack_steps,
+  };
+}
+
+// Merge analysis into a single account's wall state: a compromised wall
+// stays breached; anything touched by blast radius drops to at-risk.
+function analyzedWall(account, info) {
+  const base = wallState(account);
+  if (base === 'breached') return 'breached';
+  if (info.self_breached) return 'breached';
+  if (info.contaminated.length > 0) return 'at_risk';
+  return base;
+}
+
 /* ─── Lockdown playbooks (official provider recovery lanes) ─── */
 
 const PLAYBOOKS = {
@@ -336,12 +524,12 @@ function playbookFor(site) {
 }
 
 /* ─── Per-account hardening checklist ───
- * Seven defensive steps that make up a fortified wall. Each is
- * evaluated against live account state so the UI can show exactly
- * what is left to do.
+ * Ten defensive steps that make up a fortified wall. Each is evaluated
+ * against live account state — including blast-radius analysis — so the UI
+ * can show exactly what is left to do.
  */
 
-function checklistFor(account, openFindings = 0) {
+function checklistFor(account, openFindings = 0, info = {}) {
   const hasCred = !!account.credential_enc;
   const strong = (account.strength_score ?? 0) >= 3;
   const pwned = (account.pwned_count ?? 0) > 0;
@@ -353,6 +541,12 @@ function checklistFor(account, openFindings = 0) {
   }
   const monitored = !!account.last_checked_at && account.last_result !== 'pending';
   const noOpen = openFindings === 0;
+  const reused = !!info.password_reused;
+  const contaminatedNow = !!(info.contaminated && info.contaminated.length);
+  let recent = false;
+  if (account.last_checked_at) {
+    recent = (Date.now() - new Date(account.last_checked_at).getTime()) < 7 * 86400000;
+  }
 
   return [
     { key: 'credential', label: 'Store the account password in the vault', met: hasCred, weight: 2 },
@@ -362,6 +556,9 @@ function checklistFor(account, openFindings = 0) {
     { key: 'fresh_rotation', label: 'Rotate the password within 90 days', met: hasCred && !stale, weight: 1 },
     { key: 'monitored', label: 'Dark-web and leak sweep has run', met: monitored, weight: 1 },
     { key: 'no_open_findings', label: 'No unresolved breach findings', met: noOpen, weight: 2 },
+    { key: 'no_reuse', label: 'Avoid password reuse across accounts', met: !reused, weight: 2 },
+    { key: 'no_contamination', label: 'Not exposed via linked breached accounts', met: !contaminatedNow, weight: 2 },
+    { key: 'recent_sweep', label: 'Dark-web sweep within the last 7 days', met: recent, weight: 1 },
   ];
 }
 
@@ -402,16 +599,31 @@ async function listAccounts(userId) {
   const rows = await tbl.filter({ user_id: userId });
   rows.sort((a, b) => (a.created_at > b.created_at ? -1 : 1));
   const breaches = await listBreaches(userId);
+  const analysis = analyzeAccounts(rows, breaches);
   const openByAccount = {};
   for (const b of breaches) {
     if (b.status !== 'resolved') openByAccount[b.account_id] = (openByAccount[b.account_id] || 0) + 1;
   }
-  return rows.map((r) => ({
-    ...r,
-    wall: wallState(r),
-    credential_enc: !!r.credential_enc,
-    checklist: checklistFor(r, openByAccount[r.id] || 0),
-  }));
+  return rows.map((r) => {
+    const info = analysis.byAccount.get(r.id) || {
+      self_breached: false, contaminated: [], password_reused: false,
+      identifier_shared: false, password_with: [], identifier_with: [],
+    };
+    return {
+      ...r,
+      credential_enc: !!r.credential_enc,
+      wall: analyzedWall(r, info),
+      exploitability: info.exploitation,
+      reuse: {
+        password_reused: info.password_reused,
+        password_with: info.password_with,
+        identifier_shared: info.identifier_shared,
+        identifier_with: info.identifier_with,
+      },
+      contamination: info.contaminated,
+      checklist: checklistFor(r, openByAccount[r.id] || 0, info),
+    };
+  });
 }
 
 async function removeAccount(userId, accountId) {
@@ -502,7 +714,11 @@ async function scanAccount(userId, accountId) {
     updated_at: finished,
   });
 
-  if (newCount > 0) await notifyBreachReminder(userId, account, newCount);
+  if (newCount > 0) {
+    // Kill-chain: any account sharing this identity/password is now at risk.
+    await propagateContamination(userId, accountId);
+    await notifyBreachReminder(userId, account, newCount);
+  }
 
   const updated = await tbl.find({ id: accountId });
   return {
@@ -542,6 +758,16 @@ async function accountSummary(userId) {
   const walls = { fortified: 0, at_risk: 0, breached: 0, open: 0 };
   for (const a of accounts) walls[a.wall] = (walls[a.wall] || 0) + 1;
 
+  const blast = accounts.filter((a) => (a.contamination || []).length > 0);
+  const exposure = { high: 0, medium: 0, low: 0 };
+  for (const a of accounts) {
+    const band = a.exploitability?.risk_band;
+    if (band) exposure[band] = (exposure[band] || 0) + 1;
+  }
+  const highest = [...accounts].sort(
+    (x, y) => (y.exploitability?.score || 0) - (x.exploitability?.score || 0),
+  )[0] || null;
+
   return {
     accounts: accounts.length,
     watched: accounts.length,
@@ -551,6 +777,18 @@ async function accountSummary(userId) {
     status: open.length > 0 ? 'attention' : (accounts.length ? 'protected' : 'empty'),
     walls,
     lockdowns: accounts.filter((a) => a.last_lockdown_at).length,
+    intelligence: {
+      blast_radius: blast.length,
+      exposed: accounts.filter((a) => a.wall === 'breached' || a.wall === 'at_risk').length,
+      exposure,
+      weakest: highest ? {
+        id: highest.id,
+        site: highest.site,
+        identifier: highest.identifier,
+        score: highest.exploitability?.score ?? 0,
+        band: highest.exploitability?.risk_band ?? 'low',
+      } : null,
+    },
   };
 }
 
@@ -642,7 +880,7 @@ async function setCredential(userId, accountId, { password, mfaEnabled }) {
   return credentialStatus(updated);
 }
 
-async function credentialStatus(account, openFindings = 0) {
+async function credentialStatus(account, openFindings = 0, info = {}) {
   const enc = !!account.credential_enc;
   let stale = null;
   if (account.password_set_at) {
@@ -659,7 +897,7 @@ async function credentialStatus(account, openFindings = 0) {
     rotation_stale_days: stale,
     wall: wallState(account),
     checked_at: account.credential_checked_at || null,
-    checklist: checklistFor(account, openFindings),
+    checklist: checklistFor(account, openFindings, info),
   };
 }
 
@@ -670,7 +908,10 @@ async function getCredentialStatus(userId, accountId) {
   const breachTbl = await table('account_breaches');
   const open = await breachTbl.filter({ account_id: accountId });
   const openFindings = open.filter((b) => b.status !== 'resolved').length;
-  return credentialStatus(account, openFindings);
+  const all = await tbl.filter({ user_id: userId });
+  const breaches = await listBreaches(userId);
+  const info = analyzeAccounts(all, breaches).byAccount.get(accountId) || {};
+  return credentialStatus(account, openFindings, info);
 }
 
 /* Re-run the pwned-password check for stored credentials (auto-sweep).
@@ -705,7 +946,191 @@ async function recheckCredentials(userId) {
     });
     results.push({ accountId: account.id, pwned });
   }
+
+  if (results.length > 0) {
+    await propagateContamination(userId, results.map((r) => r.accountId));
+  }
   return results;
+}
+
+/* ─── Blast radius: propagate a confirmed breach to linked accounts ───
+ * Once a credential is confirmed pwned, every watched account that shares
+ * a password or identity with it becomes a contamination target. This is
+ * the piece password managers lack: they flag the single account; we flag
+ * the whole graph an attacker can chain through.
+ */
+async function propagateContamination(userId, breachedAccountIds) {
+  const list = Array.isArray(breachedAccountIds) ? breachedAccountIds : [breachedAccountIds];
+  const tbl = await table('account_watchlist');
+  const breachTbl = await table('account_breaches');
+  const accounts = await tbl.filter({ user_id: userId });
+  const breaches = await listBreaches(userId);
+  const analysis = analyzeAccounts(accounts, breaches);
+  const byId = new Map(accounts.map((a) => [a.id, a]));
+  const existing = await breachTbl.filter({ user_id: userId });
+  const known = new Set(existing.map((b) => (b.indicator || '') + '|' + b.type));
+  const now = new Date().toISOString();
+  let propagated = 0;
+
+  for (const breachedId of list) {
+    const src = byId.get(breachedId);
+    if (!src) continue;
+    for (const a of accounts) {
+      if (a.id === breachedId) continue;
+      const info = analysis.byAccount.get(a.id);
+      const link = info && info.contaminated.find((c) => c.accountId === breachedId);
+      if (!link) continue;
+      const key = `blast:${breachedId}|blast_radius`;
+      if (known.has(key)) continue;
+      known.add(key);
+      await breachTbl.create({
+        id: uuidv4(), user_id: userId, account_id: a.id,
+        source: 'blast_radius', type: 'blast_radius',
+        indicator: breachedId,
+        headline: `Compromise of ${src.site} exposes ${a.site}`,
+        detail: `${src.identifier} shared a ${link.reason} with ${a.identifier}. Attackers who reach the breached credential now have a path into this account. Rotate the shared secret and change the recovery email.`,
+        severity: 'high', status: 'new',
+        first_seen: now, created_at: now,
+      });
+      // Blast exposure drops the victim wall to at-risk (via analysis) but
+      // is not the same as a confirmed credential compromise, which is what
+      // wall_escalated stands for.
+      propagated++;
+    }
+  }
+  return { propagated };
+}
+
+/* ─── Contain all: escalate every breached / at-risk account at once ─── */
+
+async function containAll(userId) {
+  const tbl = await table('account_watchlist');
+  const ldTbl = await table('account_lockdowns');
+  const accounts = await listAccounts(userId);
+  const targets = accounts.filter((a) => a.wall === 'breached' || a.wall === 'at_risk');
+  const active = await listLockdowns(userId);
+  const activeByAccount = new Set(active.filter((l) => l.status === 'active').map((l) => l.account_id));
+  const now = new Date().toISOString();
+  const initiated = [];
+  const already = [];
+
+  for (const a of targets) {
+    const pb = playbookFor(a.site);
+    const record = {
+      id: uuidv4(),
+      user_id: userId,
+      account_id: a.id,
+      site: a.site,
+      identifier: a.identifier,
+      playbook: JSON.stringify({ ...pb, triggered_at: now, source: 'contain_all' }),
+      created_at: now,
+      status: 'active',
+    };
+    if (activeByAccount.has(a.id)) { already.push(a.id); continue; }
+    await ldTbl.create(record);
+    activeByAccount.add(a.id);
+    initiated.push({ id: record.id, site: a.site, identifier: a.identifier, reason: a.wall, playbook: pb });
+    await tbl.update({ id: a.id }, { wall_escalated: true, last_lockdown_at: now, updated_at: now });
+  }
+
+  if (initiated.length > 0) await notifyContainAllEmail(userId, initiated, already);
+  return { initiated, alreadyActive: already, totalTargets: targets.length };
+}
+
+/* ─── Intelligence snapshot (offender model + contamination graph) ─── */
+
+async function getIntelligence(userId) {
+  const tbl = await table('account_watchlist');
+  const rows = await tbl.filter({ user_id: userId });
+  const breaches = await listBreaches(userId);
+  const analysis = analyzeAccounts(rows, breaches);
+  const byId = new Map(rows.map((a) => [a.id, a]));
+
+  const accounts = rows.map((r) => {
+    const info = analysis.byAccount.get(r.id);
+    return {
+      id: r.id,
+      site: r.site,
+      identifier: r.identifier,
+      wall: analyzedWall(r, info),
+      value: info.exploitation.value,
+      self_breached: info.self_breached,
+      reuse: {
+        password_reused: info.password_reused,
+        password_with: info.password_with,
+        identifier_shared: info.identifier_shared,
+        identifier_with: info.identifier_with,
+      },
+      contamination: info.contaminated,
+      exploitability: info.exploitation,
+    };
+  });
+
+  const edges = analysis.graphEdges
+    .map(({ source, target, reason }) => {
+      const s = byId.get(source);
+      const t = byId.get(target);
+      if (!s || !t) return null;
+      return { source, target, reason, source_site: s.site, target_site: t.site };
+    })
+    .filter(Boolean);
+
+  const exposed = accounts.filter((a) => a.wall === 'breached' || a.wall === 'at_risk');
+  const exposure = { high: 0, medium: 0, low: 0 };
+  for (const a of accounts) {
+    exposure[a.exploitability.risk_band] = (exposure[a.exploitability.risk_band] || 0) + 1;
+  }
+  const weakest = [...exposed].sort(
+    (x, y) => (y.exploitability.score * (y.value || 1)) - (x.exploitability.score * (x.value || 1)),
+  )[0] || null;
+
+  return {
+    accounts,
+    edges,
+    blast_radius: accounts.filter((a) => a.contamination.length > 0).length,
+    exposed: exposed.length,
+    exposure,
+    weakest,
+  };
+}
+
+async function notifyContainAllEmail(userId, initiated, already) {
+  try {
+    const notify = require('./notifications');
+    const usersTable = await table('users');
+    const user = await usersTable.find({ id: userId });
+    if (!user || !user.email) return;
+
+    const items = initiated.map((a) =>
+      `<li style="margin:6px 0;color:#f4f6fb;background:#121318;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 12px;">
+        <strong style="color:#FF3366;">${a.site}</strong> — <span style="font-family:monospace;font-size:12px;color:#00F2FE;">${a.identifier}</span>
+        <p style="margin:4px 0 0;font-size:12px;color:#9aa0b5;">${a.reason} · playbook: ${a.playbook.title}</p>
+      </li>`).join('');
+    const alreadyHtml = already.length
+      ? `<p style="color:#9aa0b5;font-size:12px;">${already.length} account(s) already have an active lockdown — a second one was not opened.</p>`
+      : '';
+
+    const detail = `
+      <div style="font-family:system-ui,sans-serif;max-width:560px;margin:0 auto;padding:24px;">
+        <div style="background:linear-gradient(135deg,#050507,#0D0E12);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:28px;">
+          <div style="font-size:44px;margin-bottom:12px;text-align:center;">&#128737;&#65039;</div>
+          <h2 style="color:#f4f6fb;font-size:22px;margin:0 0 6px;text-align:center;">Barrier breach — full containment</h2>
+          <p style="color:#9aa0b5;font-size:14px;margin:0 0 18px;text-align:center;">
+            <strong style="color:#FF3366;">${initiated.length} lockdown playbook(s)</strong> initiated in one action.
+            Accounts sharing the exposed passwords or identities are now in the blast radius.
+          </p>
+          <ol style="list-style:none;padding:0;margin:0 0 18px;">${items}</ol>
+          ${alreadyHtml}
+          <p style="color:#f4f6fb;font-size:13px;background:#121318;border:1px solid rgba(255,255,255,0.08);padding:12px;border-radius:10px;margin:0;">
+            Rotate every listed password to a new, unique value, enable 2FA, and remove any recovery
+            email you do not recognise. Call providers (banks, cards) for the highest-value accounts.
+          </p>
+        </div>
+      </div>`;
+    await notify.sendEmail(user.email, `Enclave — Containment: ${initiated.length} accounts locked down`, detail);
+  } catch (e) {
+    console.warn('[AccountShield] contain-all email failed:', e.message);
+  }
 }
 
 /* ─── Lockdown: escalate a suspected breach into a recovery playbook ─── */
@@ -812,4 +1237,8 @@ module.exports = {
   WALL_COPY,
   checklistFor,
   getSiteGuide,
+  analyzeAccounts,
+  propagateContamination,
+  containAll,
+  getIntelligence,
 };

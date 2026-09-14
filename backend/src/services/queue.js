@@ -219,5 +219,6 @@ module.exports = {
   JobTypes,
   getQueueStatus,
   closeQueues,
+  getRedisConnection,
   get isMemoryQueue() { return useMemoryQueue; },
 };

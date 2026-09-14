@@ -22,7 +22,7 @@ from fastapi import FastAPI, File, UploadFile, HTTPException, Form
 from fastapi.responses import JSONResponse
 
 logger = logging.getLogger("enclave-ml")
-logging.basicConfig(level=os.environ.get("LOG_LEVEL", "info"))
+logging.basicConfig(level=os.environ.get("LOG_LEVEL", "info").upper())
 
 app = FastAPI(title="Enclave ML Service", version="2.0.0")
 

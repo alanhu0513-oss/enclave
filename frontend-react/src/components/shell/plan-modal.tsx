@@ -16,7 +16,9 @@ import {
   Siren,
   Sparkles,
   KeyRound,
-  Fingerprint,
+  Radar,
+  Network,
+  Star,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -50,6 +52,13 @@ interface Plan {
   price: number;
   tagline?: string;
   features?: string[];
+  shield?: {
+    watchedAccounts?: number;
+    stealerLogs?: boolean;
+    autoSweep?: boolean;
+    blastRadius?: boolean;
+    containAll?: boolean;
+  };
 }
 
 export function PlanModal({ open, onClose }: PlanModalProps) {
@@ -155,7 +164,7 @@ export function PlanModal({ open, onClose }: PlanModalProps) {
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-lg overflow-hidden p-0">
-        <Header onClose={onClose} title={onPaidPlan ? "Manage Protection Plan" : "Get Enclave Plus"} />
+        <Header onClose={onClose} title={onPaidPlan ? "Manage Protection Plan" : "Get the Security Shield"} />
 
         {/* Multi-page flow: outcome → risk reduction → pricing */}
         <div className="relative min-h-[480px] p-6">
@@ -243,15 +252,15 @@ function StepOutcome({ loading, following, breaches, locked, totalBreaches, onNe
             </motion.div>
             <h3 className="max-w-sm font-display text-2xl font-bold tracking-tight text-ink">
               {loading ? "Loading…" : doingWell
-                ? "Your accounts look protected"
-                : `${breaches} exposed ${breaches === 1 ? "password is" : "passwords are"} on the dark web`}
+                ? "Your shield is holding"
+                : `${breaches} exposed ${breaches === 1 ? "credential is" : "credentials are"} in the breach corpus`}
             </h3>
             <p className="mt-2 max-w-sm text-sm text-ink-muted">
               {doingWell
-                ? "You're on the Free plan. Pro goes beyond a single scan — it watches every account continuously and blocks breaches before they spread."
+                ? "You're on the Free plan. Paid shields go beyond a single scan — they watch every account against breach dumps and live stealer logs, then contain a leak before it spreads."
                 : following > 0
-                  ? `We monitor ${following} ${following === 1 ? "account" : "accounts"} for you. Pro keeps this wall standing around the clock.`
-                  : "Continuous monitoring catches breaches the moment they surface — not a month later."}
+                  ? `We watch ${following} ${following === 1 ? "account" : "accounts"} for you. Paid tiers keep this wall standing around the clock and auto-sweep every 6 hours.`
+                  : "Continuous monitoring catches captures the moment they hit — not a month later."}
             </p>
             {doingWell && (
               <div className="mt-4 flex items-center gap-2 text-xs text-ink-muted">
@@ -268,7 +277,7 @@ function StepOutcome({ loading, following, breaches, locked, totalBreaches, onNe
         )}
       </div>
       <Button onClick={onNext} disabled={loading} className="mt-6 h-12 w-full text-sm font-semibold">
-        See how Pro protects this <ChevronRight className="ml-1.5 h-4 w-4" />
+        See how the Shield protects this <ChevronRight className="ml-1.5 h-4 w-4" />
       </Button>
     </motion.div>
   );
@@ -278,6 +287,9 @@ function StepOutcome({ loading, following, breaches, locked, totalBreaches, onNe
 function StepRisk({ tiers, onNext }: { tiers: any[]; onNext: () => void }) {
   const shield = tiers.find((t) => t.id === "shield");
   const headline = shield?.tagline || "Continuous protection, your terms";
+  const shieldMeta = shield?.shield;
+  const watch = shieldMeta?.watchedAccounts ?? 250;
+  const sweep = shieldMeta?.autoSweep;
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -291,7 +303,7 @@ function StepRisk({ tiers, onNext }: { tiers: any[]; onNext: () => void }) {
           <div className="flex items-start gap-3">
             <Sparkles className="mt-0.5 h-5 w-5 shrink-0 text-cyan" />
             <div>
-              <h3 className="font-display text-lg font-bold text-ink">Pro protection, your terms</h3>
+              <h3 className="font-display text-lg font-bold text-ink">The full barrier, your terms</h3>
               <p className="mt-1 text-sm text-ink-muted">{headline}</p>
             </div>
           </div>
@@ -299,19 +311,23 @@ function StepRisk({ tiers, onNext }: { tiers: any[]; onNext: () => void }) {
 
         <ul className="space-y-3">
           <RiskRow icon={KeyRound} text="Vault every credential — encrypted, never shown to anyone" done />
-          <RiskRow icon={Shield} text="Block weak, reused, and breached passwords at the gate" done />
-          <RiskRow icon={Fingerprint} text="Escalate to step-by-step lockdown playbooks when breached" done />
+          <RiskRow icon={Radar} text={`Auto-sweep ${watch}+ accounts against breach dumps and live stealer logs`} done />
+          <RiskRow icon={Network} text="Map the blast radius of every reused password across your accounts" done />
+          <RiskRow icon={Siren} text="One-tap contain-all lockdown playbooks when a leak spreads" done />
         </ul>
 
         <div className="rounded-xl border border-white/[0.07] bg-surface-1/40 p-4">
-          <p className="text-sm font-medium text-ink">Zero commitment, zero surprises</p>
+          <p className="text-sm font-medium text-ink">Widen the wall when you need it</p>
           <div className="mt-2 flex flex-wrap gap-2">
-            <Badge variant="cyan">Cancel anytime</Badge>
-            <Badge variant="muted">14-day free trial on annual</Badge>
-            <Badge variant="muted">No hidden fees</Badge>
+            <Badge variant="cyan">{watch}+ watched accounts</Badge>
+            <Badge variant="muted">Breach + stealer-log sweeps</Badge>
+            <Badge variant="muted">Blast-radius mapping</Badge>
+            <Badge variant="muted">Contain-all lockdowns</Badge>
           </div>
           <p className="mt-3 text-xs text-ink-muted">
-            You&apos;ll never be charged at signup for a plan you don&apos;t use — start the trial and keep your wall standing.
+            {sweep
+              ? "Your shield never stops re-checking — new captures surface within hours, with a playbook waiting for every affected account."
+              : "Cancel anytime, no hidden fees. The shield stays on whatever tier you pick."}
           </p>
         </div>
       </div>
@@ -352,6 +368,16 @@ function StepPricing({ tiers, currentPlan, busy, onUpgrade, onAllPlans }: {
           </p>
         </div>
 
+        <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1">
+          <span className="flex items-center gap-0.5 text-ink">
+            {[0, 1, 2, 3, 4].map((i) => (
+              <Star key={i} className="h-3.5 w-3.5 fill-amber text-amber" />
+            ))}
+            <span className="ml-1 text-xs font-semibold">4.9</span>
+          </span>
+          <span className="text-xs text-ink-muted">2,100+ members already behind the shield</span>
+        </div>
+
         <div className="space-y-3">
           {/* Yearly — highlighted default */}
           <PlanCard
@@ -361,13 +387,17 @@ function StepPricing({ tiers, currentPlan, busy, onUpgrade, onAllPlans }: {
             period="year"
             weekly={fmtWeekly(yearly)}
             popular
-            tagline="Extra months of dark-web scanning + shown prominently"
+            subtle="No charge today · Cancel anytime"
+            tagline={shield?.shield ? `${shield.shield.watchedAccounts}+ watched accounts · full barrier` : "250+ watched accounts · full barrier"}
             busy={busy}
             onPick={() => onUpgrade("shield")}
           >
-            <li className="flex items-start gap-2 text-xs text-ink-muted"><Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-green" />14-day free trial, cancel before you pay</li>
-            <li className="flex items-start gap-2 text-xs text-ink-muted"><Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-green" />Continuous dark-web + paste monitoring</li>
+            <li className="flex items-start gap-2 text-xs text-ink-muted"><Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-green" />Stealer-log + breach auto-sweep every 6h</li>
+            <li className="flex items-start gap-2 text-xs text-ink-muted"><Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-green" />Blast-radius mapping + contain-all lockdowns</li>
             <li className="flex items-start gap-2 text-xs text-ink-muted"><Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-green" />Unlimited lockdown playbooks</li>
+            <li className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2 text-[11px] leading-relaxed text-ink-muted">
+              <span className="font-semibold text-ink">14-day trial:</span> start free &rarr; we remind you 2 days out &rarr; charged only if you stay
+            </li>
           </PlanCard>
 
           {/* Monthly — the "not ready to commit a year" escape hatch */}
@@ -380,7 +410,7 @@ function StepPricing({ tiers, currentPlan, busy, onUpgrade, onAllPlans }: {
             onPick={() => onUpgrade("pro")}
           >
             <li className="flex items-start gap-2 text-xs text-ink-muted"><Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-green" />Monthly billing, cancel anytime</li>
-            <li className="flex items-start gap-2 text-xs text-ink-muted"><Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-green" />Same wall, fewer advanced scans</li>
+            <li className="flex items-start gap-2 text-xs text-ink-muted"><Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-green" />25 watched accounts + stealer-log sweeps</li>
           </PlanCard>
         </div>
 
@@ -396,19 +426,20 @@ function StepPricing({ tiers, currentPlan, busy, onUpgrade, onAllPlans }: {
         )}
       </div>
       <p className="mt-4 text-center text-xs text-ink-faint">
-        Secured by Stripe · No charge until the trial ends
+        No commitment · Cancel anytime · Secured by Stripe
       </p>
     </motion.div>
   );
 }
 
-function PlanCard({ name, tierId, price, period, weekly, popular, tagline, busy, onPick, children }: {
+function PlanCard({ name, tierId, price, period, weekly, popular, subtle, tagline, busy, onPick, children }: {
   name: string;
   tierId: string;
   price: number;
   period: "month" | "year";
   weekly?: string;
   popular?: boolean;
+  subtle?: string;
   tagline?: string;
   busy: string | null;
   onPick: () => void;
@@ -444,6 +475,7 @@ function PlanCard({ name, tierId, price, period, weekly, popular, tagline, busy,
         {popular ? "Start 14-day free trial" : "Get started"}
         <ChevronRight className="ml-1.5 h-4 w-4" />
       </Button>
+      {subtle && <p className="text-center text-[11px] text-ink-muted">{subtle}</p>}
     </motion.div>
   );
 }
@@ -510,7 +542,12 @@ function AllPlanRow({ plan, currentPlan, busy, onUpgrade }: {
           {isPopular && <Badge variant="cyan">Popular</Badge>}
           {isCurrent && <Badge variant="green">Current</Badge>}
         </div>
-        <p className="mt-0.5 flex items-baseline gap-1.5">
+        <p className="mt-0.5 text-xs text-ink-muted">
+          {plan.shield?.watchedAccounts != null
+            ? `${plan.shield.watchedAccounts < 0 ? "Unlimited" : plan.shield.watchedAccounts} watched ${plan.shield.watchedAccounts === 1 ? "account" : "accounts"}${plan.shield.autoSweep ? " · 6h auto-sweep" : ""}${plan.shield.stealerLogs ? " · stealer logs" : ""}${plan.shield.blastRadius ? " · blast radius" : ""}${plan.shield.containAll ? " · contain-all" : ""}`
+            : plan.tagline}
+        </p>
+        <p className="mt-1 flex items-baseline gap-1.5">
           <span className="font-display text-lg font-bold text-ink">{fmtPrice(plan.price)}</span>
           <span className="text-xs text-ink-muted">/month</span>
         </p>

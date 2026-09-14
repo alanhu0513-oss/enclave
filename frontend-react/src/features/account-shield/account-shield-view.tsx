@@ -23,8 +23,12 @@ import {
   Siren,
   Network,
   ShieldAlert,
+  Sparkles,
+  ArrowRight,
+  X,
 } from "lucide-react";
 import { useApp } from "@/lib/app-context";
+import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -221,8 +225,11 @@ function formatSite(site: string) {
   return site.replace(/-/g, " ");
 }
 
+const UPGRADE_NUDGE_KEY = "enclave_shield_upgrade_nudge_dismissed";
+
 export function AccountShieldView() {
   const { toast } = useApp();
+  const { user } = useAuth();
   const [accounts, setAccounts] = useState<WatchAccount[]>([]);
   const [breaches, setBreaches] = useState<Breach[]>([]);
   const [lockdowns, setLockdowns] = useState<Lockdown[]>([]);
@@ -246,6 +253,14 @@ export function AccountShieldView() {
   const [intel, setIntel] = useState<ShieldIntelligence | null>(null);
   const [containing, setContaining] = useState(false);
   const [sweeping, setSweeping] = useState(false);
+  const [tiers, setTiers] = useState<any | null>(null);
+  const [nudgeDismissed, setNudgeDismissed] = useState(() => {
+    try {
+      return localStorage.getItem(UPGRADE_NUDGE_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
 
   const loadAll = useCallback(async () => {
     try {
@@ -273,6 +288,32 @@ export function AccountShieldView() {
   useEffect(() => {
     loadAll();
   }, [loadAll]);
+
+  useEffect(() => {
+    let active = true;
+    api
+      .getTiers()
+      .then((res: any) => {
+        if (active) setTiers(res?.tiers ?? null);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  function openPlans() {
+    window.dispatchEvent(new Event("enclave:open-plans"));
+  }
+
+  function dismissNudge() {
+    setNudgeDismissed(true);
+    try {
+      localStorage.setItem(UPGRADE_NUDGE_KEY, "1");
+    } catch {
+      /* noop */
+    }
+  }
 
   const openBreaches = useMemo(
     () => breaches.filter((b) => b.status !== "resolved"),
@@ -467,6 +508,11 @@ export function AccountShieldView() {
 
   const score = summary?.securityScore ?? 100;
   const breachedCount = (walls.breached || 0) + (walls.at_risk || 0);
+  const freeLimit = (tiers?.free?.shield?.watchedAccounts as number) ?? 3;
+  const shieldLimit = (tiers?.shield?.shield?.watchedAccounts as number) ?? 250;
+  const isFree = !user?.plan || user.plan === "free";
+  const watchedCount = summary?.watched ?? accounts.length;
+  const showNudge = isFree && !nudgeDismissed && accounts.length > 0 && watchedCount >= freeLimit;
 
   return (
     <StaggerContainer className="mx-auto max-w-6xl space-y-6 p-6">
@@ -482,6 +528,41 @@ export function AccountShieldView() {
           )
         }
       />
+
+      {/* Free-tier upgrade nudge — soft, non-blocking, dismissible */}
+      {showNudge && (
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, ease: "easeOut" }}
+          className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-cyan/25 bg-gradient-to-r from-cyan/[0.08] to-transparent px-4 py-3"
+        >
+          <div className="flex items-center gap-3">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-cyan/15 text-cyan">
+              <Sparkles className="h-4 w-4" />
+            </span>
+            <div>
+              <p className="text-sm font-semibold text-ink">Free shield limit reached</p>
+              <p className="text-xs text-ink-muted">
+                Free walls {freeLimit} accounts. Shield keeps {shieldLimit < 0 ? "unlimited" : shieldLimit} watched with
+                6h auto-sweeps and live stealer-log coverage.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="cyan" onClick={openPlans}>
+              See plans <ArrowRight className="h-3.5 w-3.5" />
+            </Button>
+            <button
+              onClick={dismissNudge}
+              className="rounded-lg p-1.5 text-ink-muted transition-colors hover:bg-white/[0.05] hover:text-ink"
+              aria-label="Dismiss"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </motion.div>
+      )}
 
       {/* Barrier status banner */}
       <AnimatePresence mode="wait">

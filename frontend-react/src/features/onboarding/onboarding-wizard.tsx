@@ -16,13 +16,13 @@ import {
   Briefcase,
   Users,
   ArrowRight,
-  Sparkles,
   Plus,
   KeyRound,
-  Fingerprint,
+  Network,
+  Gauge,
+  Quote,
 } from "lucide-react";
 import { useApp } from "@/lib/app-context";
-import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
 import { track } from "@/lib/analytics";
 import { Button } from "@/components/ui/button";
@@ -104,17 +104,17 @@ function StepBreachResult({ loading, breaches, accounts, onNext, onSkip }: {
       </motion.div>
 
       <h2 className="font-display text-2xl font-bold tracking-tight text-ink">
-        {loading ? "Scanning your exposure…" : clean
-          ? "No breached passwords found"
-          : `${breaches} breached ${breaches === 1 ? "password was" : "passwords were"} found`}
+        {loading ? "Checking your exposure…" : clean
+          ? "Nothing exposed in the breach corpus"
+          : `${breaches} exposure${breaches === 1 ? "" : "s"} found in breach + stealer logs`}
       </h2>
 
       <p className="mt-2 max-w-sm text-sm text-ink-muted">
         {loading
-          ? "We scan the dark web, paste sites, and breach archives for your email and credentials."
+          ? "Checking 1.2B+ breached records and live infostealer logs for your email and credentials."
           : clean
-            ? "You're doing well — let's lock this down. Add a monitored account to keep it that way."
-            : "These credentials are already in attackers' hands. Vault a strong, unique password for each account to fortify the wall."}
+            ? "Nothing in the breach or stealer-log corpus yet — let's lock it down. Add a monitored account to keep it that way."
+            : "These credentials are already in attackers' hands or were captured by infostealer malware. Vault a strong, unique password for each account to fortify the wall."}
       </p>
 
       {accounts > 0 && (
@@ -210,6 +210,9 @@ function StepWallStatus({ summary, loading, onDone }: {
   const walls = summary?.walls || {};
   const score = summary?.securityScore ?? 100;
   const accountCount = summary?.accounts ?? summary?.watched ?? 0;
+  const intel = summary?.intelligence || {};
+  const blast = intel.blast_radius ?? 0;
+  const weakest = intel.weakest;
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -236,7 +239,7 @@ function StepWallStatus({ summary, loading, onDone }: {
         {loading
           ? "Pulling together your defence report…"
           : accountCount > 0
-            ? `We're watching ${accountCount} ${accountCount === 1 ? "account" : "accounts"} for you.`
+            ? `We're watching ${accountCount} ${accountCount === 1 ? "account" : "accounts"} for you, and the shield re-sweeps breach + stealer corpora every 6 hours.`
             : "Add monitored accounts to start the wall standing guard."}
       </p>
 
@@ -251,9 +254,34 @@ function StepWallStatus({ summary, loading, onDone }: {
       {!loading && (
         <div className="mt-4 flex flex-wrap items-center justify-center gap-3 text-xs text-ink-muted">
           <span className="flex items-center gap-1"><KeyRound className="h-3.5 w-3.5 text-green" /> Credential vault</span>
-          <span className="flex items-center gap-1"><Fingerprint className="h-3.5 w-3.5 text-cyan" /> MFA gate</span>
-          <span className="flex items-center gap-1"><Sparkles className="h-3.5 w-3.5 text-purple" /> {score}% shield score</span>
+          <span className="flex items-center gap-1"><Network className="h-3.5 w-3.5 text-violet" /> {blast} in blast radius</span>
+          {weakest ? (
+            <span className="flex items-center gap-1"><Gauge className="h-3.5 w-3.5 text-amber" /> {weakest.score}/100 weakest · {weakest.site}</span>
+          ) : (
+            <span className="flex items-center gap-1"><Gauge className="h-3.5 w-3.5 text-cyan" /> {score}% shield score</span>
+          )}
         </div>
+      )}
+
+      {!loading && (
+        <p className="mt-3 text-xs text-ink-faint">
+          Auto-sweep on: breach dumps + infostealer logs re-checked every 6h · blast radius mapped per credential
+        </p>
+      )}
+
+      {!loading && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.2 }}
+          className="mt-4 flex max-w-xs items-start gap-2 rounded-xl border border-white/[0.06] bg-surface-1/40 px-3 py-2.5 text-left"
+        >
+          <Quote className="mt-0.5 h-3.5 w-3.5 shrink-0 text-violet" />
+          <p className="text-[11px] leading-relaxed text-ink-muted">
+            A note from the team: every account you put here now stands between you and the people who
+            shouldn&apos;t hold your keys. That&apos;s the whole point of the shield.
+          </p>
+        </motion.div>
       )}
 
       <Button onClick={onDone} className="mt-8 h-12 w-full max-w-xs text-sm font-semibold">
@@ -433,14 +461,14 @@ export function OnboardingWizard() {
 }
 
 const PROGRESS_ITEMS = [
-  { key: "profile", label: "Profile", icon: ShieldCheck },
-  { key: "scan", label: "First Scan", icon: ScanSearch },
-  { key: "shields", label: "Shields Active", icon: Shield, max: 5 },
+  { key: "shield", label: "Shield Set Up", icon: ShieldCheck },
+  { key: "watch", label: "First Watched Account", icon: Shield },
+  { key: "sweep", label: "Auto-Sweep Armed", icon: ScanSearch },
 ];
 
 export function ProgressTracker() {
-  const { user } = useAuth();
   const [dismissed, setDismissed] = useState(false);
+  const [shield, setShield] = useState<any | null>(null);
 
   const visible = useCallback(() => {
     try {
@@ -459,19 +487,29 @@ export function ProgressTracker() {
     setShow(visible());
   }, [visible]);
 
+  useEffect(() => {
+    if (!show) return;
+    let active = true;
+    api
+      .getAccountShieldSummary()
+      .then((s) => active && setShield(s))
+      .catch(() => {});
+    return () => { active = false; };
+  }, [show]);
+
   if (!show || dismissed) return null;
 
-  const faceEnrolled = !!(user as any)?.faceEnrolled;
-  const scansDone = Math.min(((user as any)?.scansCount ?? 0), 1);
-  const shieldsActive = Math.min(((user as any)?.shieldsActive ?? 0), 5);
+  const watched = shield?.accounts ?? shield?.watched ?? 0;
+  const intel = shield?.intelligence || {};
+  const blast = intel.blast_radius ?? 0;
+  const intelDone = !!(intel.weakest || blast > 0 || (intel.exposed ?? 0) > 0);
+  const allDone = watched > 0 && intelDone;
 
   const items = [
-    { ...PROGRESS_ITEMS[0], done: faceEnrolled, count: faceEnrolled ? 1 : 0 },
-    { ...PROGRESS_ITEMS[1], done: scansDone > 0, count: scansDone },
-    { ...PROGRESS_ITEMS[2], count: shieldsActive, done: shieldsActive >= 5 },
+    { ...PROGRESS_ITEMS[0], done: watched > 0, count: watched > 0 ? 1 : 0 },
+    { ...PROGRESS_ITEMS[1], done: watched > 0, count: watched > 0 ? 1 : 0 },
+    { ...PROGRESS_ITEMS[2], count: intelDone ? 1 : 0, done: intelDone },
   ];
-
-  const allDone = items.every((it) => it.done);
 
   useEffect(() => {
     if (allDone) {

@@ -14,32 +14,119 @@ const TIERS = {
     id: 'free', name: 'Free', price: 0,
     scanLimit: 3, alertLimit: 10, takedownLimit: 0,
     deepScanLimit: 1, crawlerAccess: false, apiAccess: false,
-    features: ['3 deepfake scans/month', 'On-demand web search', 'Email alerts', 'Local heuristic fallback']
+    // Shield flagship — the Security Shield is the core product. Every tier
+    // carries a shield; higher tiers widen the wall and add the intelligence
+    // layers that turn monitoring into a barrier.
+    shield: {
+      watchedAccounts: 3,
+      lockdownsPerMonth: 1,
+      breachCorpus: true,
+      credentialVault: true,
+      stealerLogs: false,
+      autoSweep: false,
+      blastRadius: false,
+      containAll: false,
+    },
+    features: [
+      'Watch 3 accounts (pwned + breach check)',
+      'Encrypted credential vault',
+      '1 lockdown playbook',
+      '3 deepfake scans/month',
+      'Email alerts',
+    ]
   },
   pro: {
     id: 'pro', name: 'Pro', price: 999,
     scanLimit: 50, alertLimit: 500, takedownLimit: 2,
     deepScanLimit: 20, crawlerAccess: true, apiAccess: false,
-    features: ['50 scans/month', 'Hourly surface monitoring (web/Reddit/paste)', '2 takedowns/mo with evidence chain', '24h-30d verification re-crawls', 'Priority alerts']
+    shield: {
+      watchedAccounts: 25,
+      lockdownsPerMonth: 10,
+      breachCorpus: true,
+      credentialVault: true,
+      stealerLogs: true,
+      autoSweep: true,
+      blastRadius: true,
+      containAll: true,
+    },
+    features: [
+      'Watch 25 accounts across the breach + stealer corpus',
+      '6-hour auto-sweep — 24/7 barrier coverage',
+      'Stealer-log intelligence (infostealer malware)',
+      'Blast-radius contamination mapping',
+      'Contain-all one-tap lockdowns',
+      '10 lockdown playbooks/mo',
+      '50 deepfake scans + web/paste monitoring',
+    ]
   },
   shield: {
     id: 'shield', name: 'Shield', price: 1999,
     scanLimit: 200, alertLimit: -1, takedownLimit: 10,
     deepScanLimit: -1, crawlerAccess: true, apiAccess: false,
-    features: ['200 scans/month', 'Dark web monitoring (Ahmia)', '10 takedowns/mo', 'Filing helper for all platforms', 'Voice authentication']
+    shield: {
+      watchedAccounts: 250,
+      lockdownsPerMonth: -1,
+      breachCorpus: true,
+      credentialVault: true,
+      stealerLogs: true,
+      autoSweep: true,
+      blastRadius: true,
+      containAll: true,
+    },
+    features: [
+      'Watch 250 accounts — the full barrier',
+      '6-hour auto-sweep across breach + stealer corpora',
+      'Unlimited lockdown playbooks + contain-all',
+      'Exploitability scoring per account',
+      'Dark web monitoring (Ahmia)',
+      '10 takedowns/mo with filing helpers',
+      '200 scans/month + voice authentication',
+    ]
   },
   family: {
     id: 'family', name: 'Family', price: 2999,
     scanLimit: 500, alertLimit: -1, takedownLimit: 20,
     deepScanLimit: -1, crawlerAccess: true, apiAccess: false,
     maxMembers: 5,
-    features: ['500 scans/month, up to 5 members', 'Dark web + forums + Telegram monitoring', '20 takedowns/mo', 'Per-member alerts', 'Family dashboard']
+    shield: {
+      watchedAccounts: 1000,
+      lockdownsPerMonth: -1,
+      breachCorpus: true,
+      credentialVault: true,
+      stealerLogs: true,
+      autoSweep: true,
+      blastRadius: true,
+      containAll: true,
+    },
+    features: [
+      'Watch 1,000 accounts across 5 members',
+      'Everything in Shield, per member',
+      'Family dashboard + per-member alerts',
+      'Dark web + forums + Telegram monitoring',
+      '20 takedowns/mo',
+    ]
   },
   business: {
     id: 'business', name: 'Business', price: 4999,
     scanLimit: -1, alertLimit: -1, takedownLimit: -1,
     deepScanLimit: -1, crawlerAccess: true, apiAccess: true,
-    features: ['Unlimited scans, 10 seats', '15-min real-time monitoring incl. social', 'Unlimited takedowns', 'API access (10k calls/mo)', 'Bulk scanning + SLA']
+    shield: {
+      watchedAccounts: -1,
+      lockdownsPerMonth: -1,
+      breachCorpus: true,
+      credentialVault: true,
+      stealerLogs: true,
+      autoSweep: true,
+      blastRadius: true,
+      containAll: true,
+    },
+    features: [
+      'Unlimited watched accounts, 10 seats',
+      '15-min real-time sweep + social monitoring',
+      'Unlimited lockdowns + contain-all',
+      'Unlimited takedowns',
+      'API access (10k calls/mo) + audit logs + SSO',
+    ]
   }
 };
 
@@ -240,6 +327,20 @@ function getTierInfo(tier) {
   };
 }
 
+function getShieldLimits(tier) {
+  const t = TIERS[tier] || TIERS.free;
+  return {
+    watchedAccounts: t.shield?.watchedAccounts ?? 0,
+    lockdownsPerMonth: t.shield?.lockdownsPerMonth ?? 0,
+    stealerLogs: !!t.shield?.stealerLogs,
+    autoSweep: !!t.shield?.autoSweep,
+    blastRadius: !!t.shield?.blastRadius,
+    containAll: !!t.shield?.containAll,
+    breachCorpus: !!t.shield?.breachCorpus,
+    credentialVault: !!t.shield?.credentialVault,
+  };
+}
+
 function getTierLimits(tier) {
   const t = TIERS[tier] || TIERS.free;
   return {
@@ -248,7 +349,8 @@ function getTierLimits(tier) {
     takedownLimit: t.takedownLimit,
     deepScanLimit: t.deepScanLimit,
     crawlerAccess: t.crawlerAccess,
-    apiAccess: t.apiAccess
+    apiAccess: t.apiAccess,
+    shield: getShieldLimits(tier),
   };
 }
 
@@ -261,6 +363,7 @@ module.exports = {
   handleWebhook,
   getSubscriptionStatus,
   getTierInfo,
+  getShieldLimits,
   getTierLimits,
   getTier
 };

@@ -136,25 +136,25 @@ export function HomeView() {
               <div className="flex-1 text-center md:text-left">
                 <Badge variant="cyan" className="mb-3">
                   <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-cyan" />
-                  Shield Active
+                  Shield Active · Live
                 </Badge>
                 <h2 className="font-display text-xl font-bold tracking-tight text-ink sm:text-2xl md:text-3xl">
                   Good morning, <span className="text-gradient">{firstName}</span>
                 </h2>
                 <p className="mt-2 text-xs text-ink-muted sm:text-sm">
-                  Your identity is {protectionScore >= 80 ? "strongly" : "moderately"} guarded.
+                  Every account is behind the shield.
                   {critical > 0
-                    ? ` ${critical} critical threat${critical > 1 ? "s" : ""} needs action.`
-                    : " No critical threats right now."}
+                    ? ` ${critical} critical finding${critical > 1 ? "s" : ""} needs action.`
+                    : " Your watched accounts are holding steady."}
                 </p>
                 <div className="mt-4 flex flex-wrap justify-center gap-3 sm:mt-5 md:justify-start">
-                  <Button onClick={() => setTab("scan")} size="sm" className="sm:size-default">
+                  <Button onClick={() => setTab("account-shield")} size="sm" className="sm:size-default">
+                    <ShieldCheck className="h-4 w-4" />
+                    Open Shield
+                  </Button>
+                  <Button variant="glass" onClick={() => setTab("scan")} size="sm" className="sm:size-default">
                     <ScanSearch className="h-4 w-4" />
                     Run Scan
-                  </Button>
-                  <Button variant="glass" onClick={() => setTab("alerts")} size="sm" className="sm:size-default">
-                    View Alerts
-                    <ArrowRight className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
@@ -222,11 +222,12 @@ export function HomeView() {
             </span>
             <div className="flex-1">
               <p className="font-display text-base font-bold text-ink">
-                Your identity deserves continuous protection.
+                Scans check. A shield watches.
               </p>
               <p className="mt-1 text-sm text-ink-muted">
-                Your Free plan detects threats when you scan. Upgrade for ongoing monitoring,
-                automated takedowns, and dark-web scanning — so threats are caught before they spread.
+                The Free shield watches 3 accounts against 1.2B+ breached records and live
+                infostealer logs — with an encrypted credential vault and one-tap lockdown
+                playbooks. Paid tiers widen the wall and auto-sweep every 6 hours.
               </p>
             </div>
             <Button
@@ -357,6 +358,13 @@ export function HomeView() {
                 Quick Actions
               </h2>
               <div className="flex flex-1 flex-col gap-2.5">
+                <QuickAction
+                  icon={ShieldCheck}
+                  color="cyan"
+                  label="Account Shield"
+                  sub="Watch accounts against breaches & stealer logs"
+                  onClick={() => setTab("account-shield")}
+                />
                 <QuickAction
                   icon={ScanSearch}
                   color="cyan"
@@ -500,9 +508,9 @@ function EmptyState() {
         <ScanSearch className="h-10 w-10 text-ink-faint" />
       </motion.div>
       <div>
-        <p className="text-sm font-medium text-ink">No detections yet</p>
+        <p className="text-sm font-medium text-ink">No findings yet</p>
         <p className="text-xs text-ink-muted">
-          Run your first scan to start protecting your identity
+          Add an account to start shielding your identity
         </p>
       </div>
     </div>

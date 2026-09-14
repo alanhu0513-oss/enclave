@@ -2,6 +2,7 @@ import { motion } from "motion/react";
 import {
   Home,
   Shield,
+  ShieldCheck,
   ScanSearch,
   Bell,
   BarChart3,
@@ -39,8 +40,8 @@ interface NavSection {
 const NAV_SECTIONS: NavSection[] = [
   {
     items: [
+      { id: "account-shield", label: "Shield", icon: ShieldCheck },
       { id: "home", label: "Home", icon: Home },
-      { id: "account-shield", label: "Account Shield", icon: Lock },
       { id: "scan", label: "Scan", icon: ScanSearch },
       { id: "alerts", label: "Alerts", icon: Bell },
       { id: "settings", label: "Settings", icon: Settings },

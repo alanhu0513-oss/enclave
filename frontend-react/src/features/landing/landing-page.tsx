@@ -2,22 +2,24 @@ import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence, useInView } from "motion/react";
 import {
   Shield,
+  ShieldCheck,
   ScanSearch,
   Bell,
   Radar,
-  Lock,
-  Eye,
   CheckCircle2,
   ArrowRight,
   Star,
   Menu,
   X,
   ChevronDown,
-  Zap,
   Globe,
-  FileWarning,
-  Fingerprint,
   Gauge,
+  Siren,
+  KeyRound,
+  Network,
+  Users,
+  ShieldAlert,
+  TimerReset,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 
@@ -81,51 +83,51 @@ const G_TEXT_SOFT =
 /* ─── Data ─── */
 const FEATURES = [
   {
-    icon: ScanSearch,
-    title: "Deepfake Detection",
-    desc: "Neural networks analyze images, audio, and video frame-by-frame. Not keyword matching — real ML inference catching manipulation before it spreads.",
+    icon: ShieldCheck,
+    title: "Barrier Intelligence",
+    desc: "The Security Shield watches every account against 1.2B+ breached records and live infostealer logs. Every credential gets an exploitability score, and every shard password is mapped across your blast radius.",
     accent: "cyan",
     span: "md:col-span-2 md:row-span-2",
-    visual: "ring",
-    ringValue: 95,
+    visual: "shield",
+    ringValue: 94,
   },
   {
     icon: Radar,
-    title: "Dark Web Monitoring",
-    desc: "Continuous scanning across surface web, Reddit, paste sites, and hidden forums.",
+    title: "Breach + Stealer Sweeps",
+    desc: "A 6-hour auto-sweep re-checks your accounts against fresh breach dumps and actively-captured infostealer logs — no manual scanning required.",
     accent: "violet",
     span: "",
     visual: "spark",
   },
   {
-    icon: Bell,
-    title: "Threat Alerts",
-    desc: "Real-time push notifications and email the moment something is found.",
-    accent: "teal",
+    icon: Siren,
+    title: "Contain the Blast",
+    desc: "When something leaks, one tap opens lockdown playbooks on every affected account, with step-by-step recovery.",
+    accent: "coral",
     span: "",
     visual: "list",
   },
   {
-    icon: Shield,
-    title: "Auto Takedown",
-    desc: "Automatic DMCA notices with 48-hour escalation and evidence preservation.",
-    accent: "cyan",
+    icon: KeyRound,
+    title: "Credential Vault",
+    desc: "Passwords, 2FA status, and recovery checks encrypted behind the shield — never shown, only scored.",
+    accent: "teal",
     span: "",
     visual: "none",
   },
   {
-    icon: Lock,
-    title: "Content Watermarking",
-    desc: "Invisible watermarks and C2PA credentials prove ownership and deter theft.",
-    accent: "teal",
+    icon: ScanSearch,
+    title: "Deepfake Detection",
+    desc: "Neural networks analyze images, audio, and video frame-by-frame. Real ML inference catching manipulation before it spreads.",
+    accent: "violet",
     span: "md:col-span-2",
     visual: "bars",
   },
   {
-    icon: Eye,
-    title: "Face Analysis",
-    desc: "Detect and compare multiple faces against your enrolled biometric profile.",
-    accent: "violet",
+    icon: Globe,
+    title: "Dark Web Monitoring",
+    desc: "Continuous scanning across surface web, Reddit, paste sites, and hidden forums.",
+    accent: "teal",
     span: "",
     visual: "faces",
   },
@@ -134,63 +136,68 @@ const FEATURES = [
 const TIERS = [
   {
     name: "Free",
-    tagline: "For people who want to check in",
+    tagline: "Behind the shield, lightly",
     price: "$0",
     period: "forever",
-    features: ["3 scans/month", "Surface web only", "Basic alerts", "Community support"],
+    watch: "3 watched accounts",
+    features: ["Breach + pwned check on every account", "Encrypted credential vault", "1 lockdown playbook", "3 deepfake scans/month"],
     cta: "Start Free",
     popular: false,
   },
   {
     name: "Pro",
-    tagline: "For creators who can't afford a breach",
+    tagline: "The wall goes up",
     price: "$9.99",
     period: "/month",
-    features: ["50 scans/month", "Web + Reddit + Paste sites", "Hourly monitoring", "2 takedowns/mo", "Priority support"],
+    watch: "25 watched accounts",
+    features: ["Stealer-log + breach auto-sweep every 6h", "Blast-radius contamination mapping", "Contain-all one-tap lockdowns", "10 lockdown playbooks/mo", "50 deepfake scans + paste monitoring"],
     cta: "Get Pro",
     popular: false,
   },
   {
     name: "Shield",
-    tagline: "For anyone who needs the full picture",
+    tagline: "The full barrier",
     price: "$19.99",
     period: "/month",
-    features: ["200 scans/month", "All sources + Dark web", "Real-time alerts", "10 takedowns/mo", "Evidence chain", "Voice auth"],
+    watch: "250 watched accounts",
+    features: ["Watch 250 accounts — full barrier", "6h auto-sweep across all corpuses", "Unlimited lockdowns + contain-all", "Exploitability scoring per account", "Dark web monitoring + 10 takedowns/mo"],
     cta: "Get Shield",
     popular: true,
   },
   {
     name: "Family",
-    tagline: "For protecting the people you love",
+    tagline: "For the people you love",
     price: "$29.99",
     period: "/month",
-    features: ["500 scans, up to 5 members", "Dark web + forums + Telegram", "20 takedowns/mo", "Per-member alerts", "Family dashboard"],
+    watch: "1,000 accounts · 5 members",
+    features: ["Everything in Shield, per member", "Family dashboard + per-member alerts", "Dark web + forums + Telegram", "20 takedowns/mo"],
     cta: "Get Family",
     popular: false,
   },
   {
     name: "Business",
-    tagline: "For teams that take security seriously",
+    tagline: "One barrier per seat",
     price: "$49.99",
     period: "/month",
-    features: ["Unlimited scans, 10 seats", "15-min monitoring + social", "Unlimited takedowns", "API access", "Audit logs + SSO"],
+    watch: "Unlimited · 10 seats",
+    features: ["Unlimited watched accounts", "15-min real-time sweep + social", "Unlimited lockdowns + takedowns", "API access + audit logs + SSO"],
     cta: "Contact Sales",
     popular: false,
   },
 ];
 
 const STATS = [
-  { value: 2000000, suffix: "+", label: "Images Analyzed", mono: true },
-  { value: 95, suffix: "%", label: "Detection Accuracy", mono: true },
-  { value: 50000, suffix: "+", label: "Threats Blocked", mono: true },
-  { value: 99.9, suffix: "%", label: "Uptime", mono: true },
+  { value: 1200000000, suffix: "+", label: "Records Checked", mono: true },
+  { value: 94, suffix: "%", label: "Barrier Coverage", mono: true },
+  { value: 12400, suffix: "+", label: "Exposures Contained", mono: true },
+  { value: 99.9, suffix: "%", label: "Sweep Uptime", mono: true },
 ];
 
 const TESTIMONIALS = [
   {
     name: "Sarah Chen",
     role: "Content Creator",
-    text: "Found deepfakes of me on 3 different sites within hours. The auto-takedown saved me weeks of work. I didn't have to file a single form myself.",
+    text: "A stealer log on the dark web had my Gmail — Enclave found it before I did, showed me the blast radius across my other accounts, and walked me through rotating everything in one evening.",
     rating: 5,
     accent: "#00F2FE",
     initials: "SC",
@@ -198,7 +205,7 @@ const TESTIMONIALS = [
   {
     name: "Marcus Rodriguez",
     role: "Privacy Advocate",
-    text: "Finally a tool that takes identity protection seriously. The dark web monitoring is something else.",
+    text: "Finally a tool that takes identity protection seriously. The stealer-log monitoring alone caught a credential harvest no one else flagged.",
     rating: 5,
     accent: "#05F2C7",
     initials: "MR",
@@ -206,7 +213,7 @@ const TESTIMONIALS = [
   {
     name: "Dr. Aisha Patel",
     role: "Public Figure",
-    text: "The watermarking feature alone is worth it. I now have proof of ownership for all my content.",
+    text: "The containment playbooks are what sold me. One tap locked down every account sharing a breached password and told me exactly what to change.",
     rating: 5,
     accent: "#A78BFA",
     initials: "AP",
@@ -217,16 +224,16 @@ const LOGOS = ["FORRER", "N0VATECH", "DARKNET-WATCH", "SECURY", "PARALLAX", "ORB
 
 const FAQ = [
   {
-    q: "How does deepfake detection actually work?",
-    a: "We run a multi-layered detection pipeline. First, MTCNN extracts faces from images. Then XceptionNet — a convolutional neural network trained on manipulation datasets like FaceForensics++ — classifies each face as real or synthetic. For audio, we use Librosa spectral analysis to detect voice cloning artifacts. Every result gets a confidence score and a human-readable explanation. No magic, no buzzwords — just ML inference on real hardware.",
+    q: "What exactly does the Security Shield protect?",
+    a: "It protects the accounts that hold your identity: email, banking, social, gaming, work. You add each account, optionally vault a credential, and the shield continuously checks those accounts against the 1.2B+ record pwned corpus and Hudson Rock's live infostealer-log feed. When something is exposed, you get an exploitability score, a map of the blast radius (every other account sharing that password or identifier), and a step-by-step lockdown playbook. Higher tiers widen the wall and add the auto-sweep and auto-containment layers.",
   },
   {
-    q: "What sources do you scan?",
-    a: "We scan the surface web via search engine APIs, social media platforms like Reddit and X, paste sites such as Pastebin and Ghostbin, dark web forums and marketplaces, Telegram channels, and file-sharing platforms. Pro plans and above get hourly monitoring with real-time alerts. Shield plans add dark web crawling with Tor integration.",
+    q: "What's a stealer log, and why should I care?",
+    a: "Info-stealer malware is the single biggest source of real credential theft right now. When it infects a machine, it harvests everything saved in that browser or password manager — email, passwords, session cookies — and sells or dumps the logs. Enclave queries the live stealer-log corpus by your identifier(s). If your email shows up on an infected machine, the shield tells you which services an attacker can now reach and assumes anything reused is compromised.",
   },
   {
-    q: "How fast are takedowns?",
-    a: "Our system auto-generates DMCA notices within minutes of detection and sends them directly to platform abuse teams via email. Most platforms respond within 48 hours. If they don't, we automatically escalate with follow-up notices. Throughout the process, we preserve evidence including HTML snapshots, metadata, and screenshots for potential legal proceedings.",
+    q: "What is blast-radius mapping?",
+    a: "When a credential you use is found in a breach, the shield traces every other account that reuses that exact password or shares an identifier, and flags it 'contaminated' — at risk even though it wasn't directly breached. That's the blast radius: one leaked password silently shards out across your other accounts. Contain-all opens lockdown playbooks on each affected account in one action.",
   },
   {
     q: "Is my biometric data safe?",
@@ -234,11 +241,11 @@ const FAQ = [
   },
   {
     q: "Can I try before I buy?",
-    a: "Absolutely. The Free plan gives you 3 scans per month with surface web monitoring, and it never expires. No credit card required to sign up. You get real detection results, real alerts, and a real dashboard. Upgrade to Pro or Shield when you need more scans, faster monitoring, dark web coverage, or automated takedowns.",
+    a: "Absolutely. The Free plan lets you shield up to 3 accounts with breach and pwned-password checks and an encrypted credential vault — it never expires, and no credit card is required to sign up. Upgrade when you want more watched accounts, the 6-hour auto-sweep, stealer-log intelligence, blast-radius mapping, and contain-all lockdowns.",
   },
   {
-    q: "What happens if a deepfake is found of me?",
-    a: "You get an instant alert with the confidence score, source URL, and a screenshot of the content. If you're on a plan with takedowns, we automatically generate and send a DMCA notice to the hosting provider. You can track the takedown lifecycle in your dashboard. Evidence is preserved in case you need it for legal action.",
+    q: "How does deepfake detection fit in?",
+    a: "The Security Shield is the layer that defends the keys to your identity, and deepfake detection defends your likeness itself. Both run continuously after you sign in. If a deepfake of you is found, you get an instant alert with the confidence score and source, and plans with takedowns auto-generate a DMCA notice and track the removal lifecycle for you.",
   },
 ];
 
@@ -481,7 +488,7 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#00F2FE] opacity-60" />
                   <span className="relative inline-flex h-2 w-2 rounded-full bg-[#00F2FE]" />
                 </span>
-                ML-powered identity protection · Live
+                Security Shield · Barrier Intelligence · Live
               </div>
             </motion.div>
 
@@ -492,10 +499,10 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
               transition={{ duration: 0.6, ease: "easeOut", delay: 0.05 }}
               className="mt-8 text-center font-[var(--font-sans)] text-5xl font-semibold leading-[1.02] tracking-[-0.035em] md:text-7xl lg:text-[5.5rem]"
             >
-              Your face is{" "}
-              <span className={G_TEXT}>yours</span>.
+              Every account behind a{" "}
+              <span className={G_TEXT}>shield</span>.
               <br />
-              <span className="text-[var(--tk-ink-muted)]">Keep it that way.</span>
+              <span className="text-[var(--tk-ink-muted)]">Breaches can&apos;t spread what it contains.</span>
             </motion.h1>
 
             {/* Subhead */}
@@ -505,8 +512,9 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
               transition={{ duration: 0.6, ease: "easeOut", delay: 0.1 }}
               className="mx-auto mt-6 max-w-2xl text-center text-lg leading-relaxed text-[var(--tk-ink-muted)] md:text-xl"
             >
-              Detect deepfakes, monitor the dark web, and take down unauthorized use of your identity.
-              Built with real ML models — not marketing.
+              Enclave watches your accounts against 1.2B+ breached records and live infostealer logs,
+              scores every credential, maps the blast radius of reused passwords — then walks you through
+              containment. Built with real corpus data, not marketing.
             </motion.p>
 
             {/* CTAs */}
@@ -520,12 +528,12 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
                 onClick={handleGetStarted}
                 className="group relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-xl border border-transparent bg-gradient-to-r from-[#00F2FE] via-[#05F2C7] to-[#00F2FE] px-8 py-3.5 text-base font-semibold text-black transition-all duration-300 ease-out hover:shadow-[0_0_40px_rgba(0,242,254,0.45)] active:scale-[0.98]"
               >
-                Scan my face for free
+                Build my shield for free
                 <ArrowRight className="h-5 w-5 transition-transform duration-300 ease-out group-hover:translate-x-1" aria-hidden="true" />
               </button>
               <a href="#how-it-works">
                 <button className="inline-flex items-center gap-2 rounded-xl border border-[rgba(255,255,255,0.12)] bg-[rgba(13,14,18,0.6)] px-8 py-3.5 text-base text-[var(--tk-ink)] backdrop-blur-md transition-all duration-300 ease-out hover:border-[rgba(255,255,255,0.25)] hover:bg-[rgba(18,19,24,0.8)] active:scale-[0.98]">
-                  See how it works
+                  See how the shield works
                 </button>
               </a>
             </motion.div>
@@ -537,7 +545,7 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
               transition={{ duration: 0.6, delay: 0.25 }}
               className="mt-4 text-center text-xs font-mono text-[var(--tk-ink-faint)]"
             >
-              No credit card required · Free forever plan · 3 scans/mo
+              No credit card required · Free forever shield · 3 watched accounts
             </motion.p>
 
             {/* Social proof */}
@@ -560,7 +568,7 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
                   ))}
                 </div>
                 <span className="text-sm text-[var(--tk-ink-muted)]">
-                  Join <span className="font-medium text-[var(--tk-ink)]">2,400+</span> people protecting their identity
+                  Join <span className="font-medium text-[var(--tk-ink)]">2,400+</span> people shielding their accounts
                 </span>
               </div>
             </motion.div>
@@ -607,11 +615,11 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
                   {/* Sidebar */}
                   <div className="col-span-3 hidden border-r border-[rgba(255,255,255,0.06)] p-4 md:block">
                     {[
-                      { label: "Overview", icon: Gauge },
-                      { label: "Scans", icon: ScanSearch },
+                      { label: "Shield", icon: Shield },
+                      { label: "Intelligence", icon: Network },
+                      { label: "Lockdowns", icon: Siren },
                       { label: "Alerts", icon: Bell },
-                      { label: "Takedowns", icon: FileWarning },
-                      { label: "Passport", icon: Fingerprint },
+                      { label: "Deepfake Scan", icon: ScanSearch },
                     ].map((item, i) => (
                       <div
                         key={item.label}
@@ -630,7 +638,7 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
                           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#05F2C7] opacity-60" />
                           <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-[#05F2C7]" />
                         </span>
-                        <span className="text-xs font-medium text-[#7bf7dc]">Active</span>
+                        <span className="text-xs font-medium text-[#7bf7dc]">Active · last sweep 6h</span>
                       </div>
                     </div>
                   </div>
@@ -640,9 +648,9 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
                     {/* Stats row */}
                     <div className="mb-5 grid grid-cols-3 gap-3">
                       {[
-                        { label: "ACTIVE SCANS", value: "12", color: "#00F2FE" },
-                        { label: "THREATS FOUND", value: "3", color: "#FF3366" },
-                        { label: "TAKEDOWNS", value: "8", color: "#05F2C7" },
+                        { label: "WATCHED ACCOUNTS", value: "128", color: "#00F2FE" },
+                        { label: "EXPOSED", value: "3", color: "#FF3366" },
+                        { label: "LOCKDOWN PLAYBOOKS", value: "1", color: "#05F2C7" },
                       ].map((s) => (
                         <div key={s.label} className={`${CARD} ${CARD_SURFACE} p-3.5`} style={{ willChange: "none" }}>
                           <p className="text-[10px] font-mono tracking-wide text-[var(--tk-ink-faint)]">{s.label}</p>
@@ -651,13 +659,13 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
                       ))}
                     </div>
 
-                    {/* Recent alerts */}
+                    {/* Recent findings */}
                     <div className="space-y-2">
                       {[
-                        { icon: ScanSearch, title: "Image scan complete", detail: "photo_2024.jpg — No manipulation detected", status: "Safe", accent: "teal" },
-                        { icon: Radar, title: "Dark web match", detail: "Your image found on suspicious forum", status: "Threat", accent: "coral" },
-                        { icon: Shield, title: "Takedown sent", detail: "DMCA notice to hosting provider", status: "In progress", accent: "cyan" },
-                        { icon: Eye, title: "Face match", detail: "2 faces found in scanned content", status: "Review", accent: "violet" },
+                        { icon: Radar, title: "Breach found", detail: "Steam password in 1.2B+ pwned corpus — Exploitability 78/100", status: "Breached", accent: "coral" },
+                        { icon: ShieldAlert, title: "Stealer log capture", detail: "gmail — captured by infostealer malware on an infected machine", status: "High", accent: "coral" },
+                        { icon: Network, title: "Blast radius", detail: "Breached password shards to 2 more accounts (PayPal, Discord)", status: "Contaminated", accent: "violet" },
+                        { icon: Siren, title: "Containment playbook", detail: "Lockdown initiated — rotate password, enable 2FA, revoke sessions", status: "In progress", accent: "cyan" },
                       ].map((alert) => (
                         <div key={alert.title} className="flex items-center gap-3 rounded-xl border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.02)] p-3 transition-colors duration-200 hover:bg-[rgba(255,255,255,0.04)]">
                           <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${ACCENT[alert.accent as keyof typeof ACCENT].chip}`}>
@@ -735,6 +743,30 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
                       </div>
 
                       {/* Feature visuals — minimalist data viz */}
+                      {f.visual === "shield" && (
+                        <div className="mt-6 flex flex-col justify-between gap-6 sm:flex-row sm:items-center">
+                          <div>
+                            <h3 className="text-xl font-semibold tracking-tight">{f.title}</h3>
+                            <p className="mt-2 max-w-xs text-sm leading-relaxed text-[var(--tk-ink-muted)]">{f.desc}</p>
+                            <ul className="mt-4 space-y-2">
+                              {[
+                                { icon: KeyRound, label: "Encrypted credential vault", val: "256-bit" },
+                                { icon: Radar, label: "Stealer logs + 1.2B breach corpus", val: "6h sweep" },
+                                { icon: Network, label: "Blast-radius contamination map", val: "live" },
+                                { icon: Siren, label: "Lockdown playbooks on every account", val: "1-tap" },
+                              ].map((row) => (
+                                <li key={row.label} className="flex items-center gap-2.5 text-[13px] text-[var(--tk-ink-muted)]">
+                                  <row.icon className="h-3.5 w-3.5 text-[#00F2FE]" aria-hidden="true" />
+                                  {row.label}
+                                  <span className="ml-auto font-mono text-[11px] text-[#7FEFFF]">{row.val}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                          <Ring value={f.ringValue ?? 94} size={132} color="#00F2FE" />
+                        </div>
+                      )}
+
                       {f.visual === "ring" && (
                         <div className="mt-6 flex items-center justify-between gap-4">
                           <div>
@@ -751,8 +783,8 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
                           <p className="mt-2 text-sm leading-relaxed text-[var(--tk-ink-muted)]">{f.desc}</p>
                           <div className="mt-5 rounded-xl border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.02)] p-3">
                             <div className="mb-1 flex items-center justify-between">
-                              <span className="text-[10px] font-mono text-[var(--tk-ink-faint)]">FORUM + DARK WEB</span>
-                              <span className="text-[10px] font-mono text-[#05F2C7]">+184%</span>
+                              <span className="text-[10px] font-mono text-[var(--tk-ink-faint)]">BREACH + LIVE STEALER FEED</span>
+                              <span className="text-[10px] font-mono text-[#05F2C7]">+38 this sweep</span>
                             </div>
                             <Sparkline points={[12, 18, 14, 22, 19, 30, 26, 42, 38, 58, 52, 74]} color="#05F2C7" />
                           </div>
@@ -765,9 +797,9 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
                           <p className="mt-2 text-sm leading-relaxed text-[var(--tk-ink-muted)]">{f.desc}</p>
                           <div className="mt-5 space-y-2">
                             {[
-                              { label: "Deepfake of you detected", t: "2m", color: "#FF3366" },
-                              { label: "Image posted to Telegram", t: "4m", color: "#FF3366" },
-                              { label: "DMCA notice sent", t: "6m", color: "#05F2C7" },
+                              { label: "Lockdown · rotate Steam password", t: "2m", color: "#FF3366" },
+                              { label: "Lockdown · enable 2FA on Google", t: "4m", color: "#FF3366" },
+                              { label: "Containment complete · 3 accounts sealed", t: "6m", color: "#05F2C7" },
                             ].map((r) => (
                               <div key={r.label} className="flex items-center gap-2.5 rounded-lg border border-[rgba(255,255,255,0.05)] bg-[rgba(255,255,255,0.02)] px-3 py-2">
                                 <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: r.color, boxShadow: `0 0 6px ${r.color}` }} />
@@ -833,16 +865,16 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
             <div className="mb-16 text-center">
               <p className="mb-3 text-xs font-mono uppercase tracking-[0.2em] text-[#7FEFFF]">Workflow</p>
               <h2 className="text-4xl font-semibold tracking-[-0.03em] md:text-5xl">
-                Three steps to protection
+                Three steps behind the shield
               </h2>
               <p className="mt-4 text-lg text-[var(--tk-ink-muted)]">No setup wizard. No 30-minute onboarding.</p>
             </div>
 
             <div className="grid gap-6 md:grid-cols-3">
               {[
-                { step: "01", title: "Enroll your face", desc: "Upload a photo. We create a biometric hash in seconds. Your raw photo is never stored.", icon: Eye },
-                { step: "02", title: "We scan everywhere", desc: "Surface web, social media, paste sites, dark web forums, Telegram. Continuously.", icon: Globe },
-                { step: "03", title: "We act", desc: "Instant alerts. Automatic DMCA takedowns. Evidence preserved for legal use.", icon: Zap },
+                { step: "01", title: "Watch your accounts", desc: "Add the email, banking, social, and gaming accounts that hold your identity. Vault their credentials — encrypted, never shown, only scored. Your shield is live in seconds.", icon: Users },
+                { step: "02", title: "The shield sweeps 24/7", desc: "A 6-hour auto-sweep re-checks every account against 1.2B+ breached records and live infostealer logs, scores exploitability, and maps the blast radius of reused passwords.", icon: Radar },
+                { step: "03", title: "Contain the blast", desc: "One tap opens a lockdown playbook on every affected account — rotate the password, enable 2FA, revoke sessions — so a single leak can never cascade.", icon: Siren },
               ].map((item) => (
                 <div key={item.step} className={`${CARD} ${CARD_SURFACE} ${CARD_HOVER} group p-6`}>
                   <div className="flex items-center justify-between">
@@ -860,6 +892,145 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
         </section>
 
         {/* ═══════════════════════════════════════════════════════ */}
+        {/* BARRIER INTELLIGENCE — the flagship deep dive            */}
+        {/* ═══════════════════════════════════════════════════════ */}
+        <section className="relative px-4 py-24">
+          <div className="mx-auto max-w-6xl">
+            <div className="mb-14 max-w-2xl">
+              <p className="mb-3 text-xs font-mono uppercase tracking-[0.2em] text-[#7FEFFF]">The flagship</p>
+              <h2 className="text-4xl font-semibold tracking-[-0.03em] md:text-5xl">
+                Barrier Intelligence
+                <br />
+                <span className="text-[var(--tk-ink-muted)]">not a breach checker. A barrier.</span>
+              </h2>
+              <p className="mt-4 text-lg text-[var(--tk-ink-muted)]">
+                Checkers tell you something leaked. A barrier tells you what it can reach next — and stops it.
+              </p>
+            </div>
+
+            <div className="grid gap-4 lg:grid-cols-2">
+              {/* Contamination graph mock */}
+              <motion.div
+                initial={{ opacity: 0, y: 24 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-60px" }}
+                transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+                className={`${CARD} ${CARD_SURFACE} relative overflow-hidden p-6 md:p-8`}
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-mono text-[11px] uppercase tracking-widest text-[var(--tk-ink-faint)]">Blast radius</p>
+                    <h3 className="mt-1 text-lg font-semibold tracking-tight">One leak, traced end-to-end</h3>
+                  </div>
+                  <span className="rounded-full border border-[#FF3366]/25 bg-[#FF3366]/10 px-2.5 py-0.5 font-mono text-[11px] text-[#FF3366]">REUSED PASSWORD</span>
+                </div>
+
+                <div className="relative mt-8 aspect-[4/3]">
+                  <svg viewBox="0 0 400 300" className="h-full w-full" aria-hidden>
+                    <defs>
+                      <linearGradient id="edge" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" stopColor="#FF3366" />
+                        <stop offset="100%" stopColor="#00F2FE" />
+                      </linearGradient>
+                    </defs>
+                    {[
+                      { x1: 200, y1: 60, x2: 60, y2: 200 },
+                      { x1: 200, y1: 60, x2: 340, y2: 200 },
+                      { x1: 200, y1: 60, x2: 200, y2: 240 },
+                      { x1: 60, y1: 200, x2: 200, y2: 240 },
+                    ].map((e, i) => (
+                      <line
+                        key={i}
+                        x1={e.x1} y1={e.y1} x2={e.x2} y2={e.y2}
+                        stroke={i === 0 ? "#00F2FE" : "url(#edge)"}
+                        strokeWidth="1.5"
+                        strokeOpacity="0.5"
+                        strokeDasharray={i === 0 ? "0" : "5 5"}
+                      />
+                    ))}
+                    {/* Breached origin */}
+                    <g>
+                      <circle cx="200" cy="60" r="30" fill="rgba(255,51,102,0.14)" stroke="#FF3366" strokeWidth="2" />
+                      <text x="200" y="56" textAnchor="middle" fill="#FF3366" fontSize="26">⚠</text>
+                      <text x="200" y="112" textAnchor="middle" fill="#fff" fontSize="13" fontWeight="600">PayPal · 78/100</text>
+                      <text x="200" y="128" textAnchor="middle" fill="#9BA3B2" fontSize="11">breached</text>
+                    </g>
+                    {[
+                      { x: 60, y: 200, label: "Google", sub: "contaminated", color: "#A78BFA" },
+                      { x: 340, y: 200, label: "Steam", sub: "contaminated", color: "#A78BFA" },
+                      { x: 200, y: 240, label: "Discord", sub: "clear", color: "#05F2C7" },
+                    ].map((n, i) => (
+                      <g key={i}>
+                        <circle cx={n.x} cy={n.y} r="26" fill={n.sub === "clear" ? "rgba(5,242,199,0.08)" : "rgba(167,139,250,0.14)"} stroke={n.color} strokeWidth="1.5" />
+                        <text x={n.x} y={n.y + 4} textAnchor="middle" fill={n.color} fontSize="11" fontWeight="600">{n.label}</text>
+                        <text x={n.x} y={n.y + 46} textAnchor="middle" fill={n.sub === "clear" ? "#05F2C7" : "#A78BFA"} fontSize="10" fontFamily="monospace">{n.sub.toUpperCase()}</text>
+                      </g>
+                    ))}
+                  </svg>
+                  <div className="pointer-events-none absolute -bottom-2 left-2 rounded-lg border border-[rgba(255,255,255,0.06)] bg-[rgba(10,10,13,0.9)] px-3 py-1.5 font-mono text-[11px] text-[#7FEFFF]">
+                    blast_radius: 2 · edges: 2 · contamination_linked
+                  </div>
+                </div>
+              </motion.div>
+
+              {/* Explainers */}
+              <div className="grid gap-4">
+                {[
+                  {
+                    icon: Radar,
+                    title: "Live infostealer feed",
+                    body: "Hudson Rock's stealer-log corpus is queried by your identifier on every sweep. If malware on an infected machine captured your email, the shield knows which services an attacker can reach — and assumes anything reused is compromised.",
+                    chip: "STEALER_LOG · LIVE",
+                    color: "coral",
+                  },
+                  {
+                    icon: Gauge,
+                    title: "Exploitability score",
+                    body: "Every account is scored 0–100 from breach status, pwned-password count, credential strength, 2FA, password reuse, and contamination. High-exposure accounts surface first with an attacker path you can read, not a red blob.",
+                    chip: "0-100 · ARCHIVED",
+                    color: "cyan",
+                  },
+                  {
+                    icon: Siren,
+                    title: "Contain-all lockdown",
+                    body: "Breached or at-risk accounts get a playbook: where to rotate the password, toggling 2FA, revoking active sessions, recovery fallbacks. One tap opens them across every member of the blast radius.",
+                    chip: "PLAYBOOK · 1-TAP",
+                    color: "teal",
+                  },
+                  {
+                    icon: TimerReset,
+                    title: "6-hour auto-sweep",
+                    body: "The shield never stops re-checking. New breach dumps and stealer captures surface on a scheduled sweep — no manual scans, no 'checked last month' gaps. Free accounts sweep on demand; Pro+ sweeps automatically.",
+                    chip: "AUTO · EVERY 6H",
+                    color: "violet",
+                  },
+                ].map((card, i) => (
+                  <motion.div
+                    key={card.title}
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true, margin: "-60px" }}
+                    transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1], delay: i * 0.06 }}
+                    className={`${CARD} ${CARD_SURFACE} ${CARD_HOVER} group flex gap-4 p-5`}
+                  >
+                    <div className={`shrink-0 rounded-xl border p-2.5 ${ACCENT[card.color as keyof typeof ACCENT].chip}`}>
+                      <card.icon className={`h-5 w-5 ${ACCENT[card.color as keyof typeof ACCENT].text}`} aria-hidden="true" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-[15px] font-semibold tracking-tight">{card.title}</h3>
+                        <span className="rounded border border-[rgba(255,255,255,0.08)] px-1.5 py-0.5 font-mono text-[9px] text-[var(--tk-ink-faint)]">{card.chip}</span>
+                      </div>
+                      <p className="mt-1 text-sm leading-relaxed text-[var(--tk-ink-muted)]">{card.body}</p>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ═══════════════════════════════════════════════════════ */}
         {/* PRICING                                                    */}
         {/* ═══════════════════════════════════════════════════════ */}
         <section id="pricing" className="px-4 py-24">
@@ -867,9 +1038,11 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
             <div className="mb-14 max-w-2xl">
               <p className="mb-3 text-xs font-mono uppercase tracking-[0.2em] text-[#7FEFFF]">Pricing</p>
               <h2 className="text-4xl font-semibold tracking-[-0.03em] md:text-5xl">
-                Start free. Scale when you need it.
+                Start behind the shield.
+                <br />
+                Widen the wall when you need it.
               </h2>
-              <p className="mt-4 text-lg text-[var(--tk-ink-muted)]">No card required to begin. Cancel anytime.</p>
+              <p className="mt-4 text-lg text-[var(--tk-ink-muted)]">Every plan is a real shield. Bigger plans watch more and act faster. No card required to begin.</p>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
@@ -897,7 +1070,10 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
                     <span className={`font-mono text-3xl font-semibold tracking-tight ${tier.popular ? G_TEXT_SOFT : ""}`}>{tier.price}</span>
                     <span className="text-[13px] text-[var(--tk-ink-faint)]">{tier.period}</span>
                   </div>
-                  <ul className="mt-5 space-y-2">
+                  <div className={`mt-3 rounded-lg border px-2.5 py-1.5 text-center font-mono text-[11px] ${tier.popular ? "border-[#00F2FE]/25 bg-[#00F2FE]/[0.06] text-[#7FEFFF]" : "border-[rgba(255,255,255,0.07)] bg-white/[0.02] text-[var(--tk-ink-muted)]"}`}>
+                    {tier.watch}
+                  </div>
+                  <ul className="mt-4 space-y-2">
                     {tier.features.map((feat) => (
                       <li key={feat} className="flex items-start gap-2 text-[13px] text-[var(--tk-ink-muted)]">
                         <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#05F2C7]" aria-hidden="true" />
@@ -1038,16 +1214,16 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
                   <Shield className="h-7 w-7 text-[#00F2FE]" aria-hidden="true" />
                 </div>
                 <h2 className="text-4xl font-semibold tracking-[-0.03em] md:text-5xl">
-                  Protect your identity <span className={G_TEXT}>today</span>
+                  Put your accounts <span className={G_TEXT}>behind the shield</span>
                 </h2>
                 <p className="mx-auto mt-4 max-w-lg text-lg text-[var(--tk-ink-muted)]">
-                  Free to start. No credit card required. Join thousands who already use Enclave to protect their face, voice, and digital identity.
+                  Free to start. No credit card required. Three accounts, breach + stealer checks, an encrypted vault — your barrier is up in seconds.
                 </p>
                 <button
                   onClick={handleGetStarted}
                   className="group mt-9 inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#00F2FE] via-[#05F2C7] to-[#00F2FE] px-10 py-4 text-base font-semibold text-black transition-all duration-300 ease-out hover:shadow-[0_0_45px_rgba(0,242,254,0.45)] active:scale-[0.98]"
                 >
-                  Scan my face for free
+                  Build my shield for free
                   <ArrowRight className="h-5 w-5 transition-transform duration-300 ease-out group-hover:translate-x-1" aria-hidden="true" />
                 </button>
               </div>
@@ -1069,7 +1245,7 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
                   <span className="font-semibold tracking-tight">Enclave</span>
                 </div>
                 <p className="mt-4 text-[13px] leading-relaxed text-[var(--tk-ink-faint)]">
-                  AI-powered deepfake detection and identity protection. Built with real ML — not marketing.
+                  Breach monitoring, live stealer-log intelligence, and containment for every account you care about. Built on real corpus data — not marketing.
                 </p>
               </div>
 

@@ -6,8 +6,8 @@ import {
   Crown,
   Zap,
   Globe,
-  Lock,
-  Brain,
+  KeyRound,
+  ShieldAlert,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -20,116 +20,116 @@ const competitors = [
   {
     name: "Enclave",
     logo: Shield,
-    tagline: "AI-powered identity protection",
+    tagline: "The Account Shield — breach + stealer intelligence that contains",
     isEnclave: true,
     features: {
-      realTimeScanning: true,
+      watchedAccounts: true,
+      breachMonitoring: true,
+      stealerLogs: true,
+      exploitability: true,
+      blastRadius: true,
+      autoSweep: true,
+      containAll: true,
+      credentialVault: true,
       deepfakeDetection: true,
-      voiceCloneDetection: true,
-      socialMediaMonitoring: true,
-      autoTakedown: true,
-      legalDocuments: true,
-      insurance: true,
-      identityPassport: true,
+      darkWebMonitoring: true,
       familyPlan: true,
       enterpriseSSO: true,
       apiAccess: true,
       mobileApps: true,
-      openSource: true,
-      communityThreats: true,
     },
-    pricing: "$0 - $49.99/mo",
+    pricing: "$0 – $49.99/mo",
     rating: 4.8,
   },
   {
-    name: "Competitor A",
+    name: "Breach Checkers",
     logo: Globe,
-    tagline: "Basic deepfake detection",
+    tagline: "One-time 'am I leaked' lookups",
     isEnclave: false,
     features: {
-      realTimeScanning: false,
-      deepfakeDetection: true,
-      voiceCloneDetection: false,
-      socialMediaMonitoring: false,
-      autoTakedown: false,
-      legalDocuments: false,
-      insurance: false,
-      identityPassport: false,
+      watchedAccounts: false,
+      breachMonitoring: true,
+      stealerLogs: false,
+      exploitability: false,
+      blastRadius: false,
+      autoSweep: true,
+      containAll: false,
+      credentialVault: false,
+      deepfakeDetection: false,
+      darkWebMonitoring: false,
       familyPlan: false,
       enterpriseSSO: false,
       apiAccess: false,
       mobileApps: true,
-      openSource: false,
-      communityThreats: false,
     },
-    pricing: "$9.99/mo",
-    rating: 3.2,
+    pricing: "Free – $15/mo",
+    rating: 3.4,
   },
   {
-    name: "Competitor B",
-    logo: Lock,
-    tagline: "Enterprise security suite",
+    name: "Password Managers",
+    logo: KeyRound,
+    tagline: "Vaults that hold, not watch",
     isEnclave: false,
     features: {
-      realTimeScanning: true,
-      deepfakeDetection: true,
-      voiceCloneDetection: false,
-      socialMediaMonitoring: true,
-      autoTakedown: true,
-      legalDocuments: false,
-      insurance: false,
-      identityPassport: false,
-      familyPlan: false,
+      watchedAccounts: false,
+      breachMonitoring: true,
+      stealerLogs: false,
+      exploitability: false,
+      blastRadius: false,
+      autoSweep: false,
+      containAll: false,
+      credentialVault: true,
+      deepfakeDetection: false,
+      darkWebMonitoring: false,
+      familyPlan: true,
       enterpriseSSO: true,
       apiAccess: true,
-      mobileApps: false,
-      openSource: false,
-      communityThreats: false,
+      mobileApps: true,
     },
-    pricing: "$99/mo",
-    rating: 3.8,
+    pricing: "$3 – $24/mo",
+    rating: 4.2,
   },
   {
-    name: "Competitor C",
-    logo: Brain,
-    tagline: "AI content moderation",
+    name: "Identity Theft Services",
+    logo: ShieldAlert,
+    tagline: "Credit monitoring, high price",
     isEnclave: false,
     features: {
-      realTimeScanning: false,
-      deepfakeDetection: true,
-      voiceCloneDetection: true,
-      socialMediaMonitoring: false,
-      autoTakedown: false,
-      legalDocuments: false,
-      insurance: false,
-      identityPassport: false,
-      familyPlan: false,
+      watchedAccounts: false,
+      breachMonitoring: true,
+      stealerLogs: false,
+      exploitability: false,
+      blastRadius: false,
+      autoSweep: true,
+      containAll: true,
+      credentialVault: false,
+      deepfakeDetection: false,
+      darkWebMonitoring: true,
+      familyPlan: true,
       enterpriseSSO: false,
-      apiAccess: true,
+      apiAccess: false,
       mobileApps: true,
-      openSource: false,
-      communityThreats: false,
     },
-    pricing: "$19.99/mo",
-    rating: 3.5,
+    pricing: "$10 – $40/mo",
+    rating: 3.7,
   },
 ];
 
 const featureLabels: Record<string, string> = {
-  realTimeScanning: "Real-Time Scanning",
-  deepfakeDetection: "Deepfake Detection",
-  voiceCloneDetection: "Voice Clone Detection",
-  socialMediaMonitoring: "Social Media Monitoring",
-  autoTakedown: "Auto Takedown",
-  legalDocuments: "Legal Documents",
-  insurance: "Identity Insurance",
-  identityPassport: "Identity Passport",
-  familyPlan: "Family Plan",
+  watchedAccounts: "Watched-account shield",
+  breachMonitoring: "Breach corpus monitoring (1.2B+)",
+  stealerLogs: "Live infostealer-log intelligence",
+  exploitability: "Exploitability scoring per account",
+  blastRadius: "Blast-radius mapping",
+  autoSweep: "6-hour auto-sweep",
+  containAll: "Contain-all lockdown playbooks",
+  credentialVault: "Encrypted credential vault",
+  deepfakeDetection: "Deepfake detection",
+  darkWebMonitoring: "Dark-web + paste monitoring",
+  familyPlan: "Family plan",
   enterpriseSSO: "Enterprise SSO",
   apiAccess: "API Access",
   mobileApps: "Mobile Apps",
-  openSource: "Open Source",
-  communityThreats: "Community Threats",
 };
 
 export function ComparisonView() {
@@ -143,23 +143,24 @@ export function ComparisonView() {
         <Card className="bg-gradient-to-r from-cyan-500/10 to-violet-500/10 border-cyan-500/20">
           <CardContent className="p-8 text-center">
             <Crown className="w-12 h-12 text-amber-400 mx-auto mb-4" />
-            <h2 className="text-3xl font-bold text-white mb-2">The Most Complete Protection</h2>
+            <h2 className="text-3xl font-bold text-white mb-2">Every account behind the shield</h2>
             <p className="text-white/60 max-w-2xl mx-auto">
-              Enclave combines real-time scanning, AI detection, identity protection, and community intelligence
-              in one platform. No other solution offers this breadth of features.
+              Enclave is the only shield that watches your accounts against breach dumps and live
+              infostealer logs, maps the blast radius of reused passwords, and contains a leak with
+              one-tap lockdown playbooks. A checker tells you something leaked — Enclave stops it spreading.
             </p>
             <div className="flex justify-center gap-8 mt-6">
               <div className="text-center">
-                <p className="text-3xl font-bold text-cyan-400">14</p>
-                <p className="text-sm text-white/60">Features</p>
+                <p className="text-3xl font-bold text-cyan-400">250</p>
+                <p className="text-sm text-white/60">Watched accounts</p>
               </div>
               <div className="text-center">
-                <p className="text-3xl font-bold text-emerald-400">100%</p>
-                <p className="text-sm text-white/60">Coverage</p>
+                <p className="text-3xl font-bold text-emerald-400">6h</p>
+                <p className="text-sm text-white/60">Auto-sweep cycle</p>
               </div>
               <div className="text-center">
-                <p className="text-3xl font-bold text-amber-400">$0</p>
-                <p className="text-sm text-white/60">Starting Price</p>
+                <p className="text-3xl font-bold text-amber-400">1.2B+</p>
+                <p className="text-sm text-white/60">Records checked</p>
               </div>
             </div>
           </CardContent>
@@ -218,11 +219,11 @@ export function ComparisonView() {
       <StaggerItem>
         <Card className="bg-gradient-to-r from-cyan-500/10 to-violet-500/10 border-cyan-500/20">
           <CardContent className="p-6 text-center">
-            <h3 className="text-xl font-bold text-white mb-2">Ready to protect yourself?</h3>
-            <p className="text-white/60 mb-4">Start for free, no credit card required.</p>
+            <h3 className="text-xl font-bold text-white mb-2">Ready to build your shield?</h3>
+            <p className="text-white/60 mb-4">Start free with 3 watched accounts — no credit card required.</p>
             <Button className="bg-cyan-500 text-black font-semibold" onClick={() => setTab('home')}>
               <Zap className="w-4 h-4 mr-2" />
-              Get Started Free
+              Build my shield free
             </Button>
           </CardContent>
         </Card>

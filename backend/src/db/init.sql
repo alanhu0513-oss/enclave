@@ -968,7 +968,8 @@ CREATE TABLE IF NOT EXISTS account_watchlist (
   last_result TEXT,
   security_score INTEGER DEFAULT 100,
   created_at TEXT,
-  updated_at TEXT
+  updated_at TEXT,
+  wall_escalated BOOLEAN DEFAULT FALSE
 );
 CREATE INDEX IF NOT EXISTS idx_account_watchlist_user ON account_watchlist(user_id);
 

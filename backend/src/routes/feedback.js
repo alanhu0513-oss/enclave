@@ -119,7 +119,7 @@ router.post('/features/:id/vote', async (req, res) => {
     const existing = await votesTbl.filter({ feature_id: featureId, user_id: req.user.userId });
     if (existing.length) {
       // Unvote
-      await votesTbl.delete({ feature_id: featureId, user_id: req.user.userId });
+      await votesTbl.remove({ feature_id: featureId, user_id: req.user.userId });
       const allVotes = await votesTbl.filter({ feature_id: featureId });
       return success(res, { voted: false, votes: allVotes.length });
     }

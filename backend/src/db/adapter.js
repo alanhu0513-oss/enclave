@@ -19,6 +19,7 @@ const VALID_TABLES = new Set([
   'insurance_plans', 'identity_passports', 'organizations', 'org_invites', 'org_members',
   'newsletter_subscribers', 'webhook_delivery_logs', 'login_history', 'integrations',
   'account_watchlist', 'account_breaches', 'account_scan_logs', 'account_lockdowns',
+  'nps_responses', 'feature_requests', 'feature_votes',
 ]);
 
 function validateTableName(name) {

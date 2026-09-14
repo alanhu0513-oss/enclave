@@ -1021,3 +1021,29 @@ CREATE TABLE IF NOT EXISTS account_lockdowns (
   status TEXT DEFAULT 'active'
 );
 CREATE INDEX IF NOT EXISTS idx_account_lockdowns_user ON account_lockdowns(user_id);
+
+CREATE TABLE IF NOT EXISTS nps_responses (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  score INTEGER NOT NULL,
+  comment TEXT,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_nps_responses_user ON nps_responses(user_id);
+
+CREATE TABLE IF NOT EXISTS feature_requests (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  description TEXT DEFAULT '',
+  status TEXT DEFAULT 'open',
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS feature_votes (
+  id TEXT PRIMARY KEY,
+  feature_id TEXT NOT NULL REFERENCES feature_requests(id) ON DELETE CASCADE,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  UNIQUE(feature_id, user_id)
+);

@@ -30,11 +30,22 @@ const upload = multer({ dest: path.join(UPLOAD_DIR, 'temp'), limits: { fileSize:
 const router = express.Router();
 router.use(authenticate);
 
+const { getForensicReason } = require('../utils/forensics');
+
 function toJson(a) {
+  let detectionMeta = { forensicReason: 'Forensic analysis pending...' };
+  try {
+    if (a.notes && a.notes.includes('[FORENSIC:')) {
+      const match = a.notes.match(/\[FORENSIC: (.*?)\]/);
+      if (match) detectionMeta = JSON.parse(match[1]);
+    }
+  } catch(e) {}
+  
   return {
     id: a.id, sourceUrl: a.source_url, confidence: a.confidence,
     status: a.status, mediaType: a.media_type, matchedOn: a.matched_on,
-    engine: a.engine || 'unknown', notes: a.notes, timestamp: a.timestamp
+    notes: a.notes ? a.notes.replace(/\[FORENSIC: .*?\]/, '').trim() : '', 
+    timestamp: a.timestamp, detectionMeta
   };
 }
 
@@ -91,11 +102,15 @@ router.post('/scan/url', async (req, res) => {
             confidence = result.confidence;
             matchedOn = result.verdict;
             if (result.provider) matchedOn += ` — engine:${result.provider}`;
-            if (result.latency_ms) matchedOn += ` ${result.latency_ms}ms`;
-            if (result.cached) matchedOn += ' (cached)';
-            mediaType = 'image';
-            notes = `ML detected: ${result.verdict} (confidence ${result.confidence}%)`;
+            
+            // Construct forensic notes
+            const forensicReason = getForensicReason(result);
+            const forensicTag = `[FORENSIC: ${JSON.stringify({ forensicReason })}]`;
+            
+            notes = `${forensicTag} ML detected: ${result.verdict} (confidence ${result.confidence}%)`;
             if (result.explanation) notes += ` — ${String(result.explanation).slice(0, 200)}`;
+          } else {
+            notes = 'Analysis failed: ' + result.error;
           }
 
           try { fs.unlinkSync(filePath); } catch (_) {}
@@ -162,7 +177,9 @@ router.post('/scan/image', upload.single('image'), async (req, res) => {
       if (result.face_count) {
         matchedOn += ` — ${result.face_count} face(s) detected`;
       }
-      notes = `File: ${req.file.originalname}, Size: ${req.file.size} bytes, Verdict: ${result.verdict}, Confidence: ${result.confidence}%`;
+      const forensicReason = getForensicReason(result);
+      const forensicTag = `[FORENSIC: ${JSON.stringify({ forensicReason })}]`;
+      notes = `${forensicTag} File: ${req.file.originalname}, Size: ${req.file.size} bytes, Verdict: ${result.verdict}, Confidence: ${result.confidence}%`;
       if (result.explanation) notes += ` — ${String(result.explanation).slice(0, 200)}`;
     } else {
       notes = 'Analysis failed: ' + result.error;

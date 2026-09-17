@@ -63,12 +63,18 @@ app.use(cors({
   origin: function (origin, callback) {
     const allowedOrigins = [
       "https://enclave-react.vercel.app",
+      "https://frontend-ashen-three-rtnqguxxdq.vercel.app",
+      "https://enclave-production-d818.up.railway.app",
       "http://localhost:5173",
       "http://localhost:3000",
       "http://localhost:4000",
     ];
-    // Allow Chrome extension requests (no origin) and specific origins
-    if (!origin || allowedOrigins.includes(origin) || origin.startsWith('chrome-extension://')) {
+    const suffixAllowed = origin && (
+      origin.endsWith('.vercel.app')
+      || origin.endsWith('.up.railway.app')
+      || origin.startsWith('chrome-extension://')
+    );
+    if (!origin || allowedOrigins.includes(origin) || suffixAllowed) {
       callback(null, true);
     } else {
       callback(new Error("Not allowed by CORS"));
@@ -344,8 +350,26 @@ app.use((req, res, next) => {
 });
 
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  return error(res, err.message || 'Internal Server Error', 500);
+  if (err) {
+    // Multer / multipart client errors → 4xx, not 500
+    if (err.name === 'MulterError') {
+      const status = err.code === 'LIMIT_FILE_SIZE' ? 413 : 400;
+      return error(res, err.message || 'Invalid upload', status);
+    }
+    if (err.type === 'entity.too.large') {
+      return error(res, 'Request body too large', 413);
+    }
+    if (err.status >= 400 && err.status < 500) {
+      return error(res, err.message || 'Bad request', err.status);
+    }
+  }
+  console.error(err && err.stack);
+  return error(res, (err && err.message) || 'Internal Server Error', 500);
+});
+
+// JSON 404 fallback for unknown API routes (avoids Express HTML leakage)
+app.use('/api', (req, res) => {
+  return error(res, 'Not found', 404);
 });
 
 async function start() {

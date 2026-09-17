@@ -1,0 +1,447 @@
+{
+  "timestamp": "Tue 15 Sep 2026 20:39:01 HKT",
+  "samples": [
+    {
+      "file": "osr_0015.wav",
+      "type": "real",
+      "result": {
+        "confidence": 30.0,
+        "verdict": "LIKELY_NATURAL",
+        "final_verdict": "LIKELY_NATURAL",
+        "low_confidence": false,
+        "audio": {
+          "spectral_heuristic": {
+            "confidence": 0,
+            "verdict": "ANALYSIS_FAILED"
+          },
+          "features": null,
+          "reasons": null,
+          "aasist": {
+            "fake_probability": 0.3004,
+            "logits": [
+              -0.9741,
+              -0.1285
+            ]
+          }
+        },
+        "fusion": {
+          "method": "ensemble_weighted",
+          "score": 0.3004,
+          "weights": {
+            "aasist": 1.0,
+            "spectral_heuristic": 0.0
+          }
+        },
+        "filename": "osr_0015.wav"
+      }
+    },
+    {
+      "file": "osr_0014.wav",
+      "type": "real",
+      "result": {
+        "confidence": 33.9,
+        "verdict": "LIKELY_NATURAL",
+        "final_verdict": "LIKELY_NATURAL",
+        "low_confidence": false,
+        "audio": {
+          "spectral_heuristic": {
+            "confidence": 0,
+            "verdict": "ANALYSIS_FAILED"
+          },
+          "features": null,
+          "reasons": null,
+          "aasist": {
+            "fake_probability": 0.3393,
+            "logits": [
+              -0.8111,
+              -0.1448
+            ]
+          }
+        },
+        "fusion": {
+          "method": "ensemble_weighted",
+          "score": 0.3393,
+          "weights": {
+            "aasist": 1.0,
+            "spectral_heuristic": 0.0
+          }
+        },
+        "filename": "osr_0014.wav"
+      }
+    },
+    {
+      "file": "osr_0010.wav",
+      "type": "real",
+      "result": {
+        "confidence": 24.0,
+        "verdict": "LIKELY_NATURAL",
+        "final_verdict": "LIKELY_NATURAL",
+        "low_confidence": false,
+        "audio": {
+          "spectral_heuristic": {
+            "confidence": 0,
+            "verdict": "ANALYSIS_FAILED"
+          },
+          "features": null,
+          "reasons": null,
+          "aasist": {
+            "fake_probability": 0.2399,
+            "logits": [
+              -1.0511,
+              0.102
+            ]
+          }
+        },
+        "fusion": {
+          "method": "ensemble_weighted",
+          "score": 0.2399,
+          "weights": {
+            "aasist": 1.0,
+            "spectral_heuristic": 0.0
+          }
+        },
+        "filename": "osr_0010.wav"
+      }
+    },
+    {
+      "file": "osr_0011.wav",
+      "type": "real",
+      "result": {
+        "confidence": 4.6,
+        "verdict": "LIKELY_NATURAL",
+        "final_verdict": "LIKELY_NATURAL",
+        "low_confidence": false,
+        "audio": {
+          "spectral_heuristic": {
+            "confidence": 0,
+            "verdict": "ANALYSIS_FAILED"
+          },
+          "features": null,
+          "reasons": null,
+          "aasist": {
+            "fake_probability": 0.0458,
+            "logits": [
+              -2.0764,
+              0.9604
+            ]
+          }
+        },
+        "fusion": {
+          "method": "ensemble_weighted",
+          "score": 0.0458,
+          "weights": {
+            "aasist": 1.0,
+            "spectral_heuristic": 0.0
+          }
+        },
+        "filename": "osr_0011.wav"
+      }
+    },
+    {
+      "file": "osr_0013.wav",
+      "type": "real",
+      "result": {
+        "confidence": 26.2,
+        "verdict": "LIKELY_NATURAL",
+        "final_verdict": "LIKELY_NATURAL",
+        "low_confidence": false,
+        "audio": {
+          "spectral_heuristic": {
+            "confidence": 0,
+            "verdict": "ANALYSIS_FAILED"
+          },
+          "features": null,
+          "reasons": null,
+          "aasist": {
+            "fake_probability": 0.262,
+            "logits": [
+              -1.0809,
+              -0.0452
+            ]
+          }
+        },
+        "fusion": {
+          "method": "ensemble_weighted",
+          "score": 0.262,
+          "weights": {
+            "aasist": 1.0,
+            "spectral_heuristic": 0.0
+          }
+        },
+        "filename": "osr_0013.wav"
+      }
+    },
+    {
+      "file": "osr_0012.wav",
+      "type": "real",
+      "result": {
+        "confidence": 48.4,
+        "verdict": "SUSPICIOUS",
+        "final_verdict": "SUSPICIOUS",
+        "low_confidence": true,
+        "audio": {
+          "spectral_heuristic": {
+            "confidence": 0,
+            "verdict": "ANALYSIS_FAILED"
+          },
+          "features": null,
+          "reasons": null,
+          "aasist": {
+            "fake_probability": 0.4844,
+            "logits": [
+              -0.4245,
+              -0.3619
+            ]
+          }
+        },
+        "fusion": {
+          "method": "ensemble_weighted",
+          "score": 0.4844,
+          "weights": {
+            "aasist": 1.0,
+            "spectral_heuristic": 0.0
+          }
+        },
+        "filename": "osr_0012.wav"
+      }
+    },
+    {
+      "file": "Tom.wav",
+      "type": "fake",
+      "result": {
+        "confidence": 100.0,
+        "verdict": "LIKELY_SYNTHETIC",
+        "final_verdict": "LIKELY_SYNTHETIC",
+        "low_confidence": false,
+        "audio": {
+          "spectral_heuristic": {
+            "confidence": 0,
+            "verdict": "ANALYSIS_FAILED"
+          },
+          "features": null,
+          "reasons": null,
+          "aasist": {
+            "fake_probability": 1.0,
+            "logits": [
+              5.1655,
+              -5.2094
+            ]
+          }
+        },
+        "fusion": {
+          "method": "ensemble_weighted",
+          "score": 1.0,
+          "weights": {
+            "aasist": 1.0,
+            "spectral_heuristic": 0.0
+          }
+        },
+        "filename": "Tom.wav"
+      }
+    },
+    {
+      "file": "Karen.wav",
+      "type": "fake",
+      "result": {
+        "confidence": 100.0,
+        "verdict": "LIKELY_SYNTHETIC",
+        "final_verdict": "LIKELY_SYNTHETIC",
+        "low_confidence": false,
+        "audio": {
+          "spectral_heuristic": {
+            "confidence": 0,
+            "verdict": "ANALYSIS_FAILED"
+          },
+          "features": null,
+          "reasons": null,
+          "aasist": {
+            "fake_probability": 1.0,
+            "logits": [
+              6.9217,
+              -7.3471
+            ]
+          }
+        },
+        "fusion": {
+          "method": "ensemble_weighted",
+          "score": 1.0,
+          "weights": {
+            "aasist": 1.0,
+            "spectral_heuristic": 0.0
+          }
+        },
+        "filename": "Karen.wav"
+      }
+    },
+    {
+      "file": "Karen2.wav",
+      "type": "fake",
+      "result": {
+        "confidence": 100.0,
+        "verdict": "LIKELY_SYNTHETIC",
+        "final_verdict": "LIKELY_SYNTHETIC",
+        "low_confidence": false,
+        "audio": {
+          "spectral_heuristic": {
+            "confidence": 0,
+            "verdict": "ANALYSIS_FAILED"
+          },
+          "features": null,
+          "reasons": null,
+          "aasist": {
+            "fake_probability": 1.0,
+            "logits": [
+              5.2071,
+              -6.0114
+            ]
+          }
+        },
+        "fusion": {
+          "method": "ensemble_weighted",
+          "score": 1.0,
+          "weights": {
+            "aasist": 1.0,
+            "spectral_heuristic": 0.0
+          }
+        },
+        "filename": "Karen2.wav"
+      }
+    },
+    {
+      "file": "Moira.wav",
+      "type": "fake",
+      "result": {
+        "confidence": 100.0,
+        "verdict": "LIKELY_SYNTHETIC",
+        "final_verdict": "LIKELY_SYNTHETIC",
+        "low_confidence": false,
+        "audio": {
+          "spectral_heuristic": {
+            "confidence": 0,
+            "verdict": "ANALYSIS_FAILED"
+          },
+          "features": null,
+          "reasons": null,
+          "aasist": {
+            "fake_probability": 1.0,
+            "logits": [
+              6.4335,
+              -6.6271
+            ]
+          }
+        },
+        "fusion": {
+          "method": "ensemble_weighted",
+          "score": 1.0,
+          "weights": {
+            "aasist": 1.0,
+            "spectral_heuristic": 0.0
+          }
+        },
+        "filename": "Moira.wav"
+      }
+    },
+    {
+      "file": "Fred.wav",
+      "type": "fake",
+      "result": {
+        "confidence": 99.6,
+        "verdict": "LIKELY_SYNTHETIC",
+        "final_verdict": "LIKELY_SYNTHETIC",
+        "low_confidence": false,
+        "audio": {
+          "spectral_heuristic": {
+            "confidence": 0,
+            "verdict": "ANALYSIS_FAILED"
+          },
+          "features": null,
+          "reasons": null,
+          "aasist": {
+            "fake_probability": 0.9963,
+            "logits": [
+              2.6674,
+              -2.9292
+            ]
+          }
+        },
+        "fusion": {
+          "method": "ensemble_weighted",
+          "score": 0.9963,
+          "weights": {
+            "aasist": 1.0,
+            "spectral_heuristic": 0.0
+          }
+        },
+        "filename": "Fred.wav"
+      }
+    },
+    {
+      "file": "Daniel.wav",
+      "type": "fake",
+      "result": {
+        "confidence": 100.0,
+        "verdict": "LIKELY_SYNTHETIC",
+        "final_verdict": "LIKELY_SYNTHETIC",
+        "low_confidence": false,
+        "audio": {
+          "spectral_heuristic": {
+            "confidence": 0,
+            "verdict": "ANALYSIS_FAILED"
+          },
+          "features": null,
+          "reasons": null,
+          "aasist": {
+            "fake_probability": 1.0,
+            "logits": [
+              6.5881,
+              -6.9866
+            ]
+          }
+        },
+        "fusion": {
+          "method": "ensemble_weighted",
+          "score": 1.0,
+          "weights": {
+            "aasist": 1.0,
+            "spectral_heuristic": 0.0
+          }
+        },
+        "filename": "Daniel.wav"
+      }
+    },
+    {
+      "file": "Samantha.wav",
+      "type": "fake",
+      "result": {
+        "confidence": 100.0,
+        "verdict": "LIKELY_SYNTHETIC",
+        "final_verdict": "LIKELY_SYNTHETIC",
+        "low_confidence": false,
+        "audio": {
+          "spectral_heuristic": {
+            "confidence": 0,
+            "verdict": "ANALYSIS_FAILED"
+          },
+          "features": null,
+          "reasons": null,
+          "aasist": {
+            "fake_probability": 1.0,
+            "logits": [
+              5.1655,
+              -5.2094
+            ]
+          }
+        },
+        "fusion": {
+          "method": "ensemble_weighted",
+          "score": 1.0,
+          "weights": {
+            "aasist": 1.0,
+            "spectral_heuristic": 0.0
+          }
+        },
+        "filename": "Samantha.wav"
+      }
+    }
+  ]
+}

@@ -27,6 +27,7 @@
   var LS_FACEPRINT  = 'enclave_faceprint';
   var LS_VOICEPRINT = 'enclave_voiceprint';
   var LS_SIGNATURE  = 'enclave_signature';
+  var LS_ENROLL_SKIP = 'enclave_enrollment_skipped';
   var CLOAK         = 12;
   var CLOAK_RATE    = 200;
   var VOICE_MATCH_THRESHOLD = 0.65;
@@ -37,7 +38,10 @@
   var registeredUserId = null;
   var selectedAlertId = null;
   var worker          = null;
+  var _notifiedAlertIds = {};
+  var _panelRefreshInterval = null;
   var cryptoKeyPair   = null;
+  var cryptoKeyPromise = null;
   var cloakInterval   = null;
   var loginInitDone   = false;
 
@@ -142,7 +146,7 @@
     if (!toastContainer) return;
     var item = document.createElement('div');
     item.className = 'toast-item';
-    item.innerHTML = '<svg viewBox="0 0 36 36" width="18" height="18" style="flex-shrink:0;color:#FF3366;"><use href="#icon-dispatch"/></svg>'
+    item.innerHTML = '<svg viewBox="0 0 36 36" width="18" height="18" style="flex-shrink:0;color:#F43F5E;"><use href="#icon-dispatch"/></svg>'
       + '<span class="toast-message">' + message + '</span>'
       + '<button class="toast-dismiss"><svg viewBox="0 0 24 24" width="12" height="12"><use href="#icon-close"/></svg></button>';
     item.querySelector('.toast-dismiss').addEventListener('click', function (e) {
@@ -190,22 +194,18 @@
     alerts = lsGet(LS_ALERTS, []);
     registeredName = lsGet(LS_NAME, '');
     if (registeredName && headerProfile) headerProfile.textContent = registeredName;
-    // Try to sync alerts from API
+    // Try to sync alerts from API (even when empty — ensures stale localStorage is cleared)
     if (window.EnclaveAPI && window.EnclaveAPI.isLoggedIn()) {
       window.EnclaveAPI.getAlerts().then(function (apiAlerts) {
-        if (apiAlerts && apiAlerts.length) {
-          // Merge: API alerts are authoritative, but keep local ones not yet on server
-          var apiMap = {};
-          apiAlerts.forEach(function (a) { apiMap[a.id] = a; });
-          alerts.forEach(function (a) {
-            if (!apiMap[a.id]) apiMap[a.id] = a;
-          });
-          alerts = Object.values(apiMap).sort(function (a, b) {
-            return b.timestamp.localeCompare(a.timestamp);
+        // Merge: API alerts are authoritative, but keep local ones not yet on server
+        var apiMap = {};
+        (apiAlerts || []).forEach(function (a) { apiMap[a.id] = a; });
+        alerts.forEach(function (a) { if (!apiMap[a.id]) apiMap[a.id] = a; });
+        alerts = Object.values(apiMap).sort(function (a, b) {
+            return (b.timestamp || '').localeCompare(a.timestamp || '');
           });
           saveAlerts();
           renderDashboard();
-        }
       }).catch(function () {});
     }
   }
@@ -287,7 +287,7 @@
             switch (challenge.mode) {
               case 'left':  inZone = nx > 0.52; break;
               case 'up':    inZone = ny < 0.42; break;
-              case 'right': inZone = nx > 0.45 && ny < 0.50; break;
+              case 'right': inZone = nx < 0.48; break;
             }
 
             sustainedFrames = inZone ? sustainedFrames + 1 : Math.max(0, sustainedFrames - 1);
@@ -600,12 +600,16 @@
         var apiMap = {};
         apiAlerts.forEach(function (a) { apiMap[a.id] = a; });
         alerts.forEach(function (a) { if (!apiMap[a.id]) apiMap[a.id] = a; });
-        alerts = apiAlerts.slice().sort(function (a, b) {
-          return (b.timestamp || '').localeCompare(a.timestamp || '');
-        });
+        // Merge: server alerts + local-only alerts that haven't synced yet
+        alerts = Object.keys(apiMap).map(function (k) { return apiMap[k]; })
+          .sort(function (a, b) {
+            return (b.timestamp || '').localeCompare(a.timestamp || '');
+          });
         saveAlerts();
         renderDashboard();
-        var pending = alerts.filter(function (a) { return a.status === 'PENDING_REVIEW' && a.confidence >= 90; });
+        // Alert once per alert id to avoid re-toasting every poll cycle
+        var pending = alerts.filter(function (a) { return a.status === 'PENDING_REVIEW' && a.confidence >= 90 && !_notifiedAlertIds[a.id]; });
+        pending.forEach(function (a) { _notifiedAlertIds[a.id] = true; });
         if (pending.length > 0) {
           if ('Notification' in window && Notification.permission === 'granted') {
             try {
@@ -673,28 +677,34 @@
     var maxHome = 3; // Only show 3 recent on home tab
     var shownHome = 0;
     alerts.forEach(function (a) {
-      if (a.status === 'PENDING_REVIEW') pending++;
+      var isPending = a.status === 'PENDING_REVIEW' || a.status === 'UNRESOLVED';
+      if (isPending) pending++;
       var item = document.createElement('div');
       item.className = 'alert-item-home' + (selectedAlertId === a.id ? ' selected' : '');
       item.dataset.alertId = a.id;
 
       var conf = document.createElement('span');
       conf.className = 'alert-conf ' + (a.confidence >= 70 ? 'alert-conf-high' : a.confidence >= 40 ? 'alert-conf-med' : 'alert-conf-low');
-      conf.textContent = a.confidence + '%';
+      conf.textContent = (a.confidence || 0) + '%';
 
       var src = document.createElement('span');
       src.className = 'alert-source-text';
-      var label = a.type ? a.type.toUpperCase() + ' — ' : '';
+      var label = a.type ? a.type.toUpperCase() + ' — ' : (a.mediaType ? a.mediaType.toUpperCase() + ' — ' : '');
       var providerChip = a.detectionMeta && a.detectionMeta.provider
         ? ' [' + a.detectionMeta.provider.replace(/-/g, ' ') + ']' : '';
-      src.textContent = label + a.source + providerChip;
+      src.textContent = label + (a.source || a.sourceUrl || 'scan') + providerChip;
 
       var st = document.createElement('span');
-      st.className = 'alert-status-pill ' + (a.status === 'PENDING_REVIEW' ? 'alert-status-pending' : 'alert-status-resolved');
-      st.textContent = a.status === 'PENDING_REVIEW' ? 'Pending' : 'Resolved';
+      st.className = 'alert-status-pill ' + (isPending ? 'alert-status-pending' : 'alert-status-resolved');
+      st.textContent = isPending ? 'Pending' : 'Resolved';
+
+      var reason = document.createElement('div');
+      reason.className = 'alert-forensic-reason';
+      reason.textContent = forensicReasonText(a);
 
       item.appendChild(conf);
       item.appendChild(src);
+      item.appendChild(reason);
       item.appendChild(st);
 
       item.addEventListener('click', function () {
@@ -726,7 +736,7 @@
     });
 
     if (alerts.length === 0 && alertList) {
-      alertList.innerHTML = '<div class="empty-state"><svg viewBox="0 0 64 64" width="48" height="48" class="empty-state-icon"><circle cx="32" cy="32" r="28" fill="none" stroke="rgba(0,255,136,0.15)" stroke-width="2"/><path d="M32 18v16M32 40v2" stroke="rgba(0,255,136,0.3)" stroke-width="2" stroke-linecap="round"/></svg><p class="empty-state-text">No threats detected</p><p class="empty-state-sub">System is scanning in the background</p></div>';
+      alertList.innerHTML = '<div class="empty-state"><svg viewBox="0 0 64 64" width="48" height="48" class="empty-state-icon"><circle cx="32" cy="32" r="28" fill="none" stroke="rgba(132,204,22,0.15)" stroke-width="2"/><path d="M32 18v16M32 40v2" stroke="rgba(132,204,22,0.3)" stroke-width="2" stroke-linecap="round"/></svg><p class="empty-state-text">No threats detected</p><p class="empty-state-sub">System is scanning in the background</p></div>';
     }
     if (alerts.length === 0 && homeAlertList) {
       homeAlertList.innerHTML = '<p style="color:var(--text-muted);font-size:0.7rem;padding:0.5rem;">No alerts yet. Run a scan to get started.</p>';
@@ -750,16 +760,17 @@
 
   function openReview(alert) {
     currentReviewAlert = alert;
-    var sourceText = alert.source || 'unknown';
+    var sourceText = alert.source || alert.sourceUrl || 'unknown';
     var matchedOn = alert.matchedOn || 'visual similarity';
-    var metaHtml = 'Match: ' + alert.confidence + '% &middot; Type: ' + (alert.type || 'unknown')
+    var metaHtml = 'Match: ' + (alert.confidence || 0) + '% &middot; Type: ' + (alert.type || alert.mediaType || 'unknown')
       + ' &middot; Detected: ' + matchedOn
       + ' &middot; Timestamp: ' + (alert.timestamp || 'N/A');
-    if (alert.detectionMeta) {
-      var det = alert.detectionMeta;
+    if (alert.detectionMeta || alert.detection) {
+      var det = alert.detectionMeta || alert.detection;
       metaHtml += '<br>Engine: ' + (det.provider || 'unknown');
       if (det.latency_ms) metaHtml += ' &middot; Latency: ' + det.latency_ms + 'ms';
       if (det.cached) metaHtml += ' &middot; cached';
+      if (forensicReasonText(alert)) metaHtml += '<br><span class="forensic-note">' + forensicReasonText(alert) + '</span>';
       if (det.explanation) metaHtml += '<br><span style="color:var(--text-muted);font-size:0.72rem;">' + String(det.explanation).slice(0, 220) + '</span>';
     }
     openResolution(alert);
@@ -844,7 +855,7 @@
       var cancelled = false;
       var timeout = setTimeout(function () {
         cancelled = true;
-        cleanup();
+        if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
         reject(new Error('timeout'));
       }, 18000);
 
@@ -970,9 +981,9 @@
       lines.push('removal of infringing material hosted on your platform.');
       lines.push('');
       lines.push('Infringing material located at:');
-      lines.push(alert.source);
+      lines.push(alert.source || alert.sourceUrl || 'unknown');
       lines.push('');
-      lines.push('Match Confidence: ' + alert.confidence + '%');
+      lines.push('Match Confidence: ' + (alert.confidence || 0) + '%');
       lines.push('Match Type: ' + (alert.matchedOn || 'visual similarity'));
       lines.push('');
       lines.push('I state under penalty of perjury that the information in this notification');
@@ -989,9 +1000,9 @@
       lines.push('the digital identity and likeness of ' + name + '.');
       lines.push('');
       lines.push('Infringing material identified at:');
-      lines.push(alert.source);
+      lines.push(alert.source || alert.sourceUrl || 'unknown');
       lines.push('');
-      lines.push('Match Confidence: ' + alert.confidence + '%');
+      lines.push('Match Confidence: ' + (alert.confidence || 0) + '%');
       lines.push('');
       lines.push('Failure to comply within forty-eight (48) hours will result in pursuit of');
       lines.push('all available civil remedies, including statutory damages and legal fees.');
@@ -1088,6 +1099,7 @@
      ═══════════════════════════════════════════════════════ */
   btnLock.addEventListener('click', function () {
     if (worker) { worker.active = false; worker = null; }
+    if (_panelRefreshInterval) { clearInterval(_panelRefreshInterval); _panelRefreshInterval = null; }
     if (window.EnclaveAPI && window.EnclaveAPI.isLoggedIn()) {
       window.EnclaveAPI.stopCrawler().catch(function () {});
     }
@@ -1149,7 +1161,7 @@
     if (!settingsModal.classList.contains('hidden')) openSettings();
   }
 
-  btnSettingsOpen.addEventListener('click', openSettings);
+  // Sidebar Settings nav item switches tabs only; gear card opens the modal.
   btnSettingsClose.addEventListener('click', closeSettings);
 
   /* ─── Re-capture flows from Settings ─── */
@@ -1173,6 +1185,7 @@
     // re-trigger face capture flow inside registration portal context
     advRegStep(regStepFace, [regStepName, regStepAudio, regStepComplete]);
     registerPortal.classList.remove('hidden');
+    if (btnRegSkip) btnRegSkip.style.display = 'none';
     openRegCamera();
     settingsStatus.textContent = '';
     btnRegComplete.textContent = 'Return to Vault';
@@ -1190,6 +1203,7 @@
     closeSettings();
     advRegStep(regStepAudio, [regStepName, regStepFace, regStepComplete]);
     registerPortal.classList.remove('hidden');
+    if (btnRegSkip) btnRegSkip.style.display = 'none';
     openRegMic();
     settingsStatus.textContent = '';
     btnRegComplete.textContent = 'Return to Vault';
@@ -1216,18 +1230,21 @@
       localStorage.clear();
       registeredName = '';
       alerts = [];
-    if (worker) { worker.active = false; worker = null; }
-    closeSettings();
-    appRoot.classList.add('hidden');
-    authStep = 'idle';
-    authOverlay.classList.add('hidden');
-    registerPortal.classList.add('hidden');
-    // Sign out from Clerk
-    if (window.Clerk && window.Clerk.signOut) {
-      window.EnclaveAuthUI.show();
-    } else {
-      window.EnclaveAuthUI.show();
-    }
+      if (worker) { worker.active = false; worker = null; }
+      stopCameraCloak();
+      if (window.EnclaveNative && window.EnclaveNative.shieldOverlay && window.EnclaveNative.shieldOverlay.isActive()) {
+        window.EnclaveNative.shieldOverlay.stop();
+      }
+      closeSettings();
+      appRoot.classList.add('hidden');
+      authStep = 'idle';
+      authOverlay.classList.add('hidden');
+      registerPortal.classList.add('hidden');
+      if (window.EnclaveAPI) { window.EnclaveAPI.logout(); }
+      if (window.EnclaveNative && window.EnclaveNative.secureStorage) {
+        window.EnclaveNative.secureStorage.remove('enclave_jwt');
+      }
+      if (window.EnclaveAuthUI) window.EnclaveAuthUI.show();
     }
   });
 
@@ -1525,9 +1542,10 @@
 
   function generateIdentityProof() {
     if (!window.crypto || !window.crypto.subtle) return null;
-    if (cryptoKeyPair) return cryptoKeyPair;
+    if (cryptoKeyPair) return Promise.resolve(cryptoKeyPair);
+    if (cryptoKeyPromise) return cryptoKeyPromise;
     try {
-      crypto.subtle.generateKey(
+      cryptoKeyPromise = crypto.subtle.generateKey(
         { name: 'ECDSA', namedCurve: 'P-256' },
         true,
         ['sign', 'verify']
@@ -1537,9 +1555,14 @@
         lsSet('enclave_crypto_keys', {
           generated: new Date().toISOString()
         });
-      }).catch(function () { cryptoKeyPair = null; });
-    } catch (e) { cryptoKeyPair = null; }
-    return cryptoKeyPair;
+        return kp;
+      }).catch(function () { cryptoKeyPair = null; cryptoKeyPromise = null; return null; });
+    } catch (e) {
+      cryptoKeyPair = null;
+      cryptoKeyPromise = null;
+      return null;
+    }
+    return cryptoKeyPromise;
   }
 
   function hashImageData(canvas) {
@@ -1666,12 +1689,27 @@
     openRegCamera();
   });
 
+  var btnRegSkip = document.getElementById('btn-reg-skip');
+  if (btnRegSkip) {
+    btnRegSkip.addEventListener('click', function () {
+      lsSet(LS_ENROLL_SKIP, '1');
+      terminateActiveMediaStreams();
+      if (registerPortal) registerPortal.classList.add('hidden');
+    });
+  }
+
   /* ─── Step 2: Face Snapshot ─── */
   function openRegCamera() {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       showRegError('Camera unavailable.');
       return;
     }
+    // Reset capture state so Re-Capture works after initial enrollment
+    btnRegCapture.disabled = false;
+    btnRegCapture.textContent = 'Capture Portrait';
+    btnRegFaceDone.disabled = true;
+    btnRegFaceDone.style.opacity = '0.5';
+    if (regFacePreview) regFacePreview.classList.add('hidden');
     navigator.mediaDevices.getUserMedia({ video: true }).then(function (s) {
       regStream = s;
       regVideo.srcObject = s;
@@ -1713,10 +1751,10 @@
       var dataUrl = regFaceCanvas.toDataURL('image/png');
       lsSet(LS_FACEPRINT, { type: 'face_spatial_matrix', width: w, height: h, grayscale: true, thumbnail: dataUrl, captured: new Date().toISOString() });
 
-      regFacePreview.innerHTML = '<p style="font-size:0.7rem;color:#00FF88;margin:0 0 4px;">Portrait captured</p>';
+      regFacePreview.innerHTML = '<p style="font-size:0.7rem;color:#84CC16;margin:0 0 4px;">Portrait captured</p>';
       var thumb = document.createElement('canvas');
       thumb.width = w; thumb.height = h;
-      thumb.style.cssText = 'border:1px solid rgba(0,255,136,0.3);border-radius:4px;';
+      thumb.style.cssText = 'border:1px solid rgba(132,204,22,0.3);border-radius:4px;';
       thumb.getContext('2d').putImageData(imgData, 0, 0);
       regFacePreview.appendChild(thumb);
       regFacePreview.classList.remove('hidden');
@@ -1752,6 +1790,13 @@
       showRegError('Microphone unavailable.');
       return;
     }
+    // Reset record state so Re-Record works after initial enrollment
+    btnRegRecord.disabled = false;
+    btnRegRecord.textContent = 'Record Voice Baseline';
+    btnRegAudioDone.disabled = true;
+    regRecordedFrames = [];
+    regRecording = false;
+    if (regAudioStatus) { regAudioStatus.textContent = ''; regAudioStatus.style.color = ''; }
     navigator.mediaDevices.getUserMedia({ audio: true }).then(function (s) {
       if (regAudioCtx) regAudioCtx.close();
       regAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -1986,6 +2031,14 @@
     return parts.join(' · ');
   }
 
+  function forensicReasonText(alert) {
+    var meta = alert.detectionMeta || alert.detection || {};
+    if (meta.forensicReason) return String(meta.forensicReason);
+    var verdict = meta.final_verdict || meta.verdict;
+    if (verdict) return 'Verdict: ' + verdict.replace(/_/g, ' ');
+    return 'Forensic analysis pending.';
+  }
+
   btnScanner.addEventListener('click', async function () {
     var url = scannerUrl.value.trim();
     var file = scannerFile.files[0];
@@ -2009,7 +2062,8 @@
             timestamp: result.timestamp || new Date().toISOString(),
             matchedOn: result.matchedOn || (det ? det.verdict : 'analysis'),
             sourceUrl: result.sourceUrl,
-            detectionMeta: det
+            detectionMeta: result.detectionMeta || det || {},
+            detection: det
           });
           saveAlerts();
           renderDashboard();
@@ -2023,7 +2077,8 @@
             + (det && det.verdict ? ' (' + det.verdict.replace(/_/g, ' ').toLowerCase() + ')' : '');
           if (scannerMeta) scannerMeta.textContent = metaText;
           if (det && det.explanation && typeof showToastAlert === 'function' && conf >= 60) {
-            showToastAlert('Deepfake signals: ' + (det.artifacts && det.artifacts.length ? det.artifacts.join(', ') : det.verdict.toLowerCase()));
+            var verdictLabel = det.verdict ? det.verdict.replace(/_/g, ' ').toLowerCase() : 'deepfake signal';
+            showToastAlert('Deepfake signals: ' + (det.artifacts && det.artifacts.length ? det.artifacts.join(', ') : verdictLabel));
           }
         }).catch(function (e) {
           if (typeof hideScannerRadar === 'function') hideScannerRadar();
@@ -2049,7 +2104,8 @@
             type: result.mediaType || 'link',
             timestamp: result.timestamp || new Date().toISOString(),
             matchedOn: result.matchedOn || 'url scan',
-            detectionMeta: det
+            detectionMeta: result.detectionMeta || det || {},
+            detection: det
           });
           saveAlerts();
           renderDashboard();
@@ -2127,10 +2183,10 @@
           ctx.putImageData(id, 0, 0);
           lsSet(LS_FACEPRINT, { type: 'face_spatial_matrix', width: w, height: h, grayscale: true, thumbnail: regFaceCanvas.toDataURL('image/png'), captured: new Date().toISOString() });
 
-          regFacePreview.innerHTML = '<p style="font-size:0.7rem;color:#00FF88;margin:0 0 4px;">Portrait captured</p>';
+          regFacePreview.innerHTML = '<p style="font-size:0.7rem;color:#84CC16;margin:0 0 4px;">Portrait captured</p>';
           var thumb = document.createElement('canvas');
           thumb.width = w; thumb.height = h;
-          thumb.style.cssText = 'border:1px solid rgba(0,255,136,0.3);border-radius:4px;';
+          thumb.style.cssText = 'border:1px solid rgba(132,204,22,0.3);border-radius:4px;';
           thumb.getContext('2d').putImageData(id, 0, 0);
           regFacePreview.appendChild(thumb);
           regFacePreview.classList.remove('hidden');
@@ -2233,7 +2289,7 @@
   var resolutionConfidence = document.getElementById('resolution-confidence');
   var btnMagicDispatch = document.getElementById('btn-magic-dispatch');
   var btnResolutionClose = document.getElementById('btn-resolution-close');
-  var resolutionStatus = document.getElementById('resolution-status');
+  /* reuse existing reviewStatus (both target #resolution-status) */
 
   var currentDispatchAlert = null;
 
@@ -2245,8 +2301,8 @@
     } else {
       resolutionPlatform.textContent = 'on unknown platform';
     }
-    resolutionConfidence.textContent = 'Confidence: ' + alert.confidence + '% — Source: ' + (alert.type || 'image').toUpperCase();
-    resolutionStatus.textContent = '';
+    resolutionConfidence.textContent = 'Confidence: ' + (alert.confidence || 0) + '% — Source: ' + (alert.type || alert.mediaType || 'image').toUpperCase();
+    reviewStatus.textContent = '';
     resolutionOverlay.classList.remove('hidden');
   }
 
@@ -2257,22 +2313,22 @@
 
   function performMagicDispatch() {
     var alert = currentDispatchAlert;
-    if (!alert) { resolutionStatus.textContent = 'No alert selected.'; return; }
+    if (!alert) { reviewStatus.textContent = 'No alert selected.'; return; }
     btnMagicDispatch.disabled = true;
-    resolutionStatus.textContent = 'Stage 1/3: Biometric re-verification...';
+    reviewStatus.textContent = 'Stage 1/3: Biometric re-verification...';
 
     reauthenticate().then(function () {
-      resolutionStatus.textContent = 'Stage 2/3: Signing authorization...';
+      reviewStatus.textContent = 'Stage 2/3: Signing authorization...';
       return showSignaturePad();
     }).then(function () {
-      resolutionStatus.textContent = 'Stage 3/3: Generating legal notice...';
+      reviewStatus.textContent = 'Stage 3/3: Generating legal notice...';
       var name = registeredName || 'Valued Client';
       var docType = 'DMCA';
       generatePDF(docType, alert, name);
-      resolutionStatus.textContent = 'Notice generated and downloaded.';
+      reviewStatus.textContent = 'Notice generated and downloaded.';
       setTimeout(function () { closeResolution(); btnMagicDispatch.disabled = false; }, 1500);
     }).catch(function (err) {
-      resolutionStatus.textContent = 'Dispatch failed: ' + (err.message || 'verification declined');
+      reviewStatus.textContent = 'Dispatch failed: ' + (err.message || 'verification declined');
       btnMagicDispatch.disabled = false;
     });
   }
@@ -2386,16 +2442,18 @@
     window.EnclaveAPI.getBiometricStatus().then(function (status) {
       var hasFace = status.faceprint !== null;
       var hasVoice = status.voiceprint !== null;
-      if (!hasFace || !hasVoice) {
-        // Offload enrollment to the onboarding wizard when appropriate, else registration portal
-        if (!maybeStartOnboarding()) {
-          if (registerPortal) registerPortal.classList.remove('hidden');
-        }
+      var skipped = lsGet(LS_ENROLL_SKIP, '') === '1';
+      if ((!hasFace || !hasVoice) && !skipped && !maybeStartOnboarding()) {
+        if (registerPortal) registerPortal.classList.remove('hidden');
+        if (btnRegSkip) btnRegSkip.style.display = '';
       }
       renderDashboard();
     }).catch(function () {
-      if (!maybeStartOnboarding()) {
-        if (registerPortal) registerPortal.classList.remove('hidden');
+      var skipped = lsGet(LS_ENROLL_SKIP, '') === '1';
+      if (!skipped) {
+        if (!maybeStartOnboarding()) {
+          if (registerPortal) registerPortal.classList.remove('hidden');
+        }
       }
       renderDashboard();
     });
@@ -2617,12 +2675,20 @@
   })();
 
   // spawn crawler when app is unlocked
+  function applyStoredShieldPrefs() {
+    try {
+      var prefs = JSON.parse(localStorage.getItem('enclave_shield_prefs') || '{}');
+      var toggleCamera = document.getElementById('toggle-camera-shield');
+      var toggleVoice = document.getElementById('toggle-voice-shield');
+      var toggleCrawler = document.getElementById('toggle-crawler');
+      if (toggleCamera && typeof prefs.camera === 'boolean') toggleCamera.checked = prefs.camera;
+      if (toggleVoice && typeof prefs.voice === 'boolean') toggleVoice.checked = prefs.voice;
+      if (toggleCrawler && typeof prefs.crawler === 'boolean') toggleCrawler.checked = prefs.crawler;
+    } catch (_) {}
+  }
   var unlockObserver = new MutationObserver(function () {
     if (!appRoot.classList.contains('hidden') && (!worker || !worker.active)) {
-      // Start API crawler
-      if (window.EnclaveAPI && window.EnclaveAPI.isLoggedIn()) {
-        window.EnclaveAPI.startCrawler().catch(function () {});
-      }
+      applyStoredShieldPrefs();
       spawnCrawler();
       pollAlerts();
     }
@@ -3109,6 +3175,14 @@
     }).catch(function () {});
   }
 
+  if (btnCommunityOpen) {
+    btnCommunityOpen.addEventListener('click', function () {
+      loadCommunity();
+      var section = document.querySelector('.community-section');
+      if (section) section.scrollIntoView({ behavior: 'smooth' });
+    });
+  }
+
   /* ─── Takedowns ─── */
   var takedownList = document.getElementById('takedown-list');
   var takedownActive = document.getElementById('takedown-active');
@@ -3388,8 +3462,9 @@
   var panelRefreshObserver = new MutationObserver(function () {
     if (!appRoot.classList.contains('hidden')) {
       setTimeout(refreshAllPanels, 1000);
-      // Refresh every 60s
-      setInterval(refreshAllPanels, 60000);
+      // Refresh every 60s; store id so lock can clear
+      if (_panelRefreshInterval) clearInterval(_panelRefreshInterval);
+      _panelRefreshInterval = setInterval(refreshAllPanels, 60000);
       panelRefreshObserver.disconnect();
     }
   });
@@ -3427,7 +3502,7 @@
     for (var i = 0; i < columns; i++) {
       drops[i] = Math.random() * -100;
       dropSpeeds[i] = 0.3 + Math.random() * 0.7;
-      dropColors[i] = Math.random() > 0.7 ? '#00FF88' : (Math.random() > 0.5 ? '#00BFFF' : '#FF3366');
+      dropColors[i] = Math.random() > 0.7 ? '#84CC16' : (Math.random() > 0.5 ? '#00BFFF' : '#F43F5E');
     }
 
     /* Circuit nodes */
@@ -3446,9 +3521,9 @@
 
     /* HUD rings */
     var hudRings = [
-      { x: W * 0.15, y: H * 0.3, r: 60, angle: 0, speed: 0.003, color: '#00FF88' },
+      { x: W * 0.15, y: H * 0.3, r: 60, angle: 0, speed: 0.003, color: '#84CC16' },
       { x: W * 0.85, y: H * 0.6, r: 45, angle: 0, speed: -0.005, color: '#00BFFF' },
-      { x: W * 0.5, y: H * 0.15, r: 35, angle: 0, speed: 0.004, color: '#FF3366' }
+      { x: W * 0.5, y: H * 0.15, r: 35, angle: 0, speed: 0.004, color: '#F43F5E' }
     ];
 
     var frame = 0;
@@ -3470,14 +3545,14 @@
         }
         if (y > H && Math.random() > 0.98) {
           drops[i] = 0;
-          dropColors[i] = Math.random() > 0.7 ? '#00FF88' : (Math.random() > 0.5 ? '#00BFFF' : '#FF3366');
+          dropColors[i] = Math.random() > 0.7 ? '#84CC16' : (Math.random() > 0.5 ? '#00BFFF' : '#F43F5E');
         }
         drops[i] += dropSpeeds[i];
       }
 
       /* Circuit grid lines */
       ctx.globalAlpha = 0.04;
-      ctx.strokeStyle = '#00FF88';
+      ctx.strokeStyle = '#84CC16';
       ctx.lineWidth = 0.5;
       var gridSize = 80;
       var offsetX = (frame * 0.2) % gridSize;
@@ -3506,7 +3581,7 @@
         if (n.y < 0 || n.y > H) n.vy *= -1;
         var glow = 0.3 + 0.3 * Math.sin(n.pulse);
         ctx.globalAlpha = glow;
-        ctx.fillStyle = '#00FF88';
+        ctx.fillStyle = '#84CC16';
         ctx.beginPath();
         ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2);
         ctx.fill();
@@ -3518,7 +3593,7 @@
           var dist = Math.sqrt(dx * dx + dy * dy);
           if (dist < 200) {
             ctx.globalAlpha = (1 - dist / 200) * 0.15;
-            ctx.strokeStyle = '#00FF88';
+            ctx.strokeStyle = '#84CC16';
             ctx.lineWidth = 0.5;
             ctx.beginPath();
             ctx.moveTo(n.x, n.y);
@@ -3553,7 +3628,7 @@
 
       /* Horizontal scan line */
       ctx.globalAlpha = 0.06;
-      ctx.fillStyle = '#00FF88';
+      ctx.fillStyle = '#84CC16';
       var scanY = (frame * 1.5) % H;
       ctx.fillRect(0, scanY, W, 2);
 
@@ -3576,12 +3651,12 @@
     window.tsParticles.load('particles-canvas', {
       particles: {
         number: { value: 60, density: { enable: true, width: 800, height: 600 } },
-        color: { value: ['#00FF88', '#00BFFF', '#FF3366', '#FFD700'] },
+        color: { value: ['#84CC16', '#00BFFF', '#F43F5E', '#FFD700'] },
         shape: { type: ['circle', 'polygon'], polygon: [{ sides: 6, rotation: false }] },
         opacity: { value: { min: 0.15, max: 0.5 }, animation: { enable: true, speed: 0.6, minimumValue: 0.08 } },
         size: { value: { min: 1.5, max: 4 }, animation: { enable: true, speed: 1.5, minimumValue: 0.8 } },
         move: { enable: true, speed: 0.8, direction: 'none', random: true, straight: false, outModes: { default: 'out' } },
-        links: { enable: true, distance: 160, color: '#00FF88', opacity: 0.2, width: 0.8 }
+        links: { enable: true, distance: 160, color: '#84CC16', opacity: 0.2, width: 0.8 }
       },
       interactivity: {
         events: { onHover: { enable: true, mode: 'grab' }, resize: true },
@@ -3740,7 +3815,8 @@
   function alertsResolvedRatio() {
     if (!alerts || !alerts.length) return 0;
     var resolved = alerts.filter(function (a) {
-      return a.status === 'RESOLVED' || a.status === 'WHITELISTED' || a.confidence < 40;
+      return a.status === 'RESOLVED' || a.status === 'WHITELISTED' || a.status === 'RESOLVED_SAFE'
+        || a.status === 'NOTICE_GENERATED' || a.confidence < 40;
     }).length;
     return resolved / alerts.length;
   }
@@ -3926,11 +4002,11 @@
       var offset = SCANNER_RING_CIRC - (SCANNER_RING_CIRC * confidence / 100);
       if (scannerResultRing) {
         scannerResultRing.setAttribute('stroke-dashoffset', offset);
-        scannerResultRing.setAttribute('stroke', isSafe ? '#00FF88' : (confidence > 60 ? '#FF4444' : '#FF8800'));
+        scannerResultRing.setAttribute('stroke', isSafe ? '#84CC16' : (confidence > 60 ? '#FF4444' : '#FF8800'));
       }
       if (scannerResultPct) {
         scannerResultPct.textContent = confidence + '%';
-        scannerResultPct.style.color = isSafe ? '#00FF88' : (confidence > 60 ? '#FF4444' : '#FF8800');
+        scannerResultPct.style.color = isSafe ? '#84CC16' : (confidence > 60 ? '#FF4444' : '#FF8800');
       }
       if (scannerResultInfo) scannerResultInfo.textContent = metaText || '';
     }
@@ -4164,26 +4240,16 @@
       var el = document.getElementById('badge-' + id);
       if (!el) return;
       if (badges[id]) {
-        el.className = 'badge-item badge-unlocked';
+        el.className = 'badge-chip badge-unlocked';
         unlocked++;
       } else {
-        el.className = 'badge-item badge-locked';
+        el.className = 'badge-chip badge-locked';
       }
     });
     if (progressText) progressText.textContent = unlocked + ' of ' + total + ' unlocked';
   }
 
-  // Hook into scan count increment
-  var origLocalImageScan = localImageScan;
-  if (typeof origLocalImageScan === 'function') {
-    localImageScan = async function (file) {
-      var scans = lsGet(LS_SCANS, 0) + 1;
-      lsSet(LS_SCANS, scans);
-      return origLocalImageScan.call(this, file);
-    };
-  }
-
-  // Hook into scanner button click to track scans
+  // Scan count is incremented once in the scanner button handler below (badges + streak)
   if (btnScanner) {
     var origBtnScannerClick = btnScanner.onclick;
     btnScanner.addEventListener('click', function () {
@@ -4262,14 +4328,13 @@
   /* ─── Urgency Countdown (FOMO + SCARCITY) ─── */
   var urgencyCountdown = document.getElementById('urgency-countdown');
   var urgencyBlock = document.getElementById('urgency-block');
+  var _urgencyBaseHours = 36 + Math.floor(Math.random() * 6);
+  var _urgencyBaseMins  = Math.floor(Math.random() * 60);
 
   function updateUrgency() {
     if (!urgencyCountdown) return;
-    // Simulate a 48-hour window from "last exposure"
-    var baseHours = 36 + Math.floor(Math.random() * 6);
-    var baseMins = Math.floor(Math.random() * 60);
-    var hours = baseHours;
-    var mins = baseMins;
+    var hours = _urgencyBaseHours;
+    var mins  = _urgencyBaseMins;
 
     function tick() {
       if (hours <= 0 && mins <= 0) {
@@ -4415,6 +4480,10 @@
       }
     });
   });
+
+  // Settings quick-action card opens the Vault modal (sidebar nav switches the tab)
+  var btnSettingsAction = document.getElementById('btn-settings-action');
+  if (btnSettingsAction) btnSettingsAction.addEventListener('click', openSettings);
 
   // Shield toggle buttons — animate on click
   document.querySelectorAll('.shield-toggle').forEach(function (btn) {

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta name="theme-color" content="#050507">
+  <meta name="theme-color" content="#0F172A">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -17,10 +17,10 @@
       theme: {
         extend: {
           colors: {
-            base: '#050507',
+            base: '#0F172A',
             surface: '#0a0a0f',
             elevated: '#111118',
-            green: { DEFAULT: '#00ff88', dim: 'rgba(0,255,136,0.12)' },
+            green: { DEFAULT: '#84CC16', dim: 'rgba(132,204,22,0.12)' },
             blue: { DEFAULT: '#38bdf8', dim: 'rgba(56,189,248,0.12)' },
             red: { DEFAULT: '#f43f5e', dim: 'rgba(244,63,94,0.12)' },
             amber: { DEFAULT: '#fbbf24', dim: 'rgba(251,191,36,0.12)' },
@@ -252,7 +252,7 @@
       <input type="email" id="forgot-email" class="reg-input" placeholder="Email address" autocomplete="email">
       <button id="btn-forgot-send" class="btn btn-primary">Send Reset Code</button>
       <div id="forgot-code-area" class="hidden" style="margin-top:0.5rem;">
-        <input type="text" id="forgot-code" class="reg-input" placeholder="Enter 6-digit code" style="margin-bottom:0.4rem;">
+        <input type="text" id="forgot-code" class="reg-input" placeholder="Enter 8-digit code" maxlength="8" style="margin-bottom:0.4rem;">
         <input type="password" id="forgot-new-password" class="reg-input" placeholder="New password (min 8 chars)" style="margin-bottom:0.4rem;">
         <button id="btn-forgot-reset" class="btn btn-primary">Reset Password</button>
       </div>
@@ -391,6 +391,7 @@
     </div>
 
     <p id="reg-status" class="reg-status-msg"></p>
+    <button id="btn-reg-skip" class="btn btn-ghost btn-sm" style="margin-top:0.75rem;">Skip for now</button>
   </div>
 </div>
 
@@ -500,6 +501,15 @@
         <p class="settings-section-title">Session</p>
         <button id="btn-settings-logout" class="btn btn-danger">Log Out</button>
       </div>
+      <div class="settings-section">
+        <p class="settings-section-title">Legal</p>
+        <p class="card-desc" style="margin-bottom:0.5rem;">View our terms, policies, and legal documentation.</p>
+        <div class="legal-links">
+          <button class="footer-link" data-legal="tos">Terms of Service</button>
+          <button class="footer-link" data-legal="privacy">Privacy Policy</button>
+          <button class="footer-link" data-legal="dmca">DMCA Policy</button>
+        </div>
+      </div>
     </div>
     <p id="settings-status" class="status-msg"></p>
   </div>
@@ -590,9 +600,9 @@
         <div class="hero-ring-container">
           <div class="hero-protection-ring">
             <svg class="hero-ring-svg" viewBox="0 0 120 120" width="160" height="160">
-              <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(0,255,136,0.06)" stroke-width="5"/>
+              <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(132,204,22,0.06)" stroke-width="5"/>
               <circle id="hero-ring-fill" cx="60" cy="60" r="52" fill="none" stroke="url(#heroGrad)" stroke-width="5" stroke-linecap="round" stroke-dasharray="326.7" stroke-dashoffset="326.7" transform="rotate(-90 60 60)"/>
-              <defs><linearGradient id="heroGrad" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#00FF88"/><stop offset="100%" stop-color="#00BFFF"/></linearGradient></defs>
+              <defs><linearGradient id="heroGrad" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#84CC16"/><stop offset="100%" stop-color="#00BFFF"/></linearGradient></defs>
               <circle cx="60" cy="60" r="42" fill="none" stroke="rgba(0,191,255,0.04)" stroke-width="1"/>
               <circle id="hero-ring-inner" cx="60" cy="60" r="42" fill="none" stroke="#00BFFF" stroke-width="1.5" stroke-dasharray="263.9" stroke-dashoffset="263.9" transform="rotate(-90 60 60)" opacity="0.4"/>
             </svg>
@@ -643,7 +653,7 @@
           <span class="action-label">Alerts</span>
           <span class="action-desc" id="home-alert-count">0 pending</span>
         </button>
-        <button class="action-card" id="btn-settings-action" data-tab="settings">
+        <button class="action-card" id="btn-settings-action">
           <div class="action-icon action-icon-settings"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.32 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></div>
           <span class="action-label">Settings</span>
           <span class="action-desc">Manage account</span>
@@ -787,10 +797,12 @@
             <div class="shield-metric"><span id="monitoring-next-run" class="shield-metric-val">—</span><span class="shield-metric-lbl">Next Scan</span></div>
             <div class="shield-metric"><span id="monitoring-total-findings" class="shield-metric-val">0</span><span class="shield-metric-lbl">Findings</span></div>
           </div>
+          <div class="shield-modules-list">
+            <div class="shield-module"><span class="shield-module-indicator" id="indicator-camera"></span><span class="shield-module-name">Camera Guard</span><span id="shield-camera-status" class="shield-module-badge inactive">OFF</span></div>
+            <div class="shield-module"><span class="shield-module-indicator" id="indicator-voice"></span><span class="shield-module-name">Voice Shield</span><span id="shield-voice-status" class="shield-module-badge inactive">OFF</span></div>
+            <div class="shield-module"><span class="shield-module-indicator" id="indicator-crawler"></span><span class="shield-module-name">Web Crawler</span><span id="shield-crawler-status" class="shield-module-badge inactive">OFF</span></div>
+          </div>
           <p id="monitoring-status-msg" class="status-msg-sm"></p>
-          <span id="shield-camera-status" class="shield-module-badge inactive" style="display:none">OFF</span>
-          <span id="shield-voice-status" class="shield-module-badge inactive" style="display:none">OFF</span>
-          <span id="shield-crawler-status" class="shield-module-badge inactive" style="display:none">OFF</span>
         </div>
       </section>
 
@@ -832,11 +844,11 @@
       <section id="panel-scanner" class="scanner-section">
         <div id="scanner-radar" class="scanner-radar" style="display:none;">
           <svg viewBox="0 0 120 120" width="100" height="100">
-            <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(0,255,136,0.08)" stroke-width="1"/>
-            <circle cx="60" cy="60" r="35" fill="none" stroke="rgba(0,255,136,0.06)" stroke-width="1"/>
-            <circle cx="60" cy="60" r="20" fill="none" stroke="rgba(0,255,136,0.04)" stroke-width="1"/>
+            <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(132,204,22,0.08)" stroke-width="1"/>
+            <circle cx="60" cy="60" r="35" fill="none" stroke="rgba(132,204,22,0.06)" stroke-width="1"/>
+            <circle cx="60" cy="60" r="20" fill="none" stroke="rgba(132,204,22,0.04)" stroke-width="1"/>
             <line class="radar-sweep" x1="60" y1="60" x2="60" y2="10" stroke="url(#radarGrad2)" stroke-width="2"/>
-            <defs><linearGradient id="radarGrad2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#00FF88" stop-opacity="0.8"/><stop offset="100%" stop-color="#00FF88" stop-opacity="0"/></linearGradient></defs>
+            <defs><linearGradient id="radarGrad2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#84CC16" stop-opacity="0.8"/><stop offset="100%" stop-color="#84CC16" stop-opacity="0"/></linearGradient></defs>
           </svg>
           <p id="scanner-radar-text" class="scanner-radar-text">Scanning...</p>
           <div class="scan-progress-track"><div id="scan-progress-fill" class="scan-progress-fill"></div></div>
@@ -860,7 +872,7 @@
           <div class="scanner-result-gauge">
             <svg viewBox="0 0 60 60" width="56" height="56">
               <circle cx="30" cy="30" r="24" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="4"/>
-              <circle id="scanner-result-ring" cx="30" cy="30" r="24" fill="none" stroke="#00FF88" stroke-width="4" stroke-linecap="round" stroke-dasharray="150.8" stroke-dashoffset="150.8" transform="rotate(-90 30 30)"/>
+              <circle id="scanner-result-ring" cx="30" cy="30" r="24" fill="none" stroke="#84CC16" stroke-width="4" stroke-linecap="round" stroke-dasharray="150.8" stroke-dashoffset="150.8" transform="rotate(-90 30 30)"/>
             </svg>
             <span id="scanner-result-pct" class="scanner-result-pct">0%</span>
           </div>
@@ -936,7 +948,7 @@
 
       <section class="alerts-section">
         <div id="alert-list" class="alert-list-full">
-          <div class="empty-state"><svg viewBox="0 0 64 64" width="48" height="48" class="empty-state-icon"><circle cx="32" cy="32" r="28" fill="none" stroke="rgba(0,255,136,0.15)" stroke-width="2"/><path d="M32 18v16M32 40v2" stroke="rgba(0,255,136,0.3)" stroke-width="2" stroke-linecap="round"/></svg><p class="empty-state-text">No threats detected</p><p class="empty-state-sub">System is scanning in the background</p></div>
+          <div class="empty-state"><svg viewBox="0 0 64 64" width="48" height="48" class="empty-state-icon"><circle cx="32" cy="32" r="28" fill="none" stroke="rgba(132,204,22,0.15)" stroke-width="2"/><path d="M32 18v16M32 40v2" stroke="rgba(132,204,22,0.3)" stroke-width="2" stroke-linecap="round"/></svg><p class="empty-state-text">No threats detected</p><p class="empty-state-sub">System is scanning in the background</p></div>
         </div>
         <p id="dashboard-status" class="status-msg-sm"></p>
       </section>
@@ -1329,8 +1341,8 @@
 
 <script src="api.js?v=5"></script>
 <script src="native-bridge.js?v=5"></script>
-<script src="auth-ui.js?v=5"></script>
+<script src="auth-ui.js?v=7"></script>
 <script src="interactions.js?v=1"></script>
-<script src="app.js?v=7"></script>
+<script src="app.js?v=11"></script>
 </body>
 </html>

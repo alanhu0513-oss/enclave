@@ -95,6 +95,9 @@
     var password = regPassword.value;
     if (!name || !email || !password) { setStatus('All fields required', true); return; }
     if (password.length < 8) { setStatus('Password must be at least 8 characters', true); return; }
+    if (!/[A-Z]/.test(password)) { setStatus('Password must contain at least one uppercase letter', true); return; }
+    if (!/[a-z]/.test(password)) { setStatus('Password must contain at least one lowercase letter', true); return; }
+    if (!/[0-9]/.test(password)) { setStatus('Password must contain at least one number', true); return; }
     // IKEA Effect: read shield preferences before account creation
     var shieldPrefs = {
       camera: !!document.getElementById('pref-camera')?.checked,
@@ -131,9 +134,62 @@
   });
 
   /* ─── Google Sign-In ─── */
+  var GOOGLE_CLIENT_ID_FALLBACK = '109956919732-4i8rg4r9p66mhajad8hvjsh7tjs7kmlj.apps.googleusercontent.com';
+  var googleInited = false;
+
   function getGoogleClientId() {
     var meta = document.querySelector('meta[name="google-client-id"]');
-    return meta ? meta.getAttribute('content') : '';
+    var fromMeta = meta ? meta.getAttribute('content') : '';
+    if (fromMeta && fromMeta !== 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com') return fromMeta;
+    return GOOGLE_CLIENT_ID_FALLBACK;
+  }
+
+  function initGoogleSignIn() {
+    var clientId = getGoogleClientId();
+    if (!clientId) return;
+    if (typeof google === 'undefined' || !google.accounts) return;
+    if (googleInited) return;
+
+    google.accounts.id.initialize({
+      client_id: clientId,
+      callback: function (response) {
+        if (response.credential) handleGoogleCredential(response.credential);
+      },
+      auto_select: false
+    });
+    googleInited = true;
+  }
+
+  function promptGoogleSignIn() {
+    if (typeof google === 'undefined' || !google.accounts) {
+      setStatus('Loading Google sign-in…', false);
+      loadGoogleIdentity(function () {
+        initGoogleSignIn();
+        if (typeof google !== 'undefined' && google.accounts) {
+          google.accounts.id.prompt(function (notification) {
+            if (notification && (notification.isNotDisplayed() || notification.isSkippedMoment())) {
+              setStatus('Google sign-in popup was blocked. Try again.', true);
+            }
+          });
+        } else {
+          setStatus('Google Identity Services failed to load. Check your connection.', true);
+        }
+      });
+      return;
+    }
+    initGoogleSignIn();
+    google.accounts.id.prompt();
+  }
+
+  function loadGoogleIdentity(cb) {
+    if (typeof google !== 'undefined' && google.accounts) { initGoogleSignIn(); if (cb) cb(); return; }
+    var s = document.createElement('script');
+    s.src = 'https://accounts.google.com/gsi/client';
+    s.async = true;
+    s.defer = true;
+    s.onload = function () { if (cb) cb(); };
+    s.onerror = function () { setStatus('Google Identity Services failed to load. Check your connection.', true); };
+    document.head.appendChild(s);
   }
 
   async function handleGoogleCredential(credential) {
@@ -154,68 +210,24 @@
     }
   }
 
-  function initGoogleSignIn() {
-    var clientId = getGoogleClientId();
-    if (!clientId || clientId === 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com') return;
-    if (typeof google === 'undefined' || !google.accounts) return;
-
-    google.accounts.id.initialize({
-      client_id: clientId,
-      callback: function (response) {
-        if (response.credential) handleGoogleCredential(response.credential);
-      },
-      auto_select: false
-    });
-
-    if (btnGoogleLogin) {
-      btnGoogleLogin.addEventListener('click', function () {
-        google.accounts.id.prompt(function (notification) {
-          if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-            google.accounts.id.renderButton(btnGoogleLogin.parentElement, {
-              theme: 'outline', size: 'large', width: btnGoogleLogin.offsetWidth || 320, type: 'standard',
-              text: 'continue_with', shape: 'rectangular'
-            });
-          }
-        });
-      });
-    }
-
-    if (btnGoogleReg) {
-      btnGoogleReg.addEventListener('click', function () {
-        google.accounts.id.prompt();
-      });
-    }
-  }
-
   if (btnGoogleLogin) {
     btnGoogleLogin.addEventListener('click', function () {
-      if (!getGoogleClientId() || getGoogleClientId() === 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com') {
-        setStatus('Google Sign-In: set GOOGLE_CLIENT_ID in index.html meta tag', true);
-        return;
-      }
-      if (typeof google === 'undefined' || !google.accounts) {
-        setStatus('Google Identity Services not loaded. Check your connection.', true);
-        return;
-      }
+      promptGoogleSignIn();
     });
   }
   if (btnGoogleReg) {
     btnGoogleReg.addEventListener('click', function () {
-      if (!getGoogleClientId() || getGoogleClientId() === 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com') {
-        setStatus('Google Sign-In: set GOOGLE_CLIENT_ID in index.html meta tag', true);
-        return;
-      }
-      if (typeof google === 'undefined' || !google.accounts) {
-        setStatus('Google Identity Services not loaded. Check your connection.', true);
-        return;
-      }
+      promptGoogleSignIn();
     });
   }
 
+  // Re-init once Google loads if it wasn't ready on DOMContentLoaded
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initGoogleSignIn);
+    document.addEventListener('DOMContentLoaded', function () {
+      setTimeout(initGoogleSignIn, 400);
+    });
   } else {
-    setTimeout(initGoogleSignIn, 100);
+    setTimeout(initGoogleSignIn, 400);
   }
 
   /* ─── Forgot Password (Email Code) ─── */
@@ -246,6 +258,7 @@
     var code = forgotCode.value.trim();
     var newPass = forgotNewPass.value;
     if (!code) { setStatus('Enter the reset code', true); return; }
+    if (!/^\d{8}$/.test(code)) { setStatus('Reset code must be 8 digits', true); return; }
     if (!newPass || newPass.length < 8) { setStatus('Password must be at least 8 characters', true); return; }
     btnForgotReset.disabled = true;
     btnForgotReset.textContent = 'Resetting...';

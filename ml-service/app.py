@@ -62,7 +62,11 @@ def _load_onnx_model(name: str):
 
 
 def _get_mtcnn():
-    """Lazy-load MTCNN face detector."""
+    """Lazy-load face detector: prefer MTCNN, fall back to OpenCV YuNet.
+
+    Returns an object with a `detect_faces(rgb) -> List[dict]` method whose
+    entries look like MTCNN's: {"box", "confidence", "keypoints"}.
+    """
     global _face_cascade
     if _face_cascade is not None:
         return _face_cascade
@@ -76,8 +80,86 @@ def _get_mtcnn():
         logger.info("MTCNN face detector loaded")
         return _face_cascade
     except Exception as e:
-        logger.warning(f"MTCNN load failed: {e}")
+        logger.warning(f"MTCNN unavailable ({e}); falling back to YuNet")
+
+    model_path = _ensure_yunet_model()
+    if model_path is None:
         return None
+    try:
+        import cv2
+        _face_cascade = _YuNetFaceDetector(cv2, model_path)
+        logger.info("YuNet face detector loaded")
+        return _face_cascade
+    except Exception as e:
+        logger.warning(f"YuNet load failed: {e}")
+        return None
+
+
+_YUNET_URL = (
+    "https://media.githubusercontent.com/media/opencv/opencv_zoo/main/"
+    "models/face_detection_yunet/face_detection_yunet_2023mar.onnx"
+)
+
+
+def _ensure_yunet_model() -> Optional[Path]:
+    """Download the YuNet ONNX face detector into MODEL_DIR if absent."""
+    model_path = MODEL_DIR / "face_detection_yunet.onnx"
+    if model_path.exists() and model_path.stat().st_size > 100_000:
+        return model_path
+    try:
+        import urllib.request
+        logger.info("Downloading YuNet face detector model...")
+        urllib.request.urlretrieve(_YUNET_URL, model_path)
+        if not (model_path.exists() and model_path.stat().st_size > 100_000):
+            logger.warning("YuNet download produced an invalid model file")
+            return None
+        logger.info(f"YuNet model downloaded: {model_path}")
+        return model_path
+    except Exception as e:
+        logger.warning(f"YuNet model download failed: {e}")
+        return None
+
+
+class _YuNetFaceDetector:
+    """Thin MTCNN-compatible adapter around OpenCV FaceDetectorYN (YuNet)."""
+
+    def __init__(self, cv2, model_path: Path):
+        self._cv2 = cv2
+        self._fd = cv2.FaceDetectorYN.create(str(model_path), "", (320, 320),
+                                             score_threshold=0.9,
+                                             nms_threshold=0.3, top_k=5000)
+
+    def detect_faces(self, rgb: np.ndarray) -> List[dict]:
+        cv2 = self._cv2
+        try:
+            h, w = rgb.shape[:2]
+            self._fd.setInputSize((w, h))
+            dets = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
+            _, faces = self._fd.detect(dets)
+            if faces is None or len(faces) == 0:
+                return []
+        except Exception as e:
+            logger.warning(f"YuNet face detection failed: {e}")
+            return []
+
+        results = []
+        for f in faces:
+            x, y, bw, bh = (int(v) for v in f[:4])
+            conf = float(f[-1])
+            kps = f[4:14].reshape(5, 2)
+            results.append({
+                "box": [x, y, bw, bh],
+                "confidence": conf,
+                "keypoints": {
+                    # YuNet order: [right_eye, left_eye, nose, right_mouth, left_mouth]
+                    "left_eye": (float(kps[1][0]), float(kps[1][1])),
+                    "right_eye": (float(kps[0][0]), float(kps[0][1])),
+                    "nose": (float(kps[2][0]), float(kps[2][1])),
+                    "mouth_left": (float(kps[4][0]), float(kps[4][1])),
+                    "mouth_right": (float(kps[3][0]), float(kps[3][1])),
+                },
+            })
+        return results
 
 
 def _get_face_recognition():
@@ -146,21 +228,94 @@ def _extract_faces_mtcnn(image_bytes: bytes) -> List[dict]:
     return faces
 
 
+_CNN_MEAN = np.array([0.485, 0.456, 0.406], np.float32).reshape(1, 1, 3)
+_CNN_STD  = np.array([0.229, 0.224, 0.225], np.float32).reshape(1, 1, 3)
+
+
 def _preprocess_for_xception(image_array: np.ndarray, target_size=(299, 299)) -> Optional[np.ndarray]:
     """Preprocess image for XceptionNet: resize to 299x299, normalize to [-1, 1]."""
     from PIL import Image
     try:
         img = Image.fromarray(image_array).resize(target_size, Image.BILINEAR)
         arr = np.array(img, dtype=np.float32)
-        # XceptionNet normalization: [-1, 1]
         arr = (arr / 127.5) - 1.0
-        # HWC → CHW → NCHW
         arr = np.transpose(arr, (2, 0, 1))
         arr = np.expand_dims(arr, 0)
         return arr
     except Exception as e:
         logger.error(f"Xception preprocess failed: {e}")
         return None
+
+
+def _preprocess_for_cnndetection(image_array: np.ndarray, target_size=(224, 224)) -> Optional[np.ndarray]:
+    """Preprocess image for CNNDetection: force-square 256px resize → center crop 224 → ImageNet normalize → NCHW."""
+    from PIL import Image
+    try:
+        pil = Image.fromarray(image_array)
+        w, h = pil.size
+        s = max(w, h)
+        pil = pil.resize((s, s), Image.BILINEAR)
+        pil = pil.resize((256, 256), Image.BILINEAR)
+        l, t = (256 - target_size[0]) // 2, (256 - target_size[1]) // 2
+        pil = pil.crop((l, t, l + target_size[0], t + target_size[1]))
+        arr = np.array(pil, dtype=np.float32) / 255.0
+        arr = (arr - _CNN_MEAN) / _CNN_STD
+        arr = np.transpose(arr, (2, 0, 1))
+        return np.expand_dims(arr, 0)
+    except Exception as e:
+        logger.error(f"CNNDetection preprocess failed: {e}")
+        return None
+
+
+_FUSION_COEF_CNNDET = 0.11349682432443432
+_FUSION_COEF_XCEP   = 0.5006842131230783
+_FUSION_INTERCEPT   = 8.032517691689185
+_SINGLE_COEF_CNNDET = 0.07630
+_SINGLE_COEF_CNNDET_B = 2.10646
+_SINGLE_COEF_XCEP = 0.42622
+_SINGLE_COEF_XCEP_B = 4.32739
+_LOW_CONF_LOW  = 0.35
+_HIGH_CONF_HIGH = 0.65
+
+
+def _run_cnndetection(image_array: np.ndarray) -> Optional[dict]:
+    """Run CNNDetection ONNX on a cropped face. Returns raw logit + calibrated p_fake."""
+    session = _load_onnx_model("cnndetection")
+    if session is None:
+        return None
+    tensor = _preprocess_for_cnndetection(image_array)
+    if tensor is None:
+        return None
+    try:
+        input_name = session.get_inputs()[0].name
+        output = session.run(None, {input_name: tensor})[0]
+        logit = float(output[0][0])
+        fake_prob = float(1.0 / (1.0 + np.exp(-(_SINGLE_COEF_CNNDET * logit + _SINGLE_COEF_CNNDET_B))))
+        return {
+            "logit": round(logit, 4),
+            "fake_probability": round(fake_prob, 4),
+            "ml_score": round(fake_prob, 4),
+        }
+    except Exception as e:
+        logger.error(f"CNNDetection inference failed: {e}")
+        return None
+
+
+def _calibrate_fusion(cnndet_logit: Optional[float], xcep_logit_diff: Optional[float]) -> tuple[float, bool]:
+    """Fuse calibrated fake-probabilities from both detectors via logistic combination."""
+    if cnndet_logit is not None and xcep_logit_diff is not None:
+        z = (_FUSION_COEF_CNNDET * cnndet_logit
+             + _FUSION_COEF_XCEP * xcep_logit_diff
+             + _FUSION_INTERCEPT)
+    elif xcep_logit_diff is not None:
+        z = _SINGLE_COEF_XCEP * xcep_logit_diff + _SINGLE_COEF_XCEP_B
+    elif cnndet_logit is not None:
+        z = _SINGLE_COEF_CNNDET * cnndet_logit + _SINGLE_COEF_CNNDET_B
+    else:
+        return 0.5, True
+    p_fake = float(1.0 / (1.0 + np.exp(-z)))
+    low_conf = _LOW_CONF_LOW < p_fake < _HIGH_CONF_HIGH
+    return p_fake, low_conf
 
 
 # ─────────────────────────────────────────────
@@ -246,20 +401,23 @@ def _run_xception(image_array: np.ndarray) -> Optional[dict]:
         input_name = session.get_inputs()[0].name
         output = session.run(None, {input_name: tensor})[0]
 
-        # Binary classification: [real_score, fake_score]
         if output.shape[-1] == 2:
-            probs = 1.0 / (1.0 + np.exp(-output[0]))  # sigmoid
+            logit_diff = float(output[0][1] - output[0][0])
+            probs = 1.0 / (1.0 + np.exp(-output[0]))
             fake_prob = float(probs[1])
+            single_z = _SINGLE_COEF_XCEP * logit_diff + _SINGLE_COEF_XCEP_B
+            calibrated = float(1.0 / (1.0 + np.exp(-single_z)))
             return {
+                "logit": round(logit_diff, 4),
                 "fake_probability": round(fake_prob, 4),
                 "real_probability": round(float(probs[0]), 4),
-                "ml_score": round(min(1.0, fake_prob * 1.2), 4),
+                "ml_score": round(calibrated, 4),
             }
-        # Single output (logit)
         elif output.shape[-1] == 1:
             logit = float(output[0][0])
             fake_prob = 1.0 / (1.0 + np.exp(-logit))
             return {
+                "logit": round(logit, 4),
                 "fake_probability": round(fake_prob, 4),
                 "ml_score": round(min(1.0, fake_prob * 1.2), 4),
             }
@@ -312,7 +470,85 @@ def _compare_faces(embedding_a: np.ndarray, embedding_b: np.ndarray, threshold: 
 
 
 # ─────────────────────────────────────────────
-# Audio Analysis
+# Audio — AASIST Anti-Spoofing Model
+# ─────────────────────────────────────────────
+
+_AASIST_SAMPLES = 64600  # 4.04 s @ 16 kHz
+
+
+def _decode_audio_16k(audio_path: str) -> Optional[np.ndarray]:
+    """Decode any audio file to a mono 16 kHz float32 waveform in [-1, 1]."""
+    try:
+        import soundfile as sf
+        y, sr = sf.read(audio_path, dtype='float32', always_2d=False)
+        if sr != 16000:
+            import resampy
+            y = resampy.resample(y, sr, 16000).astype(np.float32)
+        return y
+    except Exception:
+        pass
+    try:
+        import subprocess
+        proc = subprocess.run(
+            ["ffmpeg", "-v", "error", "-i", audio_path, "-f", "s16le", "-ac", "1", "-ar", "16000", "-"],
+            capture_output=True,
+        )
+        if proc.returncode != 0:
+            raise RuntimeError(proc.stderr[:200])
+        raw = np.frombuffer(proc.stdout, dtype=np.int16).astype(np.float32) / 32768.0
+        return raw
+    except Exception:
+        pass
+    try:
+        import librosa
+        y, _sr = librosa.load(audio_path, sr=16000, mono=True)
+        return y.astype(np.float32)
+    except Exception:
+        return None
+
+
+def _load_aasist_tensor(audio_path: str) -> Optional[np.ndarray]:
+    """Load audio and shape it to [1, 64600] for AASIST."""
+    y = _decode_audio_16k(audio_path)
+    if y is None or len(y) == 0:
+        return None
+    if len(y) < _AASIST_SAMPLES:
+        y = np.pad(y, (0, _AASIST_SAMPLES - len(y)))
+    else:
+        y = y[:_AASIST_SAMPLES]
+    return y.reshape(1, _AASIST_SAMPLES)
+
+
+def _run_aasist(audio_path: str) -> Optional[dict]:
+    """Run AASIST anti-spoofing ONNX on an audio file.
+
+    ONNX spec: input  wav [batch, 64600] fp32, output logits [batch, 2].
+    Empirical class order: logits[0] = spoof, logits[1] = bonafide.
+    """
+    session = _load_onnx_model("aasist")
+    if session is None:
+        return None
+    try:
+        tensor = _load_aasist_tensor(audio_path)
+        if tensor is None:
+            return None
+        out = session.run(None, {"wav": tensor})[0][0]
+        logit_spoof = float(out[0])
+        logit_bonafide = float(out[1])
+        denom = np.exp(logit_spoof) + np.exp(logit_bonafide)
+        fake_prob = float(np.exp(logit_spoof) / denom)
+        return {
+            "logits": [round(logit_spoof, 4), round(logit_bonafide, 4)],
+            "fake_probability": round(fake_prob, 4),
+            "verdict": "LIKELY_SYNTHETIC" if fake_prob > 0.6 else ("SUSPICIOUS" if fake_prob > 0.35 else "LIKELY_NATURAL"),
+        }
+    except Exception as e:
+        logger.error(f"AASIST inference failed: {e}")
+        return None
+
+
+# ─────────────────────────────────────────────
+# Audio — Spectral Heuristic
 # ─────────────────────────────────────────────
 
 def _analyze_audio_deep(image_bytes: bytes = None, audio_path: str = None) -> dict:
@@ -479,7 +715,7 @@ async def swap_model(name: str = Form(...), model_path: str = Form(None)):
 async def preload_models():
     """Pre-load all available models into memory."""
     loaded = {}
-    for name in ["xceptionnet"]:
+    for name in ["xceptionnet", "cnndetection", "aasist"]:
         session = _load_onnx_model(name)
         loaded[name] = session is not None
     return {"status": "ok", "loaded": loaded}
@@ -487,49 +723,64 @@ async def preload_models():
 
 @app.post("/detect/image")
 async def detect_image(file: UploadFile = File(...)):
-    """Full deepfake detection pipeline: face extraction → XceptionNet → heuristic scoring."""
+    """Full deepfake detection pipeline: face extraction → ensemble (XceptionNet + CNNDetection) → heuristic scoring."""
     contents = await file.read()
     if len(contents) > 15 * 1024 * 1024:
         raise HTTPException(413, "File too large (max 15MB)")
     if len(contents) < 100:
         raise HTTPException(400, "File too small or empty")
 
-    # 1. Heuristic analysis (always runs, fast)
     heuristic = _heuristic_analysis(contents)
 
-    # 2. Face extraction with MTCNN
     faces = _extract_faces_mtcnn(contents)
     face_count = len(faces)
 
-    # 3. XceptionNet on each extracted face
     face_results = []
-    ml_score_avg = None
+    ensemble_scores = []
+    any_low_conf = False
     for i, face in enumerate(faces):
-        ml_result = _run_xception(face["cropped_rgb"])
-        if ml_result:
-            face_results.append({
-                "face_index": i,
-                "bbox": face["bbox"],
-                "detection_confidence": round(face["confidence"], 4),
-                "landmarks": {k: [int(v[0]), int(v[1])] for k, v in face["landmarks"].items()},
-                "ml": ml_result,
-            })
-            if ml_score_avg is None:
-                ml_score_avg = ml_result["ml_score"]
-            else:
-                ml_score_avg = (ml_score_avg + ml_result["ml_score"]) / 2
+        xcep = _run_xception(face["cropped_rgb"])
+        cnndet = _run_cnndetection(face["cropped_rgb"])
+        xcep_logit = xcep.get("logit") if xcep else None
+        cnndet_logit = cnndet.get("logit") if cnndet else None
+        fusion_p, low_conf = _calibrate_fusion(cnndet_logit, xcep_logit)
+        any_low_conf = any_low_conf or low_conf
+        entry = {
+            "face_index": i,
+            "bbox": face["bbox"],
+            "detection_confidence": round(face["confidence"], 4),
+            "landmarks": {k: [int(v[0]), int(v[1])] for k, v in face["landmarks"].items()},
+            "ml": {
+                "ml_score": round(fusion_p, 4),
+                "fake_probability": round(fusion_p, 4),
+                "low_confidence": low_conf,
+            },
+            "models": {},
+        }
+        if xcep:
+            entry["models"]["xceptionnet"] = {
+                "logit": xcep["logit"],
+                "fake_probability": xcep["fake_probability"],
+                "ml_score": xcep["ml_score"],
+            }
+        if cnndet:
+            entry["models"]["cnndetection"] = {
+                "logit": cnndet["logit"],
+                "fake_probability": cnndet["fake_probability"],
+                "ml_score": cnndet["ml_score"],
+            }
+        face_results.append(entry)
+        if fusion_p is not None:
+            ensemble_scores.append(fusion_p)
 
-    # 4. Combine scores
     h_score = heuristic.get("heuristic_score", 0.5)
+    ml_score_avg = float(np.mean(ensemble_scores)) if ensemble_scores else None
 
     if ml_score_avg is not None:
-        # Weighted: ML 60%, heuristic 40%
         final = ml_score_avg * 0.6 + h_score * 0.4
     elif face_count == 0:
-        # No faces found — rely on heuristic only
         final = h_score * 0.8 + 0.1
     else:
-        # Faces found but ML failed — heuristic only
         final = h_score * 0.7 + 0.15
 
     final = max(0.0, min(1.0, final))
@@ -542,13 +793,32 @@ async def detect_image(file: UploadFile = File(...)):
     else:
         verdict = "LIKELY_NATURAL"
 
+    low_confidence = any_low_conf or (_LOW_CONF_LOW < final < _HIGH_CONF_HIGH)
+
     return JSONResponse({
         "confidence": confidence,
         "verdict": verdict,
+        "final_verdict": verdict,
         "face_count": face_count,
         "faces": face_results,
         "heuristic": heuristic,
         "ml_avg_score": round(ml_score_avg, 4) if ml_score_avg is not None else None,
+        "low_confidence": low_confidence,
+        "details": {
+            "detectors": {
+                "xceptionnet": next((r["models"]["xceptionnet"] for r in face_results if "xceptionnet" in r["models"]), None),
+                "cnndetection": next((r["models"]["cnndetection"] for r in face_results if "cnndetection" in r["models"]), None),
+            },
+            "fusion": {
+                "method": "logistic_calibration",
+                "score": round(ml_score_avg, 4) if ml_score_avg is not None else None,
+                "weights": {
+                    "cnndetection": _FUSION_COEF_CNNDET,
+                    "xceptionnet": _FUSION_COEF_XCEP,
+                    "intercept": _FUSION_INTERCEPT,
+                },
+            },
+        },
         "filename": file.filename,
     })
 
@@ -565,8 +835,66 @@ async def detect_audio(file: UploadFile = File(...)):
         tmp_path = tmp.name
 
     try:
-        result = _analyze_audio_deep(audio_path=tmp_path)
-        result["filename"] = file.filename
+        aasist = _run_aasist(tmp_path)
+        heuristic = _analyze_audio_deep(audio_path=tmp_path)
+
+        detectors = {"spectral_heuristic": {k: heuristic.get(k) for k in ("confidence", "verdict")},
+                     "features": heuristic.get("features"),
+                     "reasons": heuristic.get("reasons")}
+        h_ok = heuristic.get("confidence") is not None and heuristic.get("verdict") != "ANALYSIS_FAILED"
+        weights = {"aasist": 0.6, "spectral_heuristic": 0.4}
+        if aasist is not None and h_ok:
+            ml_score = aasist["fake_probability"]
+            h_score = heuristic["confidence"] / 100.0
+            final = ml_score * weights["aasist"] + h_score * weights["spectral_heuristic"]
+        elif aasist is not None:
+            detectors["aasist"] = {
+                "fake_probability": aasist["fake_probability"],
+                "logits": aasist["logits"],
+            }
+            ml_score = aasist["fake_probability"]
+            final = ml_score
+            weights = {"aasist": 1.0, "spectral_heuristic": 0.0}
+        elif h_ok:
+            ml_score = None
+            final = heuristic["confidence"] / 100.0
+            weights = {"aasist": None, "spectral_heuristic": 1.0}
+        else:
+            ml_score = None
+            final = 0.5
+        if aasist is not None and "aasist" not in detectors:
+            detectors["aasist"] = {
+                "fake_probability": aasist["fake_probability"],
+                "logits": aasist["logits"],
+            }
+
+        final = max(0.0, min(1.0, final))
+        confidence = round(final * 100, 1)
+
+        if final > 0.6:
+            verdict = "LIKELY_SYNTHETIC"
+        elif final > 0.35:
+            verdict = "SUSPICIOUS"
+        else:
+            verdict = "LIKELY_NATURAL"
+
+        low_confidence = 0.35 < final < 0.65
+        if aasist is None:
+            low_confidence = True
+
+        result = {
+            "confidence": confidence,
+            "verdict": verdict,
+            "final_verdict": verdict,
+            "low_confidence": low_confidence,
+            "audio": detectors,
+            "fusion": {
+                "method": "ensemble_weighted",
+                "score": round(final, 4),
+                "weights": weights,
+            },
+            "filename": file.filename,
+        }
         return JSONResponse(result)
     finally:
         try:

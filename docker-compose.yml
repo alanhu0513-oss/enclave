@@ -52,6 +52,13 @@ services:
         else
           echo 'XceptionNet model already exists, skipping download.'
         fi
+        if [ ! -f /models/aasist.onnx ]; then
+          echo 'Downloading AASIST model...'
+          curl -fSL -o /models/aasist.onnx 'https://huggingface.co/SpeechAntiSpoofingBenchmarks/AASIST/resolve/main/aasist.onnx'
+          echo 'Model downloaded.'
+        else
+          echo 'AASIST model already exists, skipping download.'
+        fi
       "
 
   api:

@@ -152,7 +152,17 @@ async function detectImageBuffer(buffer, filename) {
     }
   } catch (_) {} // Non-blocking
 
-  // 1) Primary AI provider (auto-detected via env key)
+  // 1) Python ML service — Xception ONNX + YuNet (deterministic, free)
+  if (await isMlAvailable()) {
+    try {
+      const result = await mlPostMultipart('/detect/image', 'file', buffer, filename || 'image.jpg');
+      return { ...result, provider: 'ensemble', latency_ms: Date.now() - started };
+    } catch (e) {
+      console.warn('[ML Client] ML service image detect failed, falling back to AI providers:', e.message);
+    }
+  }
+
+  // 2) Primary AI provider (auto-detected via env key)
   try {
     const g = await primaryAi.detectImage(buffer, mimetype, filename);
     if (g) return _finalizeAiResult(g, started, buffer);
@@ -160,7 +170,7 @@ async function detectImageBuffer(buffer, filename) {
     console.warn('[ML Client] primary AI image detect failed:', e.message);
   }
 
-  // 2) Gemini Flash (backup)
+  // 3) Gemini Flash (backup)
   try {
     const g = await gemini.detectImage(buffer, mimetype, filename);
     if (g) return _finalizeAiResult(g, started, buffer);
@@ -168,7 +178,7 @@ async function detectImageBuffer(buffer, filename) {
     console.warn('[ML Client] Gemini image detect failed:', e.message);
   }
 
-  // 3) Anthropic Claude (backup)
+  // 4) Anthropic Claude (backup)
   try {
     const g = await anthropic.detectImage(buffer, mimetype);
     if (g) return _finalizeAiResult(g, started, buffer);
@@ -176,17 +186,7 @@ async function detectImageBuffer(buffer, filename) {
     console.warn('[ML Client] Anthropic image detect failed:', e.message);
   }
 
-  // 4) Python ML service (optional)
-  if (await isMlAvailable()) {
-    try {
-      const result = await mlPostMultipart('/detect/image', 'file', buffer, filename || 'image.jpg');
-      return { ...result, provider: 'xceptionnet', latency_ms: Date.now() - started };
-    } catch (e) {
-      console.warn('[ML Client] ML service image detect failed, falling back to local:', e.message);
-    }
-  }
-
-  // 4) Local heuristic
+  // 5) Local heuristic
   const local = _localHeuristic(buffer);
   return { ...local, provider: 'local-heuristic', latency_ms: Date.now() - started };
 }
@@ -235,7 +235,7 @@ async function detectAudio(filePath) {
   if (await isMlAvailable()) {
     try {
       const result = await mlPostMultipart('/detect/audio', 'file', fileBuffer, filename);
-      return { ...result, provider: 'librosa', latency_ms: Date.now() - started };
+      return { ...result, provider: 'ensemble', latency_ms: Date.now() - started };
     } catch (e) {
       console.warn('[ML Client] ML service audio detect failed:', e.message);
       return { confidence: 0, verdict: 'ML_UNAVAILABLE', error: e.message };

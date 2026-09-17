@@ -36,6 +36,58 @@ const faceUpload = multer({
 const router = express.Router();
 router.use(authenticate);
 
+/**
+ * Merge enrolled-identity match info into a detect result WITHOUT altering the
+ * synthesis verdict. A synthetic verdict must never be suppressed by an identity
+ * match (a cloned face still matches the enrolled identity — that IS the threat).
+ * Best-effort: returns an identity block; matching engine may be unavailable.
+ */
+async function _attachIdentity(userId, probePath, result) {
+  const identity = { enrolled: false, match: null, available: false };
+  try {
+    const faceprints = await table('faceprints');
+    const list = await faceprints.filter({ user_id: userId });
+    const enrolled = (Array.isArray(list) ? list : list ? [list] : []).filter((fp) => fp && fp.file_path);
+    if (!enrolled.length) {
+      // No enrolled faceprint — identity check N/A but reported for transparency
+      return { ...result, identity: { ...identity, reason: 'no_enrolled_faceprint' } };
+    }
+    identity.enrolled = true;
+
+    if (!(result.face_count > 0)) {
+      // No face detected in media — still surface enrolled status honestly
+      return { ...result, identity: { ...identity, reason: 'no_face_in_media' } };
+    }
+
+    let best = null;
+    for (const fp of enrolled) {
+      try {
+        const r = await mlClient.matchFaces(probePath, fp.file_path, 0.6);
+        if (r && !r.error && r.similarity != null) {
+          if (!best || r.similarity > best.similarity) {
+            best = { faceprintId: fp.id, similarity: r.similarity, distance: r.distance };
+          }
+        }
+      } catch (_) {}
+    }
+
+    if (best) {
+      identity.match = best.similarity >= 0.65;
+      identity.verdict = best.similarity >= 0.65 ? 'IDENTITY_MATCH' : (best.similarity >= 0.4 ? 'IDENTITY_AMBIGUOUS' : 'IDENTITY_MISMATCH');
+      identity.similarity = Math.round(best.similarity * 1000) / 1000;
+      identity.distance = best.distance != null ? Math.round(best.distance * 1000) / 1000 : null;
+      identity.faceprintId = best.faceprintId;
+      identity.available = true;
+    } else {
+      identity.reason = 'matching_unavailable';
+    }
+  } catch (e) {
+    console.warn('[DETECT] identity merge failed:', e.message);
+    identity.reason = 'matching_unavailable';
+  }
+  return { ...result, identity };
+}
+
 router.post('/image', upload.single('image'), async (req, res) => {
   try {
     if (!req.file) return error(res, 'Image file required', 400);
@@ -49,8 +101,10 @@ router.post('/image', upload.single('image'), async (req, res) => {
 
     const result = await mlClient.detectImage(req.file.path);
     if (result.error) return error(res, 'Analysis failed: ' + result.error);
+    const withIdentity = await _attachIdentity(req.user.userId, req.file.path, result);
+    try { require('fs').unlinkSync(req.file.path); } catch (_) {}
     await usage.incrementUsage(req.user.userId, 'api_call');
-    return success(res, result, 'Analysis complete');
+    return success(res, withIdentity, 'Analysis complete');
   } catch (e) {
     return error(res, e.message);
   }
@@ -85,10 +139,11 @@ router.post('/url', async (req, res) => {
       const buffer = Buffer.from(await fetchRes.arrayBuffer());
       require('fs').writeFileSync(filePath, buffer);
       const result = await mlClient.detectImage(filePath);
+      if (result.error) { try { require('fs').unlinkSync(filePath); } catch (_) {} return error(res, 'Analysis failed: ' + result.error); }
+      const withIdentity = await _attachIdentity(req.user.userId, filePath, result);
       try { require('fs').unlinkSync(filePath); } catch (_) {}
-      if (result.error) return error(res, 'Analysis failed: ' + result.error);
       await usage.incrementUsage(req.user.userId, 'api_call');
-      return success(res, { ...result, sourceUrl: url }, 'Analysis complete');
+      return success(res, { ...withIdentity, sourceUrl: url }, 'Analysis complete');
     } finally {
       clearTimeout(timeout);
     }
@@ -359,11 +414,11 @@ router.post('/video', videoUpload.single('video'), async (req, res) => {
     // Extract frames from video using ffmpeg if available
     const frames = [];
     const tempDir = path.join(UPLOAD_DIR, 'temp', `video-${Date.now()}`);
+    const MAX_FRAMES = 20;
 
     try {
       fs.mkdirSync(tempDir, { recursive: true });
 
-      // Try ffmpeg frame extraction (3 frames: start, middle, end)
       const { execFileSync } = require('child_process');
       const videoPath = req.file.path;
       let duration = 10;
@@ -372,31 +427,46 @@ router.post('/video', videoUpload.single('video'), async (req, res) => {
         duration = parseInt(durOut) || 10;
       } catch (_) {}
 
-      const timestamps = [1, Math.floor(duration / 2), Math.max(1, duration - 2)];
+      const frameCount = Math.max(2, Math.min(MAX_FRAMES, duration));
+      const timestamps = [];
+      for (let i = 0; i < frameCount; i++) {
+        const t = Math.floor((duration * (i + 0.5)) / frameCount);
+        timestamps.push(Math.max(0, Math.min(duration - 1, t)));
+      }
+
       for (let i = 0; i < timestamps.length; i++) {
         const framePath = path.join(tempDir, `frame-${i}.jpg`);
         try {
           execFileSync('ffmpeg', ['-y', '-ss', String(timestamps[i]), '-i', videoPath, '-frames:v', '1', '-q:v', '2', framePath], { timeout: 15000, stdio: 'ignore' });
           const frameBuffer = fs.readFileSync(framePath);
-          const detectResult = await mlClient.detectImage(frameBuffer, 'image/jpeg', `video-frame-${i}`);
+          const detectResult = await mlClient.detectImageBuffer(frameBuffer, 'image/jpeg', `video-frame-${i}`);
           frames.push({
             frame: i + 1,
             timestamp: timestamps[i],
             confidence: detectResult.confidence || 0,
             verdict: detectResult.verdict || 'UNKNOWN',
+            final_verdict: detectResult.final_verdict || detectResult.verdict || 'UNKNOWN',
+            ml_avg_score: detectResult.ml_avg_score != null ? detectResult.ml_avg_score : null,
+            low_confidence: !!detectResult.low_confidence,
             isManipulated: (detectResult.confidence || 0) >= 50,
           });
-        } catch (_) {}
+        } catch (e) {
+          console.error(`[Video] frame ${i} extraction failed:`, e.message?.split('\n')[0], e.stderr?.toString().split('\n')[0]);
+          try { fs.rmSync(framePath, { force: true }); } catch (_) {}
+        }
       }
     } catch (_) {
       // ffmpeg not available — return analysis of the file itself
       const fileBuffer = fs.readFileSync(req.file.path);
-      const detectResult = await mlClient.detectImage(fileBuffer.slice(0, 1024 * 1024), 'image/jpeg', 'video-header');
+      const detectResult = await mlClient.detectImageBuffer(fileBuffer.slice(0, 1024 * 1024), 'image/jpeg', 'video-header');
       frames.push({
         frame: 1,
         timestamp: 0,
         confidence: detectResult.confidence || 0,
         verdict: detectResult.verdict || 'PARSE_FAILED',
+        final_verdict: detectResult.final_verdict || detectResult.verdict || 'PARSE_FAILED',
+        ml_avg_score: detectResult.ml_avg_score != null ? detectResult.ml_avg_score : null,
+        low_confidence: !!detectResult.low_confidence,
         isManipulated: false,
         note: 'Full frame extraction requires ffmpeg',
       });
@@ -408,20 +478,62 @@ router.post('/video', videoUpload.single('video'), async (req, res) => {
     } catch (_) {}
     try { fs.unlinkSync(req.file.path); } catch (_) {}
 
-    const avgConfidence = frames.length > 0
-      ? frames.reduce((s, f) => s + f.confidence, 0) / frames.length
+const analyzed = frames.filter((f) => !f.note);
+    const avgConfidence = analyzed.length > 0
+      ? analyzed.reduce((s, f) => s + f.confidence, 0) / analyzed.length
       : 0;
-    const anyManipulated = frames.some((f) => f.isManipulated);
+    const anyManipulated = analyzed.some((f) => f.isManipulated);
+    const anyLowConf = analyzed.some((f) => f.low_confidence);
+
+    // Cross-frame consistency: high variance ⇒ unreliable, keep honest low-confidence marker
+    let scoreVariance = null;
+    const scores = analyzed.map((f) => f.ml_avg_score).filter((s) => s != null);
+    if (scores.length >= 2) {
+      const mean = scores.reduce((a, b) => a + b, 0) / scores.length;
+      scoreVariance = Math.round((scores.reduce((a, b) => a + (b - mean) * (b - mean), 0) / scores.length) * 10000) / 10000;
+      if (scoreVariance > 0.12) anyLowConf = true;
+    }
+
+    const synthCount = analyzed.filter((f) => f.verdict === 'LIKELY_SYNTHETIC').length;
+    const natCount = analyzed.filter((f) => f.verdict === 'LIKELY_NATURAL').length;
+    const consistent = analyzed.length > 0 && (synthCount === 0 || natCount === 0);
 
     const result = {
-      framesAnalyzed: frames.length,
+      framesAnalyzed: analyzed.length,
+      totalFrames: frames.length,
       averageConfidence: Math.round(avgConfidence * 10) / 10,
       overallVerdict: anyManipulated ? 'MANIPULATION_DETECTED' : 'LIKELY_AUTHENTIC',
+      final_verdict: anyManipulated ? 'MANIPULATION_DETECTED' : 'LIKELY_AUTHENTIC',
+      low_confidence: anyLowConf || (analyzed.length > 0 && anyManipulated === consistent && avgConfidence > 35 && avgConfidence < 60),
+      score_variance: scoreVariance,
       frames,
     };
 
+    // Identity merge against the best-scoring (most authoritative) face frame.
+    // Synthesis verdict is never altered — identity is an independent signal.
+    let withIdentity = result;
+    try {
+      const frameFiles = fs.existsSync(tempDir)
+        ? fs.readdirSync(tempDir).filter((f) => /\.jpg$/.test(f))
+        : [];
+      if (frameFiles.length > 0) {
+        const bestFrame = frameFiles[0];
+        withIdentity = await _attachIdentity(req.user.userId, path.join(tempDir, bestFrame), result);
+      } else {
+        withIdentity = await _attachIdentity(req.user.userId, req.file.path, result);
+      }
+    } catch (e) {
+      console.warn('[Video] identity merge failed:', e.message);
+    }
+
+    // Cleanup
+    try {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    } catch (_) {}
+    try { fs.unlinkSync(req.file.path); } catch (_) {}
+
     await usage.incrementUsage(req.user.userId, 'api_call');
-    return success(res, result, `Analyzed ${frames.length} frame(s) from video`);
+    return success(res, withIdentity, `Analyzed ${analyzed.length} frame(s) from video`);
   } catch (e) {
     return error(res, e.message);
   }

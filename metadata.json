@@ -1,0 +1,6 @@
+{
+  "name": "Enclave",
+  "description": "AI-powered deepfake detection, identity monitoring, and takedown services. Protect your face, voice, and digital identity.",
+  "requestFramePermissions": ["camera", "microphone", "geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

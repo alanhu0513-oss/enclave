@@ -497,29 +497,29 @@ export function ProgressTracker() {
     return () => { active = false; };
   }, [show]);
 
-  if (!show || dismissed) return null;
-
   const watched = shield?.accounts ?? shield?.watched ?? 0;
   const intel = shield?.intelligence || {};
   const blast = intel.blast_radius ?? 0;
   const intelDone = !!(intel.weakest || blast > 0 || (intel.exposed ?? 0) > 0);
   const allDone = watched > 0 && intelDone;
 
-  const items = [
-    { ...PROGRESS_ITEMS[0], done: watched > 0, count: watched > 0 ? 1 : 0 },
-    { ...PROGRESS_ITEMS[1], done: watched > 0, count: watched > 0 ? 1 : 0 },
-    { ...PROGRESS_ITEMS[2], count: intelDone ? 1 : 0, done: intelDone },
-  ];
-
   useEffect(() => {
-    if (allDone) {
+    if (allDone && show && !dismissed) {
       const t = setTimeout(() => {
         setDismissed(true);
         try { localStorage.setItem(PROGRESS_DISMISS_KEY, "1"); } catch {}
       }, 3000);
       return () => clearTimeout(t);
     }
-  }, [allDone]);
+  }, [allDone, show, dismissed]);
+
+  if (!show || dismissed) return null;
+
+  const items = [
+    { ...PROGRESS_ITEMS[0], done: watched > 0, count: watched > 0 ? 1 : 0 },
+    { ...PROGRESS_ITEMS[1], done: watched > 0, count: watched > 0 ? 1 : 0 },
+    { ...PROGRESS_ITEMS[2], count: intelDone ? 1 : 0, done: intelDone },
+  ];
 
   function dismiss() {
     setDismissed(true);

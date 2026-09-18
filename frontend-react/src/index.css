@@ -189,6 +189,65 @@ small { @apply text-sm; color: color-mix(in oklab, var(--color-ink) 50%, transpa
   animation: pulse-ring 2.4s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
 }
 
+/* Futuristic Cyber HUD & Card Utilities */
+.cyber-card {
+  position: relative;
+  background: rgba(13, 14, 18, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(16px);
+  border-radius: 14px;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.cyber-card:hover {
+  border-color: rgba(0, 242, 254, 0.25);
+  box-shadow: 0 8px 32px -8px rgba(0, 242, 254, 0.12);
+}
+
+.cyber-card-active {
+  border-color: rgba(5, 242, 199, 0.35);
+  box-shadow: 0 0 24px -4px rgba(5, 242, 199, 0.15);
+}
+
+.hud-border {
+  border: 1px solid rgba(0, 242, 254, 0.18);
+  background: linear-gradient(135deg, rgba(0, 242, 254, 0.04) 0%, rgba(5, 242, 199, 0.02) 100%);
+}
+
+.hud-radar-sweep {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, rgba(0, 242, 254, 0.22) 0deg, rgba(5, 242, 199, 0.08) 60deg, transparent 90deg, transparent 360deg);
+  animation: radar-sweep 4s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes radar-sweep {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.cyber-scanner-beam {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #00F2FE, #05F2C7, transparent);
+  box-shadow: 0 0 16px #00F2FE, 0 0 32px #05F2C7;
+  animation: scan-vertical 3s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+@keyframes scan-vertical {
+  0% { top: 4%; opacity: 0.8; }
+  100% { top: 96%; opacity: 0.95; }
+}
+
+.font-telemetry {
+  font-family: var(--font-mono);
+  letter-spacing: 0.08em;
+}
+
 @keyframes float-y {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-10px); }

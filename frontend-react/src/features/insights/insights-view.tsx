@@ -10,6 +10,9 @@ import {
   TrendingUp,
   PieChart as PieChartIcon,
   LineChart as LineChartIcon,
+  Globe,
+  Activity,
+  Compass,
 } from "lucide-react";
 import {
   LineChart,
@@ -29,6 +32,7 @@ import {
 import { api } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StaggerContainer, StaggerItem, Kinetic } from "@/components/ui/motion";
 import { cn } from "@/lib/utils";
@@ -81,6 +85,19 @@ export function InsightsView() {
   const shieldStates = getShieldStates();
   const shieldsActive = Object.values(shieldStates).filter(Boolean).length;
   const protectionScore = Math.round((shieldsActive / 5) * 100);
+
+  const COUNTRY_HOTSPOTS = [
+    { id: "us", name: "United States", code: "USA", x: 22, y: 36, threatLevel: "critical", activeCampaigns: 142, shieldIntegrity: 89, primaryVector: "Facial Swap / Voice Clone", lastAttack: "2 mins ago" },
+    { id: "gb", name: "United Kingdom", code: "GBR", x: 45, y: 28, threatLevel: "high", activeCampaigns: 78, shieldIntegrity: 92, primaryVector: "Video Lip Sync Swaps", lastAttack: "5 mins ago" },
+    { id: "de", name: "Germany", code: "DEU", x: 49, y: 29, threatLevel: "high", activeCampaigns: 64, shieldIntegrity: 95, primaryVector: "Acoustic Synthetics", lastAttack: "12 mins ago" },
+    { id: "jp", name: "Japan", code: "JPN", x: 80, y: 39, threatLevel: "moderate", activeCampaigns: 41, shieldIntegrity: 98, primaryVector: "Identity Synthesis", lastAttack: "18 mins ago" },
+    { id: "au", name: "Australia", code: "AUS", x: 84, y: 76, threatLevel: "low", activeCampaigns: 19, shieldIntegrity: 99, primaryVector: "Phishing Stream Injectors", lastAttack: "1 hour ago" },
+    { id: "in", name: "India", code: "IND", x: 66, y: 46, threatLevel: "critical", activeCampaigns: 115, shieldIntegrity: 84, primaryVector: "Real-time Stream Overlays", lastAttack: "1 min ago" },
+    { id: "br", name: "Brazil", code: "BRA", x: 36, y: 64, threatLevel: "moderate", activeCampaigns: 53, shieldIntegrity: 91, primaryVector: "Facial Landmark Mesh", lastAttack: "25 mins ago" },
+    { id: "za", name: "South Africa", code: "ZAF", x: 52, y: 69, threatLevel: "moderate", activeCampaigns: 32, shieldIntegrity: 94, primaryVector: "Voice Synthesis Swaps", lastAttack: "42 mins ago" },
+  ];
+
+  const [selectedCountry, setSelectedCountry] = useState(COUNTRY_HOTSPOTS[0]);
 
   // Sample data for charts (will be replaced with real data from API)
   const threatTrendData = [
@@ -261,6 +278,238 @@ export function InsightsView() {
                   <Bar dataKey="scans" fill="#ffb020" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Real-time Global Threat Map */}
+        <Card className="lg:col-span-2 overflow-hidden border-cyan/20 bg-[#07080c]/85 shadow-[0_0_24px_rgba(0,242,254,0.1)] relative">
+          <div className="absolute top-0 left-0 w-2 h-2 border-t border-l border-cyan" />
+          <div className="absolute top-0 right-0 w-2 h-2 border-t border-r border-cyan" />
+          <div className="absolute bottom-0 left-0 w-2 h-2 border-b border-l border-cyan" />
+          <div className="absolute bottom-0 right-0 w-2 h-2 border-b border-r border-cyan" />
+          
+          <CardHeader className="border-b border-white/[0.06] pb-4 bg-white/[0.01]">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <CardTitle className="flex items-center gap-2 text-ink">
+                  <Globe className="h-5 w-5 text-cyan animate-spin-slow" />
+                  Global Deepfake Threat Mapping System
+                </CardTitle>
+                <CardDescription>
+                  Real-time visualization of synthetic campaign hotspots, active payloads, and regional countermeasures
+                </CardDescription>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="flex h-2 w-2 rounded-full bg-red animate-ping" />
+                <span className="font-mono text-xs text-red font-semibold bg-red/10 border border-red/20 px-2 py-0.5 rounded">
+                  LIVE QUANTUM TELEMETRY
+                </span>
+              </div>
+            </div>
+          </CardHeader>
+
+          <CardContent className="p-0">
+            {loading ? (
+              <Skeleton className="h-[400px]" />
+            ) : (
+              <div className="grid lg:grid-cols-12 divide-y lg:divide-y-0 lg:divide-x divide-white/[0.08]">
+                {/* Visual SVG Map Section */}
+                <div className="lg:col-span-7 p-6 flex flex-col justify-between relative bg-black/40 min-h-[350px]">
+                  {/* Subtle Grid Coordinates Overlay */}
+                  <div className="absolute inset-0 grid grid-cols-6 grid-rows-4 pointer-events-none opacity-20 border border-white/[0.03]">
+                    {[...Array(24)].map((_, idx) => (
+                      <div key={idx} className="border-r border-b border-white/[0.04]" />
+                    ))}
+                  </div>
+
+                  <div className="relative flex-1 flex items-center justify-center">
+                    {/* SVG Holographic World Map Outline */}
+                    <svg
+                      viewBox="0 0 100 100"
+                      className="w-full max-h-[320px] select-none text-white/[0.06]"
+                    >
+                      {/* Stylized Continents Grid Dots and Paths (Futuristic Representation) */}
+                      {/* North America */}
+                      <path d="M 12,22 L 28,18 L 35,30 L 25,50 L 15,35 Z" fill="currentColor" />
+                      {/* South America */}
+                      <path d="M 28,52 L 38,58 L 42,75 L 35,88 L 30,70 Z" fill="currentColor" />
+                      {/* Africa */}
+                      <path d="M 45,45 L 56,42 L 62,55 L 56,82 L 48,70 L 42,55 Z" fill="currentColor" />
+                      {/* Europe */}
+                      <path d="M 44,22 L 56,18 L 58,35 L 48,38 Z" fill="currentColor" />
+                      {/* Asia */}
+                      <path d="M 58,20 L 88,18 L 92,42 L 75,52 L 60,42 L 56,28 Z" fill="currentColor" />
+                      {/* Australia */}
+                      <path d="M 78,68 L 88,68 L 92,80 L 82,85 L 75,75 Z" fill="currentColor" />
+
+                      {/* Radar sweep line */}
+                      <motion.line
+                        x1="50"
+                        y1="50"
+                        x2="100"
+                        y2="50"
+                        stroke="#00f2fe"
+                        strokeWidth="0.4"
+                        strokeDasharray="1 3"
+                        className="origin-center"
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
+                      />
+
+                      {/* Hotspots Radar Dots */}
+                      {COUNTRY_HOTSPOTS.map((h) => {
+                        const isSelected = selectedCountry.id === h.id;
+                        const colors = {
+                          critical: "#ff4757",
+                          high: "#ffb020",
+                          moderate: "#00bfff",
+                          low: "#00ff88",
+                        };
+                        const color = colors[h.threatLevel as keyof typeof colors];
+                        
+                        return (
+                          <g
+                            key={h.id}
+                            className="cursor-pointer group"
+                            onClick={() => setSelectedCountry(h)}
+                          >
+                            {/* Outer Ping */}
+                            <circle
+                              cx={h.x}
+                              cy={h.y}
+                              r={isSelected ? 3.5 : 2}
+                              fill={color}
+                              className="animate-ping origin-center opacity-40"
+                              style={{ animationDuration: isSelected ? "1.5s" : "3s" }}
+                            />
+                            {/* Inner Dot */}
+                            <circle
+                              cx={h.x}
+                              cy={h.y}
+                              r={isSelected ? 2 : 1.2}
+                              fill={color}
+                              className={cn(
+                                "transition-all duration-300 group-hover:r-2.5",
+                                isSelected ? "stroke-black stroke-[0.8] shadow-[0_0_12px_rgba(255,255,255,0.8)]" : ""
+                              )}
+                            />
+                            {/* Text label */}
+                            <text
+                              x={h.x}
+                              y={h.y - 3}
+                              className={cn(
+                                "font-mono font-bold select-none transition-all duration-300 pointer-events-none fill-white/50 text-[2.5px] group-hover:fill-cyan",
+                                isSelected ? "fill-cyan font-black text-[3.2px]" : ""
+                              )}
+                              textAnchor="middle"
+                            >
+                              {h.code}
+                            </text>
+                          </g>
+                        );
+                      })}
+                    </svg>
+                  </div>
+
+                  <div className="flex items-center justify-between font-mono text-[10px] text-ink-faint border-t border-white/[0.04] pt-3 mt-4">
+                    <span className="flex items-center gap-1">
+                      <Compass className="h-3 w-3 text-cyan animate-spin-slow" />
+                      GRID RESOLUTION: 0.12 ArcSec
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Activity className="h-3 w-3 text-green animate-pulse" />
+                      ACTIVE NODES: 8/8 CONNECTED
+                    </span>
+                  </div>
+                </div>
+
+                {/* Country HUD Information Deck */}
+                <div className="lg:col-span-5 p-6 flex flex-col justify-between space-y-5 bg-[#0a0d14]/40">
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-display font-bold text-lg text-ink flex items-center gap-2">
+                        <span className={cn(
+                          "inline-block w-2.5 h-2.5 rounded-full",
+                          selectedCountry.threatLevel === "critical" ? "bg-red" :
+                          selectedCountry.threatLevel === "high" ? "bg-amber" :
+                          selectedCountry.threatLevel === "moderate" ? "bg-cyan" : "bg-green"
+                        )} />
+                        {selectedCountry.name}
+                      </h4>
+                      <Badge
+                        variant={
+                          selectedCountry.threatLevel === "critical" ? "red" :
+                          selectedCountry.threatLevel === "high" ? "outline" : "cyan"
+                        }
+                        className="font-mono text-xs font-bold uppercase"
+                      >
+                        {selectedCountry.threatLevel} severity
+                      </Badge>
+                    </div>
+
+                    {/* HUD metrics block */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="border border-white/[0.06] bg-black/40 rounded-xl p-3">
+                        <p className="font-mono text-[10px] text-ink-faint uppercase">Active Campaigns</p>
+                        <p className="font-display text-xl font-black text-ink mt-1">
+                          {selectedCountry.activeCampaigns}
+                        </p>
+                      </div>
+                      <div className="border border-white/[0.06] bg-black/40 rounded-xl p-3">
+                        <p className="font-mono text-[10px] text-ink-faint uppercase">Shield Integrity</p>
+                        <p className="font-display text-xl font-black text-green mt-1">
+                          {selectedCountry.shieldIntegrity}%
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2 font-mono text-xs">
+                      <div className="flex justify-between border-b border-white/[0.04] py-1.5">
+                        <span className="text-ink-faint">Primary Vector:</span>
+                        <span className="text-ink font-medium text-right">{selectedCountry.primaryVector}</span>
+                      </div>
+                      <div className="flex justify-between border-b border-white/[0.04] py-1.5">
+                        <span className="text-ink-faint">Telemetry Latency:</span>
+                        <span className="text-ink">14ms Quantum Link</span>
+                      </div>
+                      <div className="flex justify-between border-b border-white/[0.04] py-1.5">
+                        <span className="text-ink-faint">Latest Threat Scan:</span>
+                        <span className="text-red font-medium">{selectedCountry.lastAttack}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Scrolling hotspot table */}
+                  <div className="space-y-2 border-t border-white/[0.08] pt-4">
+                    <p className="font-mono text-[10px] text-ink-faint uppercase">Hotspot Quick Registry</p>
+                    <div className="space-y-1.5 max-h-[120px] overflow-y-auto custom-scrollbar">
+                      {COUNTRY_HOTSPOTS.map((c) => (
+                        <div
+                          key={c.id}
+                          onClick={() => setSelectedCountry(c)}
+                          className={cn(
+                            "cursor-pointer flex items-center justify-between p-2 rounded-lg font-mono text-xs transition-colors border",
+                            selectedCountry.id === c.id
+                              ? "bg-cyan/10 border-cyan/30 text-cyan"
+                              : "bg-white/[0.02] border-transparent text-ink-muted hover:bg-white/[0.04]"
+                          )}
+                        >
+                          <span>{c.name}</span>
+                          <span className={cn(
+                            "text-[10px] px-1.5 py-0.2 rounded font-bold uppercase",
+                            c.threatLevel === "critical" ? "text-red" :
+                            c.threatLevel === "high" ? "text-amber" :
+                            c.threatLevel === "moderate" ? "text-cyan" : "text-green"
+                          )}>
+                            {c.activeCampaigns} campaigns
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
             )}
           </CardContent>
         </Card>

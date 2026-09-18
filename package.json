@@ -2,7 +2,15 @@
   "name": "enclave",
   "version": "1.0.0",
   "private": true,
+  "workspaces": [
+    "frontend-react"
+  ],
   "scripts": {
+    "build:frontend": "cd frontend-react && npm run build",
+    "build": "npm run build:frontend",
+    "lint": "npm run lint --prefix frontend-react",
+    "start": "node backend/src/index.js",
+    "dev": "npm run build:frontend && node backend/src/index.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -22,6 +30,8 @@
     "pdfkit": "^0.13.0",
     "pngjs": "^7.0.0",
     "stripe": "^22.5.0",
+    "swagger-jsdoc": "^6.3.0",
+    "swagger-ui-express": "^5.0.1",
     "uuid": "^9.0.0"
   },
   "optionalDependencies": {

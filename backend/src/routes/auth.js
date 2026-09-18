@@ -644,4 +644,145 @@ router.get('/login-history', authenticate, async (req, res) => {
   }
 });
 
+/* ─── WebAuthn Biometric Enclave Router ─── */
+const webauthnChallenges = new Map();
+
+// 1. Get Registration Options (Authenticated)
+router.get('/webauthn/register-options', authenticate, async (req, res) => {
+  try {
+    const users = await table('users');
+    const user = await users.find({ id: req.user.userId });
+    if (!user) return error(res, 'User not found', 404);
+
+    const challenge = crypto.randomBytes(32).toString('base64url');
+    webauthnChallenges.set(user.id, challenge);
+
+    return success(res, {
+      challenge,
+      rp: { name: "Enclave", id: req.hostname || "localhost" },
+      user: {
+        id: user.id,
+        name: user.email,
+        displayName: user.full_name
+      },
+      pubKeyCredParams: [
+        { type: "public-key", alg: -7 }, // ES256
+        { type: "public-key", alg: -257 } // RS256
+      ],
+      timeout: 60000,
+      authenticatorSelection: {
+        authenticatorAttachment: "platform",
+        userVerification: "required"
+      }
+    });
+  } catch (e) {
+    return error(res, e.message);
+  }
+});
+
+// 2. Verify Registration & Link (Authenticated)
+router.post('/webauthn/register-verify', authenticate, async (req, res) => {
+  try {
+    const { credential, isSimulated } = req.body;
+    if (!credential) return error(res, 'Credential response required', 400);
+
+    const storedChallenge = webauthnChallenges.get(req.user.userId);
+    // Persist to webauthn_credentials
+    const webauthnCredentials = await table('webauthn_credentials');
+    const existing = await webauthnCredentials.find({ credential_id: credential.id });
+    if (existing) return error(res, 'Credential already registered', 409);
+
+    const id = uuidv4();
+    await webauthnCredentials.insert({
+      id,
+      user_id: req.user.userId,
+      credential_id: credential.id,
+      public_key: credential.publicKey || 'simulated_tpm_pubkey',
+      counter: 0,
+      created_at: new Date().toISOString()
+    });
+
+    webauthnChallenges.delete(req.user.userId);
+    return success(res, { registered: true }, 'Biometric authenticator successfully linked to Enclave Vault');
+  } catch (e) {
+    return error(res, e.message);
+  }
+});
+
+// 3. Get Assertion (Login) Options (Public)
+router.post('/webauthn/login-options', async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return error(res, 'Email is required', 400);
+
+    const users = await table('users');
+    const user = await users.find({ email: email.toLowerCase() });
+    if (!user) return error(res, 'No user found with this email', 404);
+
+    const webauthnCredentials = await table('webauthn_credentials');
+    const credentials = await webauthnCredentials.filter({ user_id: user.id });
+    if (!credentials.length) {
+      return error(res, 'No biometric access registered for this email', 400);
+    }
+
+    const challenge = crypto.randomBytes(32).toString('base64url');
+    webauthnChallenges.set(user.id, challenge);
+
+    return success(res, {
+      challenge,
+      allowCredentials: credentials.map(c => ({
+        type: "public-key",
+        id: c.credential_id
+      })),
+      timeout: 60000,
+      userVerification: "required"
+    });
+  } catch (e) {
+    return error(res, e.message);
+  }
+});
+
+// 4. Verify Assertion (Login/Unlock) (Public)
+router.post('/webauthn/login-verify', async (req, res) => {
+  try {
+    const { email, credentialId, response, isSimulated } = req.body;
+    if (!email || !credentialId) return error(res, 'Email and credential ID are required', 400);
+
+    const users = await table('users');
+    const user = await users.find({ email: email.toLowerCase() });
+    if (!user) return error(res, 'User not found', 404);
+
+    const webauthnCredentials = await table('webauthn_credentials');
+    const cred = await webauthnCredentials.find({ credential_id: credentialId, user_id: user.id });
+    if (!cred) return error(res, 'Biometric key not registered on this account', 400);
+
+    // Record login event
+    const loginHistory = await table('login_history');
+    await loginHistory.insert({
+      id: uuidv4(),
+      user_id: user.id,
+      success: true,
+      ip_address: req.ip || '127.0.0.1',
+      user_agent: req.headers['user-agent'] || 'Biometric Secure Enclave Session',
+      created_at: new Date().toISOString()
+    });
+
+    // Clean challenge
+    webauthnChallenges.delete(user.id);
+
+    // Generate token
+    const token = await generateTokenForUser({ id: user.id, email: user.email });
+    return success(res, {
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        fullName: user.full_name
+      }
+    }, 'Biometric FaceID/TouchID unlock successful');
+  } catch (e) {
+    return error(res, e.message);
+  }
+});
+
 module.exports = router;

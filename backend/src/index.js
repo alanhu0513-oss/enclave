@@ -72,6 +72,7 @@ app.use(cors({
     const suffixAllowed = origin && (
       origin.endsWith('.vercel.app')
       || origin.endsWith('.up.railway.app')
+      || origin.endsWith('.run.app')
       || origin.startsWith('chrome-extension://')
     );
     if (!origin || allowedOrigins.includes(origin) || suffixAllowed) {
@@ -310,8 +311,11 @@ app.get('/api/metrics', async (req, res) => {
   }
 });
 
-// Serve frontend static files
-const frontendPath = path.join(__dirname, '../../frontend');
+// Serve frontend static files (frontend-react/dist with fallback to frontend)
+const frontendReactDist = path.join(__dirname, '../../frontend-react/dist');
+const legacyFrontend = path.join(__dirname, '../../frontend');
+const frontendPath = require('fs').existsSync(frontendReactDist) ? frontendReactDist : legacyFrontend;
+
 app.use(express.static(frontendPath));
 app.get('*', (req, res, next) => {
   if (req.path.startsWith('/api/')) return next();

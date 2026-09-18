@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "motion/react";
-import { Loader2, LogIn, UserPlus, ShieldQuestion, ArrowLeft, Eye, EyeOff, Gift } from "lucide-react";
+import { Loader2, LogIn, UserPlus, ShieldQuestion, ArrowLeft, Eye, EyeOff, Gift, Fingerprint } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useApp } from "@/lib/app-context";
 import { api } from "@/lib/api";
@@ -13,16 +13,40 @@ import { CyberBackground } from "@/components/psychology/cyber-background";
 type Mode = "login" | "register" | "forgot";
 
 export function AuthView({ onBack }: { onBack?: () => void } = {}) {
-  const { login, register, loading } = useAuth();
+  const { login, loginDemo, loginBiometrics, register, loading } = useAuth();
   const { toast } = useApp();
   const [mode, setMode] = useState<Mode>(() =>
     getStoredReferralCode() ? "register" : "login"
   );
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(() => localStorage.getItem("enclave_biometric_email") || "");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+  const [biometricLoading, setBiometricLoading] = useState(false);
+
+  async function handleBiometricLogin() {
+    const enrolledEmail = localStorage.getItem("enclave_biometric_email");
+    const targetEmail = email || enrolledEmail;
+    if (!targetEmail) {
+      toast({ 
+        title: "Identify yourself first", 
+        body: "Please enter your email to proceed with biometric authentication.", 
+        variant: "info" 
+      });
+      return;
+    }
+
+    setBiometricLoading(true);
+    try {
+      await loginBiometrics(targetEmail);
+      toast({ title: "Welcome back!", body: "Enclave secure session established.", variant: "success" });
+    } catch (err: any) {
+      toast({ title: "Biometric authentication failed", body: err.message, variant: "error" });
+    } finally {
+      setBiometricLoading(false);
+    }
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -126,6 +150,39 @@ export function AuthView({ onBack }: { onBack?: () => void } = {}) {
               required
             />
           </div>
+
+          {mode === "login" && localStorage.getItem("enclave_biometrics_enabled") === "true" && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="p-3.5 rounded-xl border border-cyan/15 bg-cyan/[0.02] flex items-center justify-between gap-3 text-left"
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-cyan/15 text-cyan animate-pulse">
+                  <Fingerprint className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-ink">TouchID / FaceID Active</p>
+                  <p className="text-[10px] text-ink-muted">Fast-track secure entry</p>
+                </div>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={biometricLoading || loading}
+                onClick={handleBiometricLogin}
+                className="h-8 text-xs font-semibold border-cyan/30 text-cyan hover:bg-cyan/10 hover:border-cyan/50"
+              >
+                {biometricLoading ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  "Scan Biometrics"
+                )}
+              </Button>
+            </motion.div>
+          )}
+
           {mode !== "forgot" && (
             <div>
               <Label htmlFor="password">Password</Label>
@@ -195,7 +252,18 @@ export function AuthView({ onBack }: { onBack?: () => void } = {}) {
           )}
         </form>
 
-        <div className="mt-6 border-t border-white/[0.07] pt-5 text-center text-sm text-ink-muted">
+        <div className="mt-4">
+          <Button
+            type="button"
+            onClick={loginDemo}
+            variant="glass"
+            className="w-full text-xs font-mono text-cyan hover:border-cyan/40 hover:bg-cyan/10"
+          >
+            ⚡ Instant Test Drive (1-Click Demo Vault)
+          </Button>
+        </div>
+
+        <div className="mt-5 border-t border-white/[0.07] pt-4 text-center text-sm text-ink-muted">
           {mode === "login" ? (
             <>
               Don't have an account?{" "}

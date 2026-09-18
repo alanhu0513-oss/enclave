@@ -241,19 +241,19 @@ export function Sidebar({
                         />
                       )}
                       {active && (
-                        <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-full bg-green" />
+                        <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-full bg-cyan shadow-[0_0_10px_#00F2FE]" />
                       )}
                       <Icon
                         className={cn(
                           "relative z-10 h-[18px] w-[18px] shrink-0 transition-colors duration-200",
-                          active ? "text-green" : "text-ink-faint group-hover:text-ink-muted"
+                          active ? "text-cyan" : "text-ink-faint group-hover:text-ink-muted"
                         )}
                       />
                       {!effectiveCollapsed && (
                         <span className="relative z-10 whitespace-nowrap text-shadow-sm">{item.label}</span>
                       )}
                       {item.id === "alerts" && unread > 0 && (
-                        <span className="absolute right-2 top-1/2 z-10 flex h-4 min-w-4 -translate-y-1/2 items-center justify-center rounded-full bg-red px-1 text-[10px] font-bold text-white">
+                        <span className="absolute right-2 top-1/2 z-10 flex h-4 min-w-4 -translate-y-1/2 items-center justify-center rounded-full bg-red px-1 text-[10px] font-bold text-white shadow-[0_0_8px_rgba(255,51,102,0.6)]">
                           {unread > 99 ? "99+" : unread}
                         </span>
                       )}
@@ -264,8 +264,23 @@ export function Sidebar({
           ))}
         </nav>
 
-        {/* Bottom: user + lock */}
+        {/* Bottom: telemetry + user + lock */}
         <div className="border-t border-white/[0.07] p-3">
+          {!effectiveCollapsed && (
+            <div className="mb-3 rounded-xl border border-white/[0.06] bg-white/[0.02] p-2.5 font-mono text-[10px] backdrop-blur-sm">
+              <div className="flex items-center justify-between">
+                <span className="flex items-center gap-1.5 text-cyan">
+                  <span className="h-1.5 w-1.5 rounded-full bg-cyan animate-pulse" />
+                  SHIELD ARRAY
+                </span>
+                <span className="text-green font-semibold">ONLINE</span>
+              </div>
+              <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-white/[0.08]">
+                <div className="h-full w-[96%] bg-gradient-to-r from-cyan via-green to-cyan" />
+              </div>
+            </div>
+          )}
+
           {effectiveCollapsed ? (
             <div className="flex flex-col items-center gap-2">
               <button

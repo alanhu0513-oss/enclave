@@ -20,6 +20,7 @@ import {
   Users,
   ShieldAlert,
   TimerReset,
+  Loader2,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 
@@ -336,10 +337,101 @@ function Sparkline({ points, color = "#05F2C7", width = 220, height = 64 }: { po
   );
 }
 
+/* ─── Animated Cyber Network (Visual Depth Nodes) ─── */
+function CyberNetwork() {
+  return (
+    <div className="absolute inset-0 -z-10 overflow-hidden opacity-30">
+      <svg className="h-full w-full" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <radialGradient id="net-glow" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="#00F2FE" stopOpacity="0.15" />
+            <stop offset="100%" stopColor="#00F2FE" stopOpacity="0" />
+          </radialGradient>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#net-glow)" />
+        <motion.path
+          d="M 100,200 L 400,100 L 700,300 L 1000,150"
+          fill="none"
+          stroke="rgba(0, 242, 254, 0.15)"
+          strokeWidth="1.5"
+          strokeDasharray="10 15"
+          animate={{ strokeDashoffset: [0, -100] }}
+          transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
+        />
+        <motion.path
+          d="M 200,600 L 500,450 L 800,700 L 1100,550"
+          fill="none"
+          stroke="rgba(5, 242, 199, 0.15)"
+          strokeWidth="1.5"
+          strokeDasharray="8 20"
+          animate={{ strokeDashoffset: [0, 100] }}
+          transition={{ duration: 12, repeat: Infinity, ease: "linear" }}
+        />
+        <circle cx="100" cy="200" r="4" fill="#00F2FE" className="animate-pulse" />
+        <circle cx="400" cy="100" r="5" fill="#05F2C7" />
+        <circle cx="700" cy="300" r="4" fill="#A78BFA" />
+        <circle cx="1000" cy="150" r="5" fill="#00F2FE" />
+        <circle cx="500" cy="450" r="6" fill="#FF3366" />
+        <circle cx="500" cy="450" r="3" fill="#050507" />
+      </svg>
+    </div>
+  );
+}
+
+/* ─── Cyber Threat Live Intercepts Ticker ─── */
+const TICKER_MESSAGES = [
+  "🚨 INTRUSION INTERCEPTED: Brute-force credentials block on primary authentication node — Identity Shield Active",
+  "🛡️ CORE MONITOR: 14,029 newly indexed RedLine Stealer database dump records isolated this hour",
+  "⚡ LIVE BREACH: Discord Paste dump scanned (3.2m lines) — matched 12 monitored Enclave user profiles",
+  "🔍 DEEP SCANNER: Multi-frame audio deepfake forensic analysis match successful on profile template",
+  "🛡️ SYSTEM: Automatic blast radius password-reuse safety sweep deployed to 2,400 active vaults",
+];
+
+function CyberThreatTicker() {
+  const [index, setIndex] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setIndex((i) => (i + 1) % TICKER_MESSAGES.length);
+    }, 4500);
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <div className="w-full bg-[#030406]/95 border-b border-white/[0.04] py-2.5 px-4 flex items-center justify-center relative overflow-hidden z-40">
+      <div className="absolute left-4 flex items-center gap-2">
+        <span className="relative flex h-2 w-2">
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-cyan opacity-75" />
+          <span className="relative inline-flex h-2 w-2 rounded-full bg-cyan" />
+        </span>
+        <span className="font-mono text-[9px] uppercase tracking-widest text-cyan font-bold hidden md:inline">SYSTEM STATUS</span>
+      </div>
+
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={index}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+          transition={{ duration: 0.35, ease: "easeInOut" }}
+          className="font-mono text-[10px] sm:text-xs text-ink-muted text-center tracking-wide max-w-2xl px-12 truncate"
+        >
+          {TICKER_MESSAGES[index]}
+        </motion.div>
+      </AnimatePresence>
+
+      <div className="absolute right-4 font-mono text-[9px] text-ink-faint hidden md:inline">
+        AES-256 COMPLIANT // ONLINE
+      </div>
+    </div>
+  );
+}
+
 /* ─── Ambient background layers ─── */
 function Backdrop() {
   return (
     <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+      <CyberNetwork />
       {/* Radial neon glows — floating depth, opacity-10 */}
       <div className="absolute -top-40 left-1/2 h-[560px] w-[900px] -translate-x-1/2 rounded-full bg-[#00F2FE] opacity-10 blur-[140px]" />
       <div className="absolute top-1/3 -left-40 h-[420px] w-[420px] rounded-full bg-[#05F2C7] opacity-[0.08] blur-[130px]" />
@@ -366,7 +458,7 @@ function Backdrop() {
 
 /* ─── Main Component ─── */
 export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
-  const { user } = useAuth();
+  const { user, loginDemo } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(0);
   const [navScrolled, setNavScrolled] = useState(false);
@@ -425,6 +517,12 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
 
           <div className="flex items-center gap-2.5">
             <button
+              onClick={loginDemo}
+              className="hidden px-3 py-1.5 text-xs font-mono text-cyan transition-all duration-300 ease-out hover:text-white rounded-lg border border-cyan/30 bg-cyan/10 hover:bg-cyan/20 md:block"
+            >
+              ⚡ Instant Demo
+            </button>
+            <button
               onClick={handleGetStarted}
               className="hidden px-3 py-1.5 text-sm text-[var(--tk-ink-muted)] transition-all duration-300 ease-out hover:text-[var(--tk-ink)] md:block"
             >
@@ -469,6 +567,7 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
       </motion.header>
 
       <main id="main-content" className="relative">
+        <CyberThreatTicker />
         <Backdrop />
 
         {/* ═══════════════════════════════════════════════════════ */}
@@ -530,6 +629,12 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
               >
                 Build my shield for free
                 <ArrowRight className="h-5 w-5 transition-transform duration-300 ease-out group-hover:translate-x-1" aria-hidden="true" />
+              </button>
+              <button
+                onClick={loginDemo}
+                className="inline-flex items-center gap-2 rounded-xl border border-[#00F2FE]/40 bg-[#00F2FE]/10 px-6 py-3.5 text-base font-medium text-[#BEF5F8] backdrop-blur-md transition-all duration-300 ease-out hover:border-[#00F2FE]/70 hover:bg-[#00F2FE]/20 hover:shadow-[0_0_30px_rgba(0,242,254,0.3)] active:scale-[0.98]"
+              >
+                <span>⚡ Instant Live Demo (1-Click)</span>
               </button>
               <a href="#how-it-works">
                 <button className="inline-flex items-center gap-2 rounded-xl border border-[rgba(255,255,255,0.12)] bg-[rgba(13,14,18,0.6)] px-8 py-3.5 text-base text-[var(--tk-ink)] backdrop-blur-md transition-all duration-300 ease-out hover:border-[rgba(255,255,255,0.25)] hover:bg-[rgba(18,19,24,0.8)] active:scale-[0.98]">
@@ -703,6 +808,30 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
             </div>
           </div>
         </section>
+
+        {/* ═══════════════════════════════════════════════════════ */}
+        {/* INTERACTIVE REVENUE-GENERATING RISK ANALYZER TOOL       */}
+        {/* ═══════════════════════════════════════════════════════ */}
+        <section className="relative px-4 py-16 border-t border-b border-white/[0.04] bg-[#06070a]/40">
+          <div className="mx-auto max-w-5xl">
+            <div className="mb-10 text-center md:text-left">
+              <p className="mb-2 text-xs font-mono uppercase tracking-[0.2em] text-[#00F2FE]">Clearance Tool</p>
+              <h2 className="text-3xl font-semibold tracking-[-0.03em] md:text-4xl">
+                Check your exposure index.
+              </h2>
+              <p className="mt-2 text-sm text-[var(--tk-ink-muted)] max-w-xl">
+                Simulate your exploitability based on account density and security practices. See why proactive isolation pays off.
+              </p>
+            </div>
+
+            <RiskAnalyzer onGetStarted={handleGetStarted} />
+          </div>
+        </section>
+
+        {/* ═══════════════════════════════════════════════════════ */}
+        {/* INTERACTIVE PROTECTION SANDBOX LAB                      */}
+        {/* ═══════════════════════════════════════════════════════ */}
+        <ProtectionSandbox onGetStarted={handleGetStarted} />
 
         {/* ═══════════════════════════════════════════════════════ */}
         {/* FEATURES — premium bento grid                            */}
@@ -1289,6 +1418,357 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
           </div>
         </footer>
       </main>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────
+   INTERACTIVE PROTECTION SANDBOX SIMULATOR (FUN & REVENUE)
+   ───────────────────────────────────────────────────────── */
+function ProtectionSandbox({ onGetStarted }: { onGetStarted: () => void }) {
+  const [switches, setSwitches] = useState({
+    decoy: false,
+    scrambler: false,
+    crawler: false,
+    sandbox: false,
+  });
+
+  const [loading, setLoading] = useState(false);
+
+  const toggleSwitch = (key: keyof typeof switches) => {
+    setLoading(true);
+    setSwitches(prev => ({ ...prev, [key]: !prev[key] }));
+    setTimeout(() => {
+      setLoading(false);
+    }, 300);
+  };
+
+  const countActive = Object.values(switches).filter(Boolean).length;
+  const grade = countActive === 0 ? "F" : countActive === 1 ? "C" : countActive === 2 ? "B" : countActive === 3 ? "A" : "S++ (IMMUNE)";
+  const gradeColor = countActive === 0 ? "#FF3366" : countActive === 1 ? "#EAB308" : countActive === 2 ? "#3B82F6" : countActive === 3 ? "#05F2C7" : "#00F2FE";
+
+  return (
+    <section className="relative px-4 py-20 border-b border-white/[0.04] bg-[#030406]/60">
+      <div className="mx-auto max-w-5xl">
+        <div className="mb-12 text-center md:text-left">
+          <p className="mb-2 text-xs font-mono uppercase tracking-[0.2em] text-[#05F2C7]">Defense Lab</p>
+          <h2 className="text-3xl font-semibold tracking-[-0.03em] md:text-4xl text-[#F4F7FB]">
+            Interactive Identity Protection Sandbox
+          </h2>
+          <p className="mt-2 text-sm text-[var(--tk-ink-muted)] max-w-xl">
+            Toggle Enclave's advanced active defense modules in real-time. Experience how sandbox isolation creates a bulletproof digital barrier.
+          </p>
+        </div>
+
+        <div className="grid gap-6 md:grid-cols-12 rounded-2xl border border-white/[0.06] bg-[#050608]/90 p-6 sm:p-8 relative overflow-hidden backdrop-blur-3xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.9)]">
+          {/* Controls */}
+          <div className="md:col-span-7 space-y-4 text-left">
+            {[
+              { id: "decoy", label: "📸 Camera Immunizer & Decoy Matrix", desc: "Injects sub-perceptual cryptographic noise into local JPEG headers to scramble facial recognition scrapers", color: "cyan" },
+              { id: "scrambler", label: "🎙️ Ambient Voice Scrambler Shield", desc: "Runs low-latency micro-frequency background acoustic scrambling to block biometric vocal cloning software", color: "teal" },
+              { id: "crawler", label: "🕵️ Active Dark Web Forum Crawler", desc: "Launches automated distributed crawler scripts across major darknet marketplaces and onion forums", color: "coral" },
+              { id: "sandbox", label: "📦 Floating Sandbox App Isolation", desc: "Wraps overlay plugins in hardened sandboxed processes to block malware visual tap-jacking scripts", color: "violet" },
+            ].map((module) => {
+              const active = switches[module.id as keyof typeof switches];
+              return (
+                <div
+                  key={module.id}
+                  onClick={() => toggleSwitch(module.id as keyof typeof switches)}
+                  className={`group cursor-pointer rounded-xl border p-4 transition-all duration-300 flex items-center justify-between ${
+                    active
+                      ? "border-cyan/30 bg-cyan/[0.04] shadow-[0_0_15px_rgba(0,242,254,0.04)]"
+                      : "border-white/[0.05] bg-white/[0.01] hover:bg-white/[0.03]"
+                  }`}
+                >
+                  <div className="space-y-1 pr-6">
+                    <span className={`text-sm font-semibold transition-colors duration-200 ${active ? "text-cyan" : "text-ink"}`}>{module.label}</span>
+                    <p className="text-xs text-ink-faint leading-relaxed">{module.desc}</p>
+                  </div>
+                  {/* Neon Switch slider */}
+                  <div className={`w-11 h-6 rounded-full p-0.5 transition-all duration-300 shrink-0 ${active ? "bg-cyan" : "bg-white/[0.08]"}`}>
+                    <div className={`h-5 w-5 rounded-full bg-black shadow-md transform transition-all duration-300 ${active ? "translate-x-5" : "translate-x-0"}`} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Visualization Terminal */}
+          <div className="md:col-span-5 flex flex-col justify-between rounded-xl border border-white/[0.06] bg-[#020304] p-6 relative overflow-hidden text-center min-h-[360px]">
+            {/* Holographic scanning overlay */}
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(5,242,199,0.03),transparent_70%)] pointer-events-none" />
+            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#05F2C7]/30 to-transparent animate-pulse" />
+
+            <div>
+              <span className="font-mono text-[9px] uppercase tracking-widest text-ink-faint block">
+                {loading ? "⚡ SYNCING VAULT NODES..." : "LIVE METRIC OVERVIEW"}
+              </span>
+              
+              <div className="relative mx-auto my-6 flex h-32 w-32 items-center justify-center rounded-full border border-white/[0.04] bg-[#030405] shadow-[0_0_40px_rgba(0,0,0,0.8)]">
+                {/* Circular glowing progression meter */}
+                <svg className="absolute inset-0 h-full w-full -rotate-90">
+                  <circle cx="64" cy="64" r="56" fill="none" stroke="rgba(255,255,255,0.02)" strokeWidth="4" />
+                  <circle
+                    cx="64"
+                    cy="64"
+                    r="56"
+                    fill="none"
+                    stroke={gradeColor}
+                    strokeWidth="4"
+                    strokeDasharray={351.8}
+                    strokeDashoffset={351.8 - (351.8 * (countActive * 25)) / 100}
+                    style={{ transition: "stroke-dashoffset 0.6s cubic-bezier(0.22,1,0.36,1)" }}
+                  />
+                </svg>
+
+                <div className="flex flex-col items-center justify-center z-10">
+                  <span className="font-mono text-xs text-ink-faint uppercase font-semibold">SECURITY GRADE</span>
+                  <span className="font-mono text-3xl font-black mt-1 leading-none tracking-tight transition-all duration-300" style={{ color: gradeColor }}>
+                    {grade}
+                  </span>
+                  <span className="font-mono text-[9px] text-[#05F2C7] mt-1.5 font-bold animate-pulse">
+                    {countActive * 25}% COVERAGE
+                  </span>
+                </div>
+              </div>
+
+              <div className="inline-flex items-center gap-2 rounded-full px-3 py-1 font-mono text-[10px] font-bold tracking-wider uppercase border border-white/[0.08] bg-white/[0.02] text-ink-muted">
+                <span className={`h-1.5 w-1.5 rounded-full ${countActive > 0 ? "animate-pulse" : "bg-red"}`} style={{ backgroundColor: gradeColor }} />
+                SHIELD SYSTEM: {countActive === 0 ? "DEFENSELESS" : countActive === 4 ? "FULLY IMMUNE" : "ACTIVE MONITORING"}
+              </div>
+
+              <p className="mt-4 text-xs text-ink-muted leading-relaxed">
+                {countActive === 0 
+                  ? "⚠️ All protection modules are offline. Your digital footprint remains exposed to live stealer sweepers and scraping crawlers." 
+                  : countActive < 4 
+                  ? "🛡️ Shield is partially deployed. Your clearance rating is elevated, but sandbox isolation is required to prevent visual injection hacks." 
+                  : "🔥 MAXIMUM IMMUNITY ENGAGED! Decoy matrices, voice scrambling, sandboxes, and active darknet crawling are active in a unified defense loop."}
+              </p>
+            </div>
+
+            <div className="mt-6 pt-5 border-t border-white/[0.06] space-y-3">
+              <button
+                onClick={onGetStarted}
+                className="w-full rounded-xl bg-gradient-to-r from-[#00F2FE] via-[#05F2C7] to-[#00F2FE] py-3 text-sm font-bold text-black shadow-[0_0_24px_rgba(0,242,254,0.25)] transition-all duration-300 hover:shadow-[0_0_35px_rgba(0,242,254,0.45)]"
+              >
+                Activate Permanent Vault Shield
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────
+   INTERACTIVE SECURITY RISK ANALYZER (CONVERSION DRIVER)
+   ───────────────────────────────────────────────────────── */
+interface ServiceType {
+  id: string;
+  label: string;
+  weight: number;
+}
+
+const SECTOR_TYPES: ServiceType[] = [
+  { id: "fin", label: "💸 Banking & Finance", weight: 20 },
+  { id: "email", label: "📧 Personal & Work Email", weight: 25 },
+  { id: "social", label: "📱 Social Media Profiles", weight: 12 },
+  { id: "cloud", label: "☁️ Cloud Storage (Docs/Photos)", weight: 18 },
+  { id: "work", label: "💼 Professional SaaS & VPNs", weight: 15 },
+  { id: "gaming", label: "🎮 Gaming & Entertainment", weight: 8 },
+];
+
+function RiskAnalyzer({ onGetStarted }: { onGetStarted: () => void }) {
+  const [accountCount, setAccountCount] = useState(12);
+  const [passwordReuse, setPasswordReuse] = useState(true);
+  const [selectedSectors, setSelectedSectors] = useState<string[]>(["fin", "email", "social"]);
+  const [analyzing, setAnalyzing] = useState(false);
+
+  // Toggle selected categories
+  const toggleSector = (id: string) => {
+    setSelectedSectors((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  // Dynamic score calculator
+  const baseVulnerability = selectedSectors.reduce((total, id) => {
+    const s = SECTOR_TYPES.find((item) => item.id === id);
+    return total + (s ? s.weight : 0);
+  }, 0);
+
+  const reuseMultiplier = passwordReuse ? 1.6 : 1.0;
+  const quantityWeight = Math.min(20, accountCount * 0.8);
+  const finalScore = Math.min(99, Math.round((baseVulnerability + quantityWeight) * reuseMultiplier));
+
+  const riskLabel = finalScore < 30 ? "SAFE" : finalScore < 65 ? "ELEVATED" : "CRITICAL";
+  const riskColor = finalScore < 30 ? "#05F2C7" : finalScore < 65 ? "#EAB308" : "#FF3366";
+
+  const triggerAnalyze = () => {
+    setAnalyzing(true);
+    setTimeout(() => {
+      setAnalyzing(false);
+    }, 850);
+  };
+
+  return (
+    <div className="grid gap-6 md:grid-cols-12 rounded-2xl border border-white/[0.06] bg-[#090a10]/80 p-6 sm:p-8 backdrop-blur-2xl">
+      {/* Parameters Panel */}
+      <div className="md:col-span-7 space-y-6 text-left">
+        {/* Slider */}
+        <div className="space-y-2">
+          <div className="flex justify-between items-center">
+            <span className="text-sm font-semibold text-ink">Estimated Active Accounts</span>
+            <span className="font-mono text-xs font-bold text-cyan bg-cyan/10 px-2 py-0.5 rounded-md border border-cyan/20">
+              {accountCount} Channels
+            </span>
+          </div>
+          <input
+            type="range"
+            min="3"
+            max="80"
+            value={accountCount}
+            onChange={(e) => {
+              setAccountCount(parseInt(e.target.value));
+              triggerAnalyze();
+            }}
+            className="w-full h-1 bg-white/[0.08] rounded-lg appearance-none cursor-pointer accent-cyan"
+          />
+          <p className="text-[10px] text-ink-faint font-mono uppercase">Includes streaming, shopping, SaaS, banking & work platforms</p>
+        </div>
+
+        {/* Sectors checklist */}
+        <div className="space-y-3">
+          <span className="text-sm font-semibold text-ink block">Select Asset Types Under Shield</span>
+          <div className="grid grid-cols-2 gap-2">
+            {SECTOR_TYPES.map((sec) => {
+              const active = selectedSectors.includes(sec.id);
+              return (
+                <button
+                  key={sec.id}
+                  onClick={() => {
+                    toggleSector(sec.id);
+                    triggerAnalyze();
+                  }}
+                  className={`flex items-center text-left px-3 py-2.5 rounded-lg border text-xs font-medium transition-all duration-200 ${
+                    active
+                      ? "border-cyan/35 bg-cyan/10 text-cyan shadow-[0_0_12px_rgba(0,242,254,0.06)]"
+                      : "border-white/[0.06] bg-white/[0.01] hover:bg-white/[0.03] text-ink-muted"
+                  }`}
+                >
+                  {sec.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Habit selector */}
+        <div className="p-4 rounded-xl border border-white/[0.05] bg-white/[0.01] space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <span className="text-xs font-semibold text-ink block">Reused Decryption Key Habit</span>
+              <p className="text-[11px] text-ink-muted leading-snug">Do you share or reuse passwords across multiple services?</p>
+            </div>
+            <div className="flex gap-1.5 shrink-0">
+              <button
+                onClick={() => {
+                  setPasswordReuse(true);
+                  triggerAnalyze();
+                }}
+                className={`px-3 py-1.5 rounded-lg font-mono text-[10px] tracking-wider uppercase border font-bold transition-all ${
+                  passwordReuse
+                    ? "bg-red/15 text-red border-red/30 shadow-[0_0_10px_rgba(255,51,102,0.15)]"
+                    : "bg-transparent text-ink-faint border-white/[0.06] hover:bg-white/[0.03]"
+                }`}
+              >
+                Yes
+              </button>
+              <button
+                onClick={() => {
+                  setPasswordReuse(false);
+                  triggerAnalyze();
+                }}
+                className={`px-3 py-1.5 rounded-lg font-mono text-[10px] tracking-wider uppercase border font-bold transition-all ${
+                  !passwordReuse
+                    ? "bg-green/15 text-green border-green/30 shadow-[0_0_10px_rgba(5,242,199,0.15)]"
+                    : "bg-transparent text-ink-faint border-white/[0.06] hover:bg-white/[0.03]"
+                }`}
+              >
+                No
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Visual Analytics Display */}
+      <div className="md:col-span-5 flex flex-col justify-between rounded-xl border border-white/[0.06] bg-[#050608] p-5 sm:p-6 text-center relative overflow-hidden">
+        {/* Scanning Glow Overlay */}
+        <AnimatePresence>
+          {analyzing && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-cyan/[0.02] flex items-center justify-center z-10 backdrop-blur-[1px]"
+            >
+              <div className="absolute top-0 inset-x-0 h-[2px] bg-cyan shadow-[0_0_10px_#00F2FE]" />
+              <div className="flex items-center gap-1.5 font-mono text-xs text-cyan">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                Updating Threat Index...
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <div>
+          <span className="font-mono text-[9px] uppercase tracking-widest text-ink-faint block">CALCULATED THREAT VECTOR</span>
+          
+          {/* Main big dial mockup */}
+          <div className="relative mx-auto my-5 flex h-28 w-28 items-center justify-center rounded-full border border-dashed border-white/[0.06]">
+            {/* Pulsing ring indicator */}
+            <div className="absolute inset-2 rounded-full border border-dotted border-white/[0.08]" />
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <span className="font-mono text-4xl font-black tracking-tight" style={{ color: riskColor }}>
+                {finalScore}%
+              </span>
+              <span className="font-mono text-[8px] uppercase tracking-wider text-ink-faint mt-0.5">EXPOSURE SCORE</span>
+            </div>
+          </div>
+
+          <div className="inline-flex items-center gap-2 rounded-full px-3 py-1 font-mono text-[10px] font-bold tracking-wider uppercase border"
+            style={{
+              borderColor: `${riskColor}30`,
+              backgroundColor: `${riskColor}10`,
+              color: riskColor,
+            }}
+          >
+            <span className="h-1.5 w-1.5 rounded-full animate-pulse" style={{ backgroundColor: riskColor }} />
+            {riskLabel} CLEARANCE INDEX
+          </div>
+
+          <p className="mt-4 text-xs text-ink-muted leading-relaxed">
+            {passwordReuse 
+              ? "🚨 Shared passwords generate a severe blast radius multiplier. Any simple breach instantly jeopardizes all connected financial & personal dashboards." 
+              : "🛡️ Isolated passwords offer solid static security, but credential dumps and live browser logs still present a continuous exposure threat."}
+          </p>
+        </div>
+
+        <div className="mt-6 pt-5 border-t border-white/[0.06] space-y-3">
+          <div className="flex justify-between font-mono text-[10px] text-ink-faint uppercase">
+            <span>Blast Radius Potential</span>
+            <span className="text-ink font-bold">{passwordReuse ? "Severe Risk (3.2x)" : "Moderate (1.0x)"}</span>
+          </div>
+          <button
+            onClick={onGetStarted}
+            className="w-full rounded-xl bg-gradient-to-r from-[#00F2FE] via-[#05F2C7] to-[#00F2FE] py-3 text-sm font-bold text-black shadow-[0_0_24px_rgba(0,242,254,0.25)] transition-all duration-300 hover:shadow-[0_0_35px_rgba(0,242,254,0.45)]"
+          >
+            Claim Pro Guard & Shield Up
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

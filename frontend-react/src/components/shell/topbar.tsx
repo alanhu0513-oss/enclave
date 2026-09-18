@@ -1,4 +1,4 @@
-import { Bell, Menu, Search, ShieldCheck, ChevronRight, PanelLeftOpen } from "lucide-react";
+import { Bell, Menu, Search, ShieldCheck, ChevronRight, PanelLeftOpen, Scan, Activity, Zap } from "lucide-react";
 import { motion } from "motion/react";
 import { useApp, type TabId } from "@/lib/app-context";
 
@@ -48,10 +48,10 @@ export function Topbar({
   collapsed,
   onToggleCollapsed,
 }: TopbarProps) {
-  const { tab, unread } = useApp();
+  const { tab, setTab, unread } = useApp();
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-white/[0.06] bg-surface-0/80 px-4 backdrop-blur-xl md:px-6">
+    <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-white/[0.07] bg-[#050507]/85 px-4 backdrop-blur-2xl md:px-6">
       <button
         onClick={onMenu}
         className="rounded-lg p-2 text-ink-muted transition-colors hover:bg-white/[0.07] hover:text-ink md:hidden"
@@ -77,14 +77,15 @@ export function Topbar({
           initial={{ scale: 0.6, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ type: "spring", stiffness: 400, damping: 22 }}
-          className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-green/20 to-cyan/20 ring-1 ring-green/20"
+          className="relative flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-green/20 via-cyan/20 to-transparent ring-1 ring-cyan/30"
         >
-          <ShieldCheck className="h-4 w-4 text-green" />
+          <ShieldCheck className="h-4 w-4 text-cyan" />
+          <span className="absolute -bottom-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-green animate-ping" />
         </motion.span>
 
         {/* Breadcrumb navigation */}
         <nav aria-label="Breadcrumb" className="flex items-center gap-1.5">
-          <span className="hidden text-xs text-ink-faint sm:inline">Enclave</span>
+          <span className="hidden text-xs text-ink-faint sm:inline font-mono">ENCLAVE</span>
           <ChevronRight className="hidden h-3 w-3 text-ink-faint/50 sm:inline" />
           <motion.h1
             key={tab}
@@ -98,17 +99,44 @@ export function Topbar({
         </nav>
       </div>
 
-      <div className="flex-1" />
+      {/* Futuristic Telemetry HUD center pill */}
+      <div className="hidden lg:flex items-center gap-4 mx-auto rounded-full border border-white/[0.07] bg-white/[0.02] px-4 py-1 text-[11px] font-mono backdrop-blur-md">
+        <div className="flex items-center gap-1.5 text-green">
+          <span className="h-1.5 w-1.5 rounded-full bg-green animate-pulse" />
+          <span>MATRIX ONLINE</span>
+        </div>
+        <div className="h-3 w-px bg-white/10" />
+        <div className="flex items-center gap-1.5 text-ink-muted">
+          <Activity className="h-3 w-3 text-cyan" />
+          <span>LIVE SWEEP: <span className="text-ink">1.2B+ RECORDS</span></span>
+        </div>
+        <div className="h-3 w-px bg-white/10" />
+        <div className="flex items-center gap-1 text-ink-muted">
+          <Zap className="h-3 w-3 text-amber" />
+          <span className="text-amber/90">2.8k DEFLECTED TODAY</span>
+        </div>
+      </div>
+
+      <div className="flex-1 lg:flex-none" />
+
+      {/* Quick Launch Deep Scan button */}
+      <button
+        onClick={() => setTab("scan")}
+        className="hidden sm:inline-flex items-center gap-1.5 rounded-lg border border-cyan/30 bg-cyan/10 px-3 py-1.5 text-xs font-semibold text-cyan transition-all hover:bg-cyan/20 hover:border-cyan/50 hover:shadow-[0_0_15px_rgba(0,242,254,0.25)]"
+      >
+        <Scan className="h-3.5 w-3.5" />
+        <span>Deep Scan</span>
+      </button>
 
       {/* Command palette trigger */}
       <button
         onClick={onOpenCommand}
         aria-label="Search and commands"
-        className="group hidden h-10 w-[240px] items-center gap-2 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 text-sm text-ink-faint transition-all duration-200 hover:border-green/30 hover:bg-white/[0.05] hover:text-ink-muted md:flex"
+        className="group hidden h-9 w-[190px] items-center gap-2 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 text-xs text-ink-faint transition-all duration-200 hover:border-cyan/40 hover:bg-white/[0.06] hover:text-ink-muted xl:flex"
       >
-        <Search className="h-4 w-4 transition-colors group-hover:text-green" />
-        <span>Search & commands...</span>
-        <kbd className="ml-auto rounded border border-white/[0.08] bg-white/[0.05] px-1.5 py-0.5 font-mono text-[10px]">
+        <Search className="h-3.5 w-3.5 transition-colors group-hover:text-cyan" />
+        <span>Command Vault...</span>
+        <kbd className="ml-auto rounded border border-white/[0.08] bg-white/[0.05] px-1.5 py-0.5 font-mono text-[9px] text-ink-muted">
           ⌘K
         </kbd>
       </button>
@@ -126,7 +154,7 @@ export function Topbar({
             initial={{ scale: 0.4 }}
             animate={{ scale: 1 }}
             transition={{ type: "spring", stiffness: 500, damping: 18 }}
-            className="absolute right-1.5 top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red px-1 text-[10px] font-bold text-white"
+            className="absolute right-1.5 top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red px-1 text-[10px] font-bold text-white shadow-[0_0_8px_rgba(255,51,102,0.6)]"
           >
             {unread}
           </motion.span>

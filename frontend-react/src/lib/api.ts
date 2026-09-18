@@ -107,6 +107,14 @@ export const api = {
     post("/auth/delete-account", { password, code }),
   getLoginHistory: () =>
     apiFetch<any[]>("/auth/login-history"),
+  getWebAuthnRegisterOptions: () =>
+    apiFetch<any>("/auth/webauthn/register-options"),
+  verifyWebAuthnRegister: (credential: any, isSimulated: boolean) =>
+    post("/auth/webauthn/register-verify", { credential, isSimulated }),
+  getWebAuthnLoginOptions: (email: string) =>
+    post<any>("/auth/webauthn/login-options", { email }),
+  verifyWebAuthnLogin: (email: string, credentialId: string, response: any, isSimulated: boolean) =>
+    post<any>("/auth/webauthn/login-verify", { email, credentialId, response, isSimulated }),
   get2FAStatus: () =>
     apiFetch<any>("/auth/2fa/status"),
   setup2FA: () =>

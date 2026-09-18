@@ -1,6 +1,7 @@
-import { Bell, Menu, Search, ShieldCheck, ChevronRight, PanelLeftOpen, Scan, Activity, Zap } from "lucide-react";
+import { Bell, Menu, Search, ShieldCheck, ChevronRight, PanelLeftOpen, Scan, Activity, Zap, Lock } from "lucide-react";
 import { motion } from "motion/react";
 import { useApp, type TabId } from "@/lib/app-context";
+import { useAuth } from "@/lib/auth";
 
 interface TopbarProps {
   onMenu: () => void;
@@ -49,6 +50,7 @@ export function Topbar({
   onToggleCollapsed,
 }: TopbarProps) {
   const { tab, setTab, unread } = useApp();
+  const { lock } = useAuth();
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-white/[0.07] bg-[#050507]/85 px-4 backdrop-blur-2xl md:px-6">
@@ -140,6 +142,22 @@ export function Topbar({
           ⌘K
         </kbd>
       </button>
+
+      {/* Interactive persistent Vault status and lock indicator */}
+      <motion.button
+        onClick={lock}
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.98 }}
+        className="inline-flex items-center gap-1.5 rounded-lg border border-green/20 bg-green/[0.04] px-2.5 py-1.5 font-mono text-[10px] font-bold tracking-wider text-green uppercase hover:bg-red/10 hover:border-red/30 hover:text-red transition-all cursor-pointer shadow-[0_0_12px_rgba(5,242,159,0.05)]"
+        title="Vault status: ENCRYPTED & ACTIVE. Click to instantly Lock Vault."
+      >
+        <span className="relative flex h-1.5 w-1.5">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green opacity-75"></span>
+          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green"></span>
+        </span>
+        <span className="hidden xs:inline">VAULT UNLOCKED</span>
+        <Lock className="h-3 w-3 opacity-60 ml-0.5" />
+      </motion.button>
 
       {/* Notification bell */}
       <button

@@ -179,6 +179,10 @@ function createPgEngine() {
       };
     },
     async ensureTables() {
+      // Test initial database connection; throws if server is unreachable/down
+      const testClient = await pool.connect();
+      testClient.release();
+
       const initSql = fs.readFileSync(path.join(__dirname, 'init.sql'), 'utf-8');
       const statements = initSql.split(';').filter(s => s.trim());
       for (const stmt of statements) {

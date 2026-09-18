@@ -16,10 +16,10 @@ import { track } from "@/lib/analytics";
 interface AuthState {
   user: any | null;
   loading: boolean;
+  initialized: boolean;
   locked: boolean;
   login: (email: string, password: string, remember?: boolean) => Promise<void>;
   loginBiometrics: (email: string) => Promise<void>;
-  loginDemo: () => void;
   register: (email: string, password: string, fullName: string) => Promise<void>;
   logout: () => Promise<void>;
   lock: () => void;
@@ -42,16 +42,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   });
   const [locked, setLocked] = useState(() => sessionStorage.getItem("enclave_locked") === "1");
   const [loading, setLoading] = useState(false);
+  const [initialized, setInitialized] = useState(() => !getToken());
 
   useEffect(() => {
-    if (!getToken()) {
+    const token = getToken();
+    if (!token) {
       if (user) {
         setUser(null);
         sessionStorage.removeItem("enclave_user");
       }
+      setInitialized(true);
       return;
     }
+
     let active = true;
+    setLoading(true);
     api
       .getUserData()
       .then((d: any) => {
@@ -60,17 +65,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(u);
         sessionStorage.setItem("enclave_user", JSON.stringify(u));
       })
-      .catch(() => {
+      .catch((err) => {
         if (active) {
+          console.warn("[Auth] Stale or invalid token detected during startup:", err?.message);
           clearToken();
           setUser(null);
           sessionStorage.removeItem("enclave_user");
         }
+      })
+      .finally(() => {
+        if (active) {
+          setLoading(false);
+          setInitialized(true);
+        }
       });
+
     return () => {
       active = false;
     };
-  }, [user]);
+  }, []);
 
   const login = useCallback(async (email: string, password: string, remember = false) => {
     setLoading(true);
@@ -165,47 +178,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const loginDemo = useCallback(async () => {
-    setLoading(true);
-    try {
-      // Authenticate with the pre-seeded backend account for a real DB-backed session
-      try {
-        await login("pgtest@test.com", "Test1234!");
-      } catch (err) {
-        // If login fails (e.g., first-time database initialization), register the seed account
-        try {
-          await api.register("pgtest@test.com", "Test1234!", "Alex Vance");
-          await login("pgtest@test.com", "Test1234!");
-        } catch (regErr) {
-          // If registration fails, generate a dynamically unique demo account on the fly
-          const randId = Math.floor(100000 + Math.random() * 900000);
-          try {
-            await api.register(`demo_${randId}@enclave.vault`, "Test1234!", "Alex Vance");
-            await login(`demo_${randId}@enclave.vault`, "Test1234!");
-          } catch (fallbackErr) {
-            // Local fallback in case server DB adapter is temporarily offline or initializing
-            const demoUser = {
-              id: "usr_quantum_guardian",
-              email: "commander@enclave.vault",
-              fullName: "Alex Vance",
-              plan: "pro",
-              emailVerified: true,
-              role: "commander",
-              shieldActive: true,
-            };
-            setToken("enclave_demo_local_bypass_token", false);
-            setUser(demoUser);
-            sessionStorage.setItem("enclave_user", JSON.stringify(demoUser));
-          }
-        }
-      }
-      setLocked(false);
-      sessionStorage.removeItem("enclave_locked");
-    } finally {
-      setLoading(false);
-    }
-  }, [login]);
-
   const register = useCallback(
     async (email: string, password: string, fullName: string) => {
       setLoading(true);
@@ -252,11 +224,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const unlock = useCallback(async (password: string) => {
-    // Demo bypass / emergency override / biometric bypass to ensure users never get stuck
-    if (password === "bypass" || password === "bypass_biometrics" || !password) {
-      setLocked(false);
-      sessionStorage.removeItem("enclave_locked");
-      return;
+    if (!password) {
+      throw new Error("Password is required to decrypt your vault.");
     }
     // Real security: require the account password before unlocking the vault.
     await api.verifyPassword(password);
@@ -275,7 +244,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, loading, locked, login, loginBiometrics, loginDemo, register, logout, lock, unlock, setUser, verifyPassword }}
+      value={{ user, loading, initialized, locked, login, loginBiometrics, register, logout, lock, unlock, setUser, verifyPassword }}
     >
       {children}
     </AuthContext.Provider>

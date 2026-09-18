@@ -12,6 +12,7 @@ import {
   X,
   LayoutDashboard,
   History,
+  Check,
 } from "lucide-react";
 import { useApp } from "@/lib/app-context";
 import { useAuth } from "@/lib/auth";
@@ -67,6 +68,52 @@ const DEMO_CASES: Alert[] = [
   },
 ];
 
+interface ChecklistItem {
+  id: string;
+  title: string;
+  description: string;
+  actionLabel: string;
+  targetTab: any;
+}
+
+const CHECKLIST_ITEMS: ChecklistItem[] = [
+  {
+    id: "biometrics",
+    title: "Setup Vault Biometrics",
+    description: "Enable TouchID/FaceID for secure passwordless vault locking.",
+    actionLabel: "Configure",
+    targetTab: "settings"
+  },
+  {
+    id: "mfa",
+    title: "Enable Session MFA",
+    description: "Activate multi-factor authentication on critical session state.",
+    actionLabel: "Enable",
+    targetTab: "settings"
+  },
+  {
+    id: "password_audit",
+    title: "Audit Weak Passwords",
+    description: "Scan personal credential hashes vs. 1.28B stealer logs.",
+    actionLabel: "Audit",
+    targetTab: "account-shield"
+  },
+  {
+    id: "active_scanner",
+    title: "Deploy Active Crawler",
+    description: "Initialize continuous sweeps for voice, image, and face leaks.",
+    actionLabel: "Scanner",
+    targetTab: "scan"
+  },
+  {
+    id: "watermark_photo",
+    title: "Immunize Public Media",
+    description: "Apply noise watermark onto public assets to avoid cloning.",
+    actionLabel: "Watermark",
+    targetTab: "scan"
+  }
+];
+
 export function HomeView() {
   const { setTab, toast } = useApp();
   const { user } = useAuth();
@@ -78,6 +125,28 @@ export function HomeView() {
     () => localStorage.getItem(EDU_KEY) === "1"
   );
   const [subTab, setSubTab] = useState<"overview" | "defenses" | "audit">("overview");
+
+  const [completedChecklist, setCompletedChecklist] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem("enclave_completed_checklist");
+      return saved ? JSON.parse(saved) : ["active_scanner"];
+    } catch {
+      return ["active_scanner"];
+    }
+  });
+
+  const toggleChecklist = (id: string) => {
+    const next = completedChecklist.includes(id)
+      ? completedChecklist.filter(x => x !== id)
+      : [...completedChecklist, id];
+    setCompletedChecklist(next);
+    localStorage.setItem("enclave_completed_checklist", JSON.stringify(next));
+    toast({
+      title: "Checklist updated",
+      body: "Your security protection progress has been saved.",
+      variant: "success"
+    });
+  };
 
   const onFreePlan = (user as any)?.plan === "free" && !eduDismissed;
 
@@ -326,23 +395,23 @@ export function HomeView() {
                 <ThreatRadarHUD />
               </StaggerItem>
 
-              {/* ─── BENTO: DETECTIONS & DOSSIERS ─── */}
-              <StaggerContainer className="grid gap-5 lg:grid-cols-3">
-                <StaggerItem className="lg:col-span-2">
+              {/* ─── BENTO: DETECTIONS, CHECKLIST & DOSSIERS ─── */}
+              <StaggerContainer className="grid gap-5 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+                <StaggerItem>
                   <Card className="h-full border-white/[0.08] bg-[#07080c]/85 backdrop-blur-xl">
                     <CardContent className="p-5">
                       <div className="mb-4 flex items-center justify-between border-b border-white/[0.07] pb-3">
                         <div className="flex items-center gap-2">
                           <div className="h-2 w-2 rounded-full bg-cyan animate-pulse" />
                           <h2 className="font-display text-sm font-semibold text-ink">
-                            Intercepted Threat Dossiers
+                            Intercepted Dossiers
                           </h2>
                         </div>
                         <button
                           onClick={() => setTab("alerts")}
                           className="flex items-center gap-1 font-mono text-xs text-cyan transition-colors hover:text-green"
                         >
-                          View full feed <ArrowRight className="h-3 w-3" />
+                          View feed <ArrowRight className="h-3 w-3" />
                         </button>
                       </div>
 
@@ -362,24 +431,24 @@ export function HomeView() {
                               initial={{ opacity: 0, x: -10 }}
                               animate={{ opacity: 1, x: 0 }}
                               transition={{ delay: i * 0.05 }}
-                              className="group flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] p-3.5 transition-colors hover:border-cyan/30 hover:bg-white/[0.04]"
+                              className="group flex flex-col gap-2 rounded-xl border border-white/[0.06] bg-white/[0.02] p-3 transition-colors hover:border-cyan/30 hover:bg-white/[0.04]"
                             >
-                              <div className="flex items-center gap-3 min-w-0 flex-1">
+                              <div className="flex items-start gap-2.5 min-w-0 flex-1">
                                 <span
-                                  className="h-2.5 w-2.5 shrink-0 rounded-full"
+                                  className="h-2 w-2 mt-1.5 shrink-0 rounded-full"
                                   style={{ background: confidenceColor(a.confidence ?? 0) }}
                                 />
                                 <div className="min-w-0 flex-1">
-                                  <p className="truncate font-mono text-xs font-semibold text-ink">
+                                  <p className="truncate font-mono text-[11px] font-semibold text-ink">
                                     {a.description || a.url || "Synthetic Vector Payload"}
                                   </p>
-                                  <p className="truncate font-mono text-[10px] text-ink-faint mt-0.5">
-                                    SOURCE: {a.url || "Encrypted Web Socket Feed"}
+                                  <p className="truncate font-mono text-[9px] text-ink-faint mt-0.5">
+                                    SRC: {a.url || "Encrypted Web Socket Feed"}
                                   </p>
                                 </div>
                               </div>
 
-                              <div className="flex items-center gap-2.5">
+                              <div className="flex items-center justify-between mt-1 pt-1.5 border-t border-white/[0.04]">
                                 <Badge
                                   variant={
                                     (a.confidence ?? 0) >= 80
@@ -388,7 +457,7 @@ export function HomeView() {
                                       ? "amber"
                                       : "green"
                                   }
-                                  className="font-mono text-xs"
+                                  className="font-mono text-[9px] px-1.5 py-0"
                                 >
                                   {Math.round(a.confidence ?? 0)}% RISK
                                 </Badge>
@@ -396,7 +465,7 @@ export function HomeView() {
                                   size="sm"
                                   variant="ghost"
                                   onClick={() => setTab("alerts")}
-                                  className="h-7 px-2 text-[11px] font-mono text-ink-muted hover:text-cyan"
+                                  className="h-6 px-2 text-[10px] font-mono text-ink-muted hover:text-cyan"
                                 >
                                   Takedown
                                 </Button>
@@ -405,6 +474,87 @@ export function HomeView() {
                           ))}
                         </div>
                       )}
+                    </CardContent>
+                  </Card>
+                </StaggerItem>
+
+                <StaggerItem>
+                  <Card className="h-full border-white/[0.08] bg-[#07080c]/85 backdrop-blur-xl">
+                    <CardContent className="flex h-full flex-col p-5">
+                      <div className="mb-4 flex items-center justify-between border-b border-white/[0.07] pb-3">
+                        <div className="flex items-center gap-2">
+                          <div className="h-2 w-2 rounded-full bg-cyan animate-pulse" />
+                          <h2 className="font-display text-sm font-semibold text-ink">
+                            Security Checklist
+                          </h2>
+                        </div>
+                        <span className="font-mono text-[10px] text-ink-faint">GOAL</span>
+                      </div>
+
+                      {/* Checklist Progress Bar */}
+                      <div className="mb-3 rounded-lg bg-white/[0.02] border border-white/[0.04] p-3">
+                        <div className="flex items-center justify-between text-[11px] font-mono mb-1.5">
+                          <span className="text-ink-muted">VAULT INTEGRITY</span>
+                          <span className="text-cyan font-bold">
+                            {Math.round((completedChecklist.length / CHECKLIST_ITEMS.length) * 100)}%
+                          </span>
+                        </div>
+                        <div className="h-1.5 w-full bg-white/[0.04] rounded-full overflow-hidden border border-white/[0.02]">
+                          <motion.div 
+                            className="h-full bg-gradient-to-r from-[#C5A880] to-[#E5D5C0]" 
+                            initial={{ width: 0 }}
+                            animate={{ width: `${(completedChecklist.length / CHECKLIST_ITEMS.length) * 100}%` }}
+                            transition={{ duration: 0.4, ease: "easeOut" }}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Interactive Checkbox List */}
+                      <div className="flex flex-1 flex-col gap-2.5 max-h-[280px] overflow-y-auto pr-1 custom-scrollbar">
+                        {CHECKLIST_ITEMS.map((item) => {
+                          const isCompleted = completedChecklist.includes(item.id);
+                          return (
+                            <div 
+                              key={item.id}
+                              className="group relative flex items-start gap-2.5 rounded-xl border border-white/[0.04] bg-white/[0.01] p-2.5 transition-all duration-200 hover:border-cyan/25 hover:bg-white/[0.03]"
+                            >
+                              {/* Custom Interactive Checkbox */}
+                              <button
+                                onClick={() => toggleChecklist(item.id)}
+                                className={cn(
+                                  "mt-0.5 flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded border transition-all duration-200 cursor-pointer",
+                                  isCompleted 
+                                    ? "bg-[#C5A880] border-[#C5A880] text-[#0C0C0E]" 
+                                    : "border-white/20 hover:border-cyan/50 text-transparent"
+                                )}
+                              >
+                                <Check className="h-3 w-3 stroke-[3]" />
+                              </button>
+
+                              <div className="min-w-0 flex-1">
+                                <p className={cn(
+                                  "font-sans text-xs font-semibold tracking-tight transition-all",
+                                  isCompleted ? "text-ink-muted line-through" : "text-ink"
+                                )}>
+                                  {item.title}
+                                </p>
+                                <p className="text-[10px] text-ink-faint leading-tight mt-0.5">
+                                  {item.description}
+                                </p>
+                              </div>
+
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => setTab(item.targetTab)}
+                                className="h-6 px-1.5 text-[9px] font-mono text-[#C5A880] hover:text-[#E5D5C0] ml-1 shrink-0 bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.05]"
+                              >
+                                {item.actionLabel}
+                              </Button>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </CardContent>
                   </Card>
                 </StaggerItem>

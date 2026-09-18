@@ -4,7 +4,12 @@
  * JWT authentication on connection. Users join personal rooms.
  */
 
-const { Server } = require('socket.io');
+let Server = null;
+try {
+  Server = require('socket.io').Server;
+} catch (e) {
+  console.warn('[WS] socket.io module missing or failed to load:', e.message);
+}
 const jwt = require('jsonwebtoken');
 const { bus, Events } = require('./event-bus');
 
@@ -38,6 +43,11 @@ function authMiddleware(socket, next) {
 
 /* ─── Initialize ─── */
 function init(httpServer) {
+  if (!Server) {
+    console.warn('[WS] WebSocket server disabled (socket.io not available)');
+    return null;
+  }
+
   io = new Server(httpServer, {
     cors: {
       origin: [

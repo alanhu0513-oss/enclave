@@ -55,10 +55,28 @@ interface AppState {
 const AppContext = createContext<AppState | null>(null);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
-  const [tab, setTab] = useState<TabId>("home");
+  const [tab, setTabState] = useState<TabId>(() => {
+    try {
+      const urlTab = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("tab") : null;
+      if (urlTab) return urlTab as TabId;
+      const saved = sessionStorage.getItem("enclave_active_tab");
+      return (saved as TabId) || "home";
+    } catch {
+      return "home";
+    }
+  });
   const [unread, setUnread] = useState(0);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const idRef = useRef(0);
+
+  const setTab = useCallback((nextTab: TabId) => {
+    setTabState(nextTab);
+    try {
+      sessionStorage.setItem("enclave_active_tab", nextTab);
+    } catch {
+      /* noop */
+    }
+  }, []);
 
   const toast = useCallback(
     (opts: {

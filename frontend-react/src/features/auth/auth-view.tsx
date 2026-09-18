@@ -13,7 +13,7 @@ import { CyberBackground } from "@/components/psychology/cyber-background";
 type Mode = "login" | "register" | "forgot";
 
 export function AuthView({ onBack }: { onBack?: () => void } = {}) {
-  const { login, loginDemo, loginBiometrics, register, loading } = useAuth();
+  const { login, loginBiometrics, register, loading } = useAuth();
   const { toast } = useApp();
   const [mode, setMode] = useState<Mode>(() =>
     getStoredReferralCode() ? "register" : "login"
@@ -251,17 +251,6 @@ export function AuthView({ onBack }: { onBack?: () => void } = {}) {
             </div>
           )}
         </form>
-
-        <div className="mt-4">
-          <Button
-            type="button"
-            onClick={loginDemo}
-            variant="glass"
-            className="w-full text-xs font-mono text-cyan hover:border-cyan/40 hover:bg-cyan/10"
-          >
-            ⚡ Instant Test Drive (1-Click Demo Vault)
-          </Button>
-        </div>
 
         <div className="mt-5 border-t border-white/[0.07] pt-4 text-center text-sm text-ink-muted">
           {mode === "login" ? (

@@ -25,35 +25,35 @@ import {
 import { useAuth } from "@/lib/auth";
 
 /* ═══════════════════════════════════════════════════════════
-   CYBERTECH DESIGN TOKENS — scoped to the landing page
-   Deep obsidian canvas · electric cyan / hyper teal accents
-   neon coral alerts · strict 1px borders · floating neon depth
+   HUMANIST EDITORIAL DESIGN TOKENS — scoped to the landing page
+   Warm charcoal canvas · champagne gold / warm cream accents
+   delicate warm grey borders · elegant typographic scaling
    ═══════════════════════════════════════════════════════════ */
 const tk = {
   /* Backgrounds */
-  bgBase: "#040406",
-  bgCanvas: "#050507",
-  bgRaised: "#0A0A0D",
-  surface: "#0D0E12",
-  surfaceRaised: "#121318",
-  surfaceHover: "#17181D",
+  bgBase: "#0C0C0E",
+  bgCanvas: "#0E0E10",
+  bgRaised: "#141417",
+  surface: "#17171B",
+  surfaceRaised: "#1D1D22",
+  surfaceHover: "#232329",
 
   /* Accents */
-  cyan: "#00F2FE",
-  teal: "#05F2C7",
-  coral: "#FF3366",
+  cyan: "#C5A880", // Champagne gold
+  teal: "#E5D5C0", // Warm cream
+  coral: "#D1A3A4", // Muted rose
 
   /* Ink */
-  ink: "#F4F7FB",
-  inkMuted: "#9BA3B2",
-  inkFaint: "#6B7280",
+  ink: "#F4F3F0", // Warm white
+  inkMuted: "#A39E98", // Muted warm grey
+  inkFaint: "#706C66", // Soft charcoal grey
 
   /* Borders */
-  border: "rgba(255,255,255,0.06)",
-  borderHover: "rgba(0,242,254,0.35)",
+  border: "rgba(229,213,192,0.06)",
+  borderHover: "rgba(197,168,128,0.35)",
 
   /* Glass */
-  glass: "rgba(13,14,18,0.7)",
+  glass: "rgba(20,20,23,0.7)",
 } as const;
 
 const cssVars = {
@@ -68,18 +68,18 @@ const cssVars = {
   "--tk-border": tk.border,
 } as React.CSSProperties;
 
-/* Glass / card primitives — keep hover transitions incredibly fluid */
+/* Glass / card primitives — elegant subtle transitions */
 const CARD =
   "relative rounded-2xl border backdrop-blur-md transition-all duration-300 ease-out will-change-transform";
-const CARD_SURFACE = `border-[rgba(255,255,255,0.06)] bg-[rgba(13,14,18,0.7)]`;
+const CARD_SURFACE = `border-[rgba(229,213,192,0.06)] bg-[rgba(20,20,23,0.7)]`;
 const CARD_HOVER =
-  "hover:border-[rgba(0,242,254,0.35)] hover:-translate-y-1 hover:bg-[rgba(17,18,23,0.85)] hover:shadow-[0_20px_60px_-20px_rgba(0,242,254,0.15)]";
+  "hover:border-[rgba(197,168,128,0.35)] hover:-translate-y-1 hover:bg-[rgba(26,26,30,0.85)] hover:shadow-[0_20px_60px_-20px_rgba(197,168,128,0.1)]";
 
-/* Gradient text — cyan → teal */
+/* Gradient text — Warm brass → champagne */
 const G_TEXT =
-  "bg-gradient-to-r from-[#00F2FE] via-[#05F2C7] to-[#00F2FE] bg-clip-text text-transparent";
+  "bg-gradient-to-r from-[#E5D5C0] via-[#C5A880] to-[#E5D5C0] bg-clip-text text-transparent";
 const G_TEXT_SOFT =
-  "bg-gradient-to-r from-[#00F2FE] to-[#05F2C7] bg-clip-text text-transparent";
+  "bg-gradient-to-r from-[#E5D5C0] to-[#C5A880] bg-clip-text text-transparent";
 
 /* ─── Data ─── */
 const FEATURES = [
@@ -458,7 +458,7 @@ function Backdrop() {
 
 /* ─── Main Component ─── */
 export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
-  const { user, loginDemo } = useAuth();
+  const { user } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(0);
   const [navScrolled, setNavScrolled] = useState(false);
@@ -484,7 +484,7 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
 
   return (
     <div className="min-h-screen bg-[var(--tk-bg)] text-[var(--tk-ink)] antialiased" style={cssVars}>
-      <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-[100] focus:bg-[#00F2FE] focus:text-black focus:px-4 focus:py-2">Skip to content</a>
+      <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-[100] focus:bg-[#C5A880] focus:text-black focus:px-4 focus:py-2">Skip to content</a>
 
       {/* ───────── Navigation — floating glass bar ───────── */}
       <motion.header
@@ -496,15 +496,15 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
         <nav
           className={`mx-auto flex max-w-6xl items-center justify-between rounded-2xl border px-4 py-2.5 transition-all duration-300 ease-out ${
             navScrolled
-              ? "border-[rgba(255,255,255,0.08)] bg-[rgba(10,10,13,0.75)] backdrop-blur-xl shadow-[0_8px_32px_-12px_rgba(0,0,0,0.8)]"
+              ? "border-[rgba(229,213,192,0.08)] bg-[rgba(20,20,23,0.75)] backdrop-blur-xl shadow-[0_8px_32px_-12px_rgba(0,0,0,0.8)]"
               : "border-transparent bg-transparent"
           }`}
         >
           <a href="#" className="flex items-center gap-2.5" onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: "smooth" }); }}>
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#00F2FE]/25 bg-gradient-to-br from-[#00F2FE]/20 to-[#05F2C7]/10 shadow-[0_0_16px_rgba(0,242,254,0.25)]">
-              <Shield className="h-4 w-4 text-[#00F2FE]" aria-hidden="true" />
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#C5A880]/25 bg-gradient-to-br from-[#C5A880]/15 to-transparent">
+              <Shield className="h-4 w-4 text-[#C5A880]" aria-hidden="true" />
             </div>
-            <span className="font-[var(--font-sans)] text-lg font-semibold tracking-tight" style={{ letterSpacing: "-0.02em" }}>Enclave</span>
+            <span className="font-serif text-lg font-medium tracking-tight" style={{ letterSpacing: "-0.01em", fontFamily: "'Playfair Display', Georgia, serif" }}>Enclave</span>
           </a>
 
           <div className="hidden items-center gap-7 md:flex">
@@ -517,20 +517,14 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
 
           <div className="flex items-center gap-2.5">
             <button
-              onClick={loginDemo}
-              className="hidden px-3 py-1.5 text-xs font-mono text-cyan transition-all duration-300 ease-out hover:text-white rounded-lg border border-cyan/30 bg-cyan/10 hover:bg-cyan/20 md:block"
-            >
-              ⚡ Instant Demo
-            </button>
-            <button
               onClick={handleGetStarted}
-              className="hidden px-3 py-1.5 text-sm text-[var(--tk-ink-muted)] transition-all duration-300 ease-out hover:text-[var(--tk-ink)] md:block"
+              className="hidden px-4 py-2 text-sm text-[var(--tk-ink-muted)] transition-all duration-300 ease-out hover:text-[var(--tk-ink)] md:block"
             >
               Sign in
             </button>
             <button
               onClick={handleGetStarted}
-              className="group relative inline-flex items-center gap-2 rounded-lg border border-[#00F2FE]/30 bg-gradient-to-r from-[#00F2FE]/15 to-[#05F2C7]/10 px-4 py-2 text-sm font-medium text-[#BEF5F8] transition-all duration-300 ease-out hover:border-[#00F2FE]/60 hover:shadow-[0_0_24px_rgba(0,242,254,0.35)] active:scale-[0.98]"
+              className="group relative inline-flex items-center gap-2 rounded-lg border border-[#C5A880]/30 bg-gradient-to-r from-[#C5A880]/10 to-transparent px-4 py-2 text-sm font-medium text-[#F4F3F0] transition-all duration-300 ease-out hover:border-[#C5A880]/60 active:scale-[0.98]"
             >
               Protect my identity
               <ArrowRight className="h-4 w-4 transition-transform duration-300 ease-out group-hover:translate-x-0.5" aria-hidden="true" />
@@ -582,12 +576,12 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
               transition={{ duration: 0.5, ease: "easeOut" }}
               className="flex justify-center"
             >
-              <div className="inline-flex items-center gap-2 rounded-full border border-[#00F2FE]/25 bg-[#00F2FE]/[0.06] px-4 py-1.5 text-xs font-medium tracking-wide text-[#7FEFFF]">
-                <span className="relative flex h-2 w-2">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#00F2FE] opacity-60" />
-                  <span className="relative inline-flex h-2 w-2 rounded-full bg-[#00F2FE]" />
+              <div className="inline-flex items-center gap-2 rounded-full border border-[#C5A880]/25 bg-[#C5A880]/[0.06] px-4 py-1.5 text-xs font-medium tracking-wide text-[#E5D5C0]">
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#C5A880] opacity-60" />
+                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#C5A880]" />
                 </span>
-                Security Shield · Barrier Intelligence · Live
+                Barrier Intelligence · Continuous Threat Sweeps
               </div>
             </motion.div>
 
@@ -596,12 +590,13 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, ease: "easeOut", delay: 0.05 }}
-              className="mt-8 text-center font-[var(--font-sans)] text-5xl font-semibold leading-[1.02] tracking-[-0.035em] md:text-7xl lg:text-[5.5rem]"
+              className="mt-8 text-center font-serif text-5xl font-light leading-[1.08] tracking-tight md:text-7xl lg:text-[5.5rem]"
+              style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
             >
               Every account behind a{" "}
               <span className={G_TEXT}>shield</span>.
               <br />
-              <span className="text-[var(--tk-ink-muted)]">Breaches can&apos;t spread what it contains.</span>
+              <span className="text-[var(--tk-ink-muted)]">Breaches can&apos;t spread what we contain.</span>
             </motion.h1>
 
             {/* Subhead */}
@@ -609,11 +604,11 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, ease: "easeOut", delay: 0.1 }}
-              className="mx-auto mt-6 max-w-2xl text-center text-lg leading-relaxed text-[var(--tk-ink-muted)] md:text-xl"
+              className="mx-auto mt-6 max-w-2xl text-center text-lg leading-relaxed text-[var(--tk-ink-muted)] md:text-xl font-light"
             >
-              Enclave watches your accounts against 1.2B+ breached records and live infostealer logs,
-              scores every credential, maps the blast radius of reused passwords — then walks you through
-              containment. Built with real corpus data, not marketing.
+              Enclave secures your digital identity against compromised records and live infostealer logs. 
+              We calculate exploitability, map the blast radius of exposed credentials, and deploy real-time playbooks 
+              to isolate compromises before they spread.
             </motion.p>
 
             {/* CTAs */}
@@ -625,20 +620,14 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
             >
               <button
                 onClick={handleGetStarted}
-                className="group relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-xl border border-transparent bg-gradient-to-r from-[#00F2FE] via-[#05F2C7] to-[#00F2FE] px-8 py-3.5 text-base font-semibold text-black transition-all duration-300 ease-out hover:shadow-[0_0_40px_rgba(0,242,254,0.45)] active:scale-[0.98]"
+                className="group relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-xl bg-[#C5A880] px-8 py-3.5 text-base font-semibold text-black transition-all duration-300 ease-out hover:shadow-[0_0_40px_rgba(197,168,128,0.25)] active:scale-[0.98]"
               >
-                Build my shield for free
+                Create secure vault
                 <ArrowRight className="h-5 w-5 transition-transform duration-300 ease-out group-hover:translate-x-1" aria-hidden="true" />
               </button>
-              <button
-                onClick={loginDemo}
-                className="inline-flex items-center gap-2 rounded-xl border border-[#00F2FE]/40 bg-[#00F2FE]/10 px-6 py-3.5 text-base font-medium text-[#BEF5F8] backdrop-blur-md transition-all duration-300 ease-out hover:border-[#00F2FE]/70 hover:bg-[#00F2FE]/20 hover:shadow-[0_0_30px_rgba(0,242,254,0.3)] active:scale-[0.98]"
-              >
-                <span>⚡ Instant Live Demo (1-Click)</span>
-              </button>
               <a href="#how-it-works">
-                <button className="inline-flex items-center gap-2 rounded-xl border border-[rgba(255,255,255,0.12)] bg-[rgba(13,14,18,0.6)] px-8 py-3.5 text-base text-[var(--tk-ink)] backdrop-blur-md transition-all duration-300 ease-out hover:border-[rgba(255,255,255,0.25)] hover:bg-[rgba(18,19,24,0.8)] active:scale-[0.98]">
-                  See how the shield works
+                <button className="inline-flex items-center gap-2 rounded-xl border border-[rgba(229,213,192,0.12)] bg-[rgba(20,20,23,0.6)] px-8 py-3.5 text-base text-[var(--tk-ink)] backdrop-blur-md transition-all duration-300 ease-out hover:border-[rgba(229,213,192,0.25)] hover:bg-[rgba(26,26,30,0.8)] active:scale-[0.98]">
+                  How it works
                 </button>
               </a>
             </motion.div>

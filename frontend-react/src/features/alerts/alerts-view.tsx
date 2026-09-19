@@ -65,9 +65,12 @@ export function AlertsView() {
   }, []);
 
   async function takedown(a: Alert) {
+    console.log("Takedown initiated for:", a.id);
     setAction(a.id);
     try {
-      await api.initiateTakedown(a.id, "dmca");
+      const result = await api.initiateTakedown(a.id, "dmca");
+      console.log("Takedown result:", result);
+      
       psych.recordTakedown();
       psych
         .checkBadges(5)
@@ -77,7 +80,37 @@ export function AlertsView() {
         body: a.url || a.description || "Request filed",
         variant: "success",
       });
+      
+      // Update takedowns state locally for immediate UI feedback
+      console.log("Setting takedowns...");
+      const tkdId = result.takedownId || result.id || `tkd-${a.id}`;
+      const newTd = { 
+          id: tkdId,
+          alertId: a.id,
+          status: result.emailSent ? 'sent' : 'pending',
+          type: result.type || 'dmca',
+          platform: result.platform || a.platform || 'X (Twitter) CDN',
+          targetUrl: a.url || a.source_url,
+          createdAt: new Date().toISOString()
+      };
+
+      setTakedowns(prev => [...prev, newTd]);
+      console.log("Setting expandedTd:", tkdId);
+      setExpandedTd(tkdId);
+
+      // Trigger Legal Takedown banner
+      try {
+        localStorage.setItem("enclave_active_takedown", JSON.stringify(newTd));
+        window.dispatchEvent(new CustomEvent("enclave:takedown_initiated", { detail: newTd }));
+      } catch {
+        // ignore
+      }
+      
+      // Reload alerts to show the active takedown
+      console.log("Reloading alerts...");
+      load();
     } catch (e: any) {
+      console.error("Takedown error:", e);
       toast({ title: "Takedown failed", body: e.message, variant: "error" });
     } finally {
       setAction(null);

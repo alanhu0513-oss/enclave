@@ -4,6 +4,7 @@ import { Topbar } from "./topbar";
 import { CommandPalette } from "./command-palette";
 import { NotificationsPanel } from "./notifications-panel";
 import { HaikeiBackground } from "./haikei-background";
+import { LegalTakedownBanner } from "./legal-takedown-banner";
 import { useApp } from "@/lib/app-context";
 import {
   OnboardingWizard,
@@ -108,6 +109,7 @@ export function AppShell() {
           collapsed={collapsed}
           onToggleCollapsed={toggleCollapsed}
         />
+        <LegalTakedownBanner />
         <Sidebar mobile open={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
         <div className="flex flex-1">
           <Sidebar collapsed={collapsed} onToggleCollapsed={toggleCollapsed} />
@@ -194,3 +196,5 @@ export function AppShell() {
     </div>
   );
 }
+
+export { LegalTakedownBanner } from "./legal-takedown-banner";

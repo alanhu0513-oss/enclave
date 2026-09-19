@@ -224,14 +224,16 @@ function ShieldRow({
           onClick={handleToggle}
           disabled={busy}
           className={cn(
-            "relative h-6 w-11 rounded-full transition-colors",
-            active ? "bg-green" : "bg-white/10"
+            "relative h-6 w-11 rounded-full border border-white/10 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] focus:outline-none",
+            active
+              ? "bg-green border-green/50 shadow-[0_0_12px_rgba(0,255,136,0.35)]"
+              : "bg-white/[0.08] hover:bg-white/[0.14]"
           )}
         >
           <span
             className={cn(
-              "absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform",
-              active ? "left-[22px]" : "left-0.5"
+              "absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-md transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]",
+              active ? "left-[21px] shadow-[0_0_8px_rgba(255,255,255,0.8)]" : "left-0.5"
             )}
           />
         </button>

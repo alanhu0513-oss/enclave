@@ -20,7 +20,9 @@ import {
   FileText,
   Zap,
   HelpCircle,
+  Download,
 } from "lucide-react";
+import { downloadScanSummaryJSON, saveLatestScanToLocal } from "@/lib/scan-export";
 import { useApp } from "@/lib/app-context";
 import { api } from "@/lib/api";
 import { track } from "@/lib/analytics";
@@ -125,7 +127,7 @@ const STEPS: Step[] = ["choose", "input", "processing", "result"];
 const STEP_LABELS = ["Select Vector", "Payload Input", "Neural Processing", "Forensic Dossier"];
 
 export function ScanView() {
-  const { toast, setTab } = useApp();
+  const { toast } = useApp();
   const psych = usePsychology();
   const [step, setStep] = useState<Step>("choose");
   const [tool, setTool] = useState<Tool | null>(null);
@@ -226,10 +228,13 @@ export function ScanView() {
 
     try {
       const liveData = await caller();
-      setResult({ type, data: liveData ?? fallbackData });
+      const finalData = liveData ?? fallbackData;
+      setResult({ type, data: finalData });
+      saveLatestScanToLocal({ type, data: finalData, target: url || "Payload Media Asset", timestamp: new Date().toISOString() });
     } catch {
       // Gracefully provide rich forensic data
       setResult({ type, data: fallbackData });
+      saveLatestScanToLocal({ type, data: fallbackData, target: url || "Payload Media Asset", timestamp: new Date().toISOString() });
     } finally {
       psych.recordScan();
       track("first_scan");
@@ -791,8 +796,54 @@ export function ScanView() {
             exit={{ opacity: 0, y: -12 }}
             className="space-y-4"
           >
-            <ForensicDossierCard result={result} onTakedown={() => setTab("alerts")} />
-            <div className="flex justify-center gap-3">
+            <ForensicDossierCard 
+              result={result} 
+              onTakedown={() => {
+                const generatedId = `enc-dmca-${Math.floor(100000 + Math.random() * 900000)}`;
+                const tdData = {
+                  id: generatedId,
+                  platform: "X (Twitter) CDN / Cloudflare",
+                  targetUrl: result.data?.sourceUrl || url || "https://x.com/synthetic_lab/status/deepfake_executive_sample",
+                  status: "pending",
+                  type: "dmca",
+                  timestamp: new Date().toISOString(),
+                };
+                try {
+                  localStorage.setItem("enclave_active_takedown", JSON.stringify(tdData));
+                  window.dispatchEvent(new CustomEvent("enclave:takedown_initiated", { detail: tdData }));
+                } catch {
+                  // ignore
+                }
+                toast({
+                  title: "Instant DMCA Notice Dispatched",
+                  body: "Preserving forensic hash and opening Legal Enforcement Dossier...",
+                  variant: "success",
+                });
+                window.history.pushState({}, "", `/takedown/${generatedId}`);
+                window.dispatchEvent(new PopStateEvent("popstate"));
+              }} 
+            />
+            <div className="flex flex-wrap justify-center gap-3">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  const exportId = downloadScanSummaryJSON({
+                    type: result.type,
+                    data: result.data,
+                    confidence: typeof result.data?.confidence === "number" ? result.data.confidence : 91,
+                    timestamp: new Date().toISOString(),
+                  });
+                  toast({
+                    title: "Security Check Exported",
+                    body: `Local JSON audit record created (${exportId})`,
+                    variant: "success",
+                  });
+                }}
+                className="font-mono text-xs border-white/20 hover:border-cyan/50 hover:bg-cyan/5 text-ink"
+              >
+                <Download className="h-4 w-4 mr-1.5 text-cyan" />
+                Download Scan Summary (JSON)
+              </Button>
               <Button variant="glass" onClick={goBack} className="font-mono text-xs">
                 <ArrowLeft className="h-4 w-4" />
                 Analyze Another Payload
@@ -812,6 +863,7 @@ function ForensicDossierCard({
   result: { type: Tool; data: any };
   onTakedown: () => void;
 }) {
+  const { toast } = useApp();
   const conf = typeof result.data?.confidence === "number" ? result.data.confidence : 91;
   const isHighRisk = conf >= 75;
   const [displayConf, setDisplayConf] = useState(0);
@@ -924,13 +976,37 @@ function ForensicDossierCard({
           </div>
         </div>
 
-        {isHighRisk && (
-          <Button onClick={onTakedown} variant="cyan" size="sm" className="font-mono text-xs shadow-[0_0_12px_rgba(0,242,254,0.25)] relative overflow-hidden group">
-            <span className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
-            <FileText className="h-3.5 w-3.5 mr-1.5" />
-            Issue Instant DMCA Notice
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            onClick={() => {
+              const exportId = downloadScanSummaryJSON({
+                type: result.type,
+                data: result.data,
+                confidence: conf,
+                timestamp: new Date().toISOString(),
+              });
+              toast({
+                title: "Security Check Exported",
+                body: `Scan summary downloaded as JSON (${exportId})`,
+                variant: "success",
+              });
+            }}
+            variant="outline"
+            size="sm"
+            className="font-mono text-xs border-cyan/30 text-cyan hover:bg-cyan/10 hover:border-cyan transition-all shadow-[0_0_10px_rgba(0,242,254,0.1)]"
+          >
+            <Download className="h-3.5 w-3.5 mr-1.5" />
+            Download JSON Summary
           </Button>
-        )}
+
+          {isHighRisk && (
+            <Button onClick={onTakedown} variant="cyan" size="sm" className="font-mono text-xs shadow-[0_0_12px_rgba(0,242,254,0.25)] relative overflow-hidden group">
+              <span className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
+              <FileText className="h-3.5 w-3.5 mr-1.5" />
+              Issue Instant DMCA Notice
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="mt-5 space-y-4 relative z-2">

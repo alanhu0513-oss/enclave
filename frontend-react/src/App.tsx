@@ -10,6 +10,7 @@ import { TermsOfService } from "@/pages/terms-of-service";
 import { PrivacyPolicy } from "@/pages/privacy-policy";
 import { DmcaPolicy } from "@/pages/dmca-policy";
 import { NotFoundPage } from "@/pages/not-found";
+import { TakedownDetail } from "@/pages/takedown-detail";
 import { captureReferralCode } from "@/lib/referral";
 import { getToken } from "@/lib/api";
 
@@ -66,6 +67,8 @@ function Gate() {
     const path = window.location.pathname;
     if (path === "/terms" || path === "/privacy" || path === "/dmca") {
       setPage(path.slice(1));
+    } else if (path.startsWith("/takedown/")) {
+        setPage("takedown");
     } else if (path === "/404") {
       setPage("404");
     } else {
@@ -75,6 +78,8 @@ function Gate() {
       const p = window.location.pathname;
       if (p === "/terms" || p === "/privacy" || p === "/dmca") {
         setPage(p.slice(1));
+      } else if (p.startsWith("/takedown/")) {
+        setPage("takedown");
       } else if (p === "/404") {
         setPage("404");
       } else {
@@ -88,6 +93,7 @@ function Gate() {
   if (page === "terms") return <TermsOfService />;
   if (page === "privacy") return <PrivacyPolicy />;
   if (page === "dmca") return <DmcaPolicy />;
+  if (page === "takedown") return <TakedownDetail />;
   if (page === "404") return <NotFoundPage />;
 
   // 1. Verify AuthProvider is fully initialized and token check is complete

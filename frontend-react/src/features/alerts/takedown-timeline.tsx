@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 interface TakedownTimelineProps {
@@ -100,6 +101,17 @@ export function TakedownTimeline({ takedownId }: TakedownTimelineProps) {
           <span className="text-[10px] text-ink-faint">
             {artifacts} artifact{artifacts !== 1 ? "s" : ""} preserved
           </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              window.location.href = `/takedown/${takedownId}`;
+            }}
+            className="ml-auto gap-2 h-7 px-3 text-[11px]"
+          >
+            <FileText className="h-3 w-3" />
+            View Legal DMCA Notice
+          </Button>
         </div>
 
         {/* Verification timeline */}

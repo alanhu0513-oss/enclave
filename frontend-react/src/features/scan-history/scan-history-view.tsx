@@ -8,7 +8,9 @@ import {
   Loader2,
   ExternalLink,
   Shield,
+  Download,
 } from "lucide-react";
+import { downloadScanSummaryJSON } from "@/lib/scan-export";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -132,10 +134,29 @@ export function ScanHistoryView() {
           title="Scan History"
           description="Review past scans and detection results"
           action={
-            <Button variant="ghost" size="sm" onClick={loadAlerts} disabled={loading}>
-              <Loader2 className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-              Refresh
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const latest = scans[0];
+                  const exportId = downloadScanSummaryJSON(latest);
+                  toast({
+                    title: "Latest Scan Summary Downloaded",
+                    body: `Exported audit record as JSON (${exportId})`,
+                    variant: "success",
+                  });
+                }}
+                className="font-mono text-xs border-cyan/30 text-cyan hover:bg-cyan/10 hover:border-cyan transition-all"
+              >
+                <Download className="h-3.5 w-3.5 mr-1" />
+                Export Latest JSON
+              </Button>
+              <Button variant="ghost" size="sm" onClick={loadAlerts} disabled={loading}>
+                <Loader2 className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+                Refresh
+              </Button>
+            </div>
           }
         />
       </FadeIn>
@@ -264,16 +285,33 @@ export function ScanHistoryView() {
                           </span>
                         </div>
                       </div>
-                      {scan.source && (
-                        <a
-                          href={scan.source}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="shrink-0 p-1.5 text-white/40 hover:text-cyan transition-colors sm:p-2"
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          type="button"
+                          title="Download Scan JSON"
+                          onClick={() => {
+                            const exportId = downloadScanSummaryJSON(scan);
+                            toast({
+                              title: "Scan Record Downloaded",
+                              body: `Saved ${exportId} as JSON`,
+                              variant: "success",
+                            });
+                          }}
+                          className="p-1.5 text-white/40 hover:text-cyan transition-colors sm:p-2 rounded-lg hover:bg-white/[0.04]"
                         >
-                          <ExternalLink className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                        </a>
-                      )}
+                          <Download className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                        </button>
+                        {scan.source && (
+                          <a
+                            href={scan.source}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="shrink-0 p-1.5 text-white/40 hover:text-cyan transition-colors sm:p-2 rounded-lg hover:bg-white/[0.04]"
+                          >
+                            <ExternalLink className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                          </a>
+                        )}
+                      </div>
                     </div>
                   </CardContent>
                 </Card>

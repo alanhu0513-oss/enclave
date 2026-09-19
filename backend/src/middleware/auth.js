@@ -31,10 +31,16 @@ async function generateTokenForUser(user) {
 
 async function authenticate(req, res, next) {
   const header = req.headers.authorization;
-  if (!header || !header.startsWith('Bearer ')) {
+  let token = null;
+  if (header && header.startsWith('Bearer ')) {
+    token = header.split(' ')[1];
+  } else if (req.query && req.query.token) {
+    token = req.query.token;
+  }
+
+  if (!token) {
     return error(res, 'Authentication required', 401);
   }
-  const token = header.split(' ')[1];
   if (token === 'enclave_demo_local_bypass_token') {
     req.user = {
       userId: 'usr_quantum_guardian',

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { Shield, ShieldCheck, ShieldX, Lock, Radar, FileText, Eye, Loader2, Sparkles } from "lucide-react";
+import { Shield, ShieldCheck, ShieldX, Lock, Radar, FileText, Eye } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
 import { useApp } from "@/lib/app-context";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
@@ -32,56 +33,7 @@ export function getShieldStates(): Record<string, boolean> {
 export function ShieldsView() {
   const { toast } = useApp();
   const [toggles, setToggles] = useState<Record<string, boolean>>(getShieldStates());
-
-  const [shieldStatus, setShieldStatus] = useState<Record<string, "secure" | "scanning" | "alert">>(() => ({
-    crawler: "secure",
-    monitor: "secure",
-    biometric: "secure",
-    takedown: "secure",
-    rights: "secure",
-  }));
-  const [simulating, setSimulating] = useState(false);
-
-  function triggerSimulatedIntrusion() {
-    const activeShieldKeys = Object.keys(toggles).filter((k) => toggles[k]);
-    if (activeShieldKeys.length === 0) {
-      toast({
-        title: "Simulation Canceled",
-        variant: "info",
-      });
-      return;
-    }
-
-    setSimulating(true);
-    const targetKey = activeShieldKeys[Math.floor(Math.random() * activeShieldKeys.length)];
-    const shieldName = SHIELDS.find((s) => s.key === targetKey)?.name || targetKey;
-
-    // Phase 1: Alert (Red)
-    setShieldStatus((prev) => ({ ...prev, [targetKey]: "alert" }));
-    toast({
-      title: `🚨 Intercepted Deepfake Activity via ${shieldName}`,
-      variant: "error",
-    });
-
-    // Phase 2: Scanning (Amber) after 3s
-    setTimeout(() => {
-      setShieldStatus((prev) => ({ ...prev, [targetKey]: "scanning" }));
-      toast({
-        title: `⚡ Deploying Automated Quantum Decoy Shields`,
-        variant: "info",
-      });
-    }, 3000);
-
-    // Phase 3: Secure (Green) after 5.5s total
-    setTimeout(() => {
-      setShieldStatus((prev) => ({ ...prev, [targetKey]: "secure" }));
-      setSimulating(false);
-      toast({
-        title: `🛡️ Defensive Perimeter Restored on ${shieldName}`,
-        variant: "success",
-      });
-    }, 5500);
-  }
+  const [lastToggledKey, setLastToggledKey] = useState<string | null>(null);
 
   useEffect(() => {
     localStorage.setItem(SHIELDS_STORAGE_KEY, JSON.stringify(toggles));
@@ -90,12 +42,19 @@ export function ShieldsView() {
   const activeCount = Object.values(toggles).filter(Boolean).length;
 
   function toggle(key: string, val: boolean) {
+    setLastToggledKey(key);
     setToggles((t) => ({ ...t, [key]: val }));
+    const shieldName = SHIELDS.find((s) => s.key === key)?.name || key;
     toast({
-      title: val ? "Shield activated" : "Shield deactivated",
-      body: key,
+      title: val ? `🛡️ ${shieldName} Activated` : `⏸️ ${shieldName} Deactivated`,
+      body: val ? "Real-time threat monitoring and mitigation active." : "Defense layer temporarily paused.",
       variant: val ? "success" : "info",
     });
+
+    // Reset ripple indicator after animation completes
+    setTimeout(() => {
+      setLastToggledKey((current) => (current === key ? null : current));
+    }, 600);
   }
 
   return (
@@ -104,9 +63,9 @@ export function ShieldsView() {
         <SectionHeader
           icon={Shield}
           title="Active Shields"
-          description={`${activeCount} of ${SHIELDS.length} defense layers protecting you`}
+          description={`${activeCount} of ${SHIELDS.length} defense layers protecting your digital identity`}
           action={
-            <Badge variant="cyan" className="text-sm">
+            <Badge variant="cyan" className="text-sm font-mono transition-all duration-300">
               <PulseDot color="cyan" size="sm" />
               {activeCount}/{SHIELDS.length} Online
             </Badge>
@@ -114,146 +73,160 @@ export function ShieldsView() {
         />
       </FadeIn>
 
-      {/* Simulation Console Control Panel */}
-      <FadeIn delay={0.1}>
-        <Card className="border-amber/20 bg-[#07080c]/80 p-5 relative overflow-hidden backdrop-blur-xl shadow-[0_0_24px_rgba(255,176,32,0.12)] rounded-xl">
-          <div className="absolute top-0 left-0 w-2 h-2 border-t border-l border-amber" />
-          <div className="absolute top-0 right-0 w-2 h-2 border-t border-r border-amber" />
-          <div className="absolute bottom-0 left-0 w-2 h-2 border-b border-l border-amber" />
-          <div className="absolute bottom-0 right-0 w-2 h-2 border-b border-r border-amber" />
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="space-y-1">
-              <div className="flex items-center gap-1.5 font-mono text-[10px] text-amber tracking-widest font-bold">
-                <span className="flex h-1.5 w-1.5 rounded-full bg-amber animate-ping" />
-                [DIAGNOSTIC DECK // DEFENSIVE SHIELD OVERRIDE]
-              </div>
-              <h4 className="font-display text-sm font-bold text-ink">Intrusion Mitigation Simulation Console</h4>
-              <p className="text-xs text-ink-muted">
-                Inject deepfake mimic traffic payloads to verify active shield threshold triggers and color transition behaviors.
-              </p>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                onClick={triggerSimulatedIntrusion}
-                disabled={simulating}
-                className={cn(
-                  "font-mono text-xs font-bold text-black px-4 py-2 rounded-lg transition-all duration-300 flex items-center gap-1.5 shadow-[0_0_12px_rgba(255,176,32,0.3)] shrink-0",
-                  simulating ? "bg-amber/50 cursor-not-allowed" : "bg-amber hover:bg-amber/80 cursor-pointer"
-                )}
-              >
-                {simulating ? (
-                  <>
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    SIMULATING...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="h-3.5 w-3.5 animate-pulse" />
-                    Inject Mock Payload
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </Card>
-      </FadeIn>
-
       <StaggerContainer className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {SHIELDS.map((shield) => {
           const active = toggles[shield.key];
-          const status = shieldStatus[shield.key] || "secure";
+          const isRecentlyToggled = lastToggledKey === shield.key;
+
           return (
             <StaggerItem key={shield.key}>
               <Kinetic>
                 <Card
                   className={cn(
-                    "relative overflow-hidden transition-all duration-500",
+                    "relative overflow-hidden transition-all duration-400 ease-[cubic-bezier(0.16,1,0.3,1)]",
                     active
-                      ? status === "secure"
-                        ? "border-green/20 shadow-lg shadow-green/5 bg-green/5"
-                        : status === "scanning"
-                        ? "border-amber/20 shadow-lg shadow-amber/5 bg-amber/5"
-                        : "border-red/40 shadow-xl shadow-red/10 bg-red/5 animate-pulse"
-                      : "border-white/[0.06]"
+                      ? "border-green/30 shadow-[0_0_24px_rgba(0,255,136,0.1)] bg-green/[0.04]"
+                      : "border-white/[0.06] bg-white/[0.01] hover:border-white/[0.12]"
                   )}
-                  {...(active && status === "secure" ? greenGlow : {})}
+                  {...(active ? greenGlow : {})}
                 >
-                  <div className={cn("absolute inset-0 bg-gradient-to-br opacity-40", shield.gradient)} />
-                  <div className="relative">
+                  <div
+                    className={cn(
+                      "absolute inset-0 bg-gradient-to-br transition-opacity duration-500",
+                      shield.gradient,
+                      active ? "opacity-60" : "opacity-15"
+                    )}
+                  />
+
+                  {/* Immediate Visual Confirmation Flash Glow on State Change */}
+                  <AnimatePresence>
+                    {isRecentlyToggled && active && (
+                      <motion.div
+                        key="flash-glow"
+                        initial={{ opacity: 0.8 }}
+                        animate={{ opacity: 0 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.6, ease: "easeOut" }}
+                        className="absolute inset-0 bg-green/15 pointer-events-none z-1"
+                      />
+                    )}
+                  </AnimatePresence>
+
+                  <div className="relative z-2">
                     <CardHeader className="pb-3">
-                      <div className="flex items-start justify-between">
-                        <div className={cn(
-                          "flex h-11 w-11 items-center justify-center rounded-xl",
-                          `bg-${shield.color}/15 text-${shield.color}`
-                        )}>
+                      <div className="flex items-start justify-between gap-3">
+                        <motion.div
+                          animate={{
+                            scale: active ? [1, 1.05, 1] : 1,
+                          }}
+                          transition={{ duration: 0.3 }}
+                          className={cn(
+                            "flex h-11 w-11 items-center justify-center rounded-xl transition-all duration-300",
+                            active
+                              ? `bg-${shield.color}/20 text-${shield.color} shadow-[0_0_14px_rgba(0,255,136,0.2)]`
+                              : "bg-white/[0.04] text-ink-muted"
+                          )}
+                        >
                           <shield.icon className="h-5 w-5" />
+                        </motion.div>
+
+                        {/* Animated Switch with Instant Confirmation Ripple */}
+                        <div className="relative flex items-center">
+                          <AnimatePresence>
+                            {isRecentlyToggled && (
+                              <motion.span
+                                key={`ripple-${active}`}
+                                initial={{ scale: 0.7, opacity: 0.9 }}
+                                animate={{ scale: 1.85, opacity: 0 }}
+                                exit={{ opacity: 0 }}
+                                transition={{ duration: 0.5, ease: "easeOut" }}
+                                className={cn(
+                                  "absolute -inset-1 rounded-full border-2 pointer-events-none",
+                                  active ? "border-green shadow-[0_0_12px_rgba(0,255,136,0.6)]" : "border-white/40"
+                                )}
+                              />
+                            )}
+                          </AnimatePresence>
+
+                          <Switch
+                            checked={active}
+                            onCheckedChange={(val) => toggle(shield.key, val)}
+                            className="cursor-pointer"
+                          />
                         </div>
-                        <Switch
-                          checked={active}
-                          onCheckedChange={(val) => toggle(shield.key, val)}
-                        />
                       </div>
                     </CardHeader>
-                    <CardContent>
-                      <h3 className="mb-1 text-sm font-semibold text-ink">{shield.name}</h3>
-                      <p className="text-xs leading-relaxed text-ink-muted">{shield.desc}</p>
-                      
-                      <div className="mt-3 flex items-center justify-between gap-2 border-t border-white/[0.04] pt-3">
-                        <div className="flex items-center gap-2">
-                          {active ? (
-                            <div className="relative">
-                              <span className={cn(
-                                "absolute -top-0.5 -right-0.5 flex h-1.5 w-1.5 rounded-full",
-                                status === "secure" ? "bg-green animate-pulse" :
-                                status === "scanning" ? "bg-amber animate-spin" : "bg-red animate-ping"
-                              )} />
-                              <Badge
-                                variant={status === "secure" ? "green" : status === "scanning" ? "amber" : "red"}
-                                className={cn(
-                                  "text-[9px] font-mono font-bold tracking-wider uppercase transition-all duration-700 py-0.5",
-                                  status === "secure" ? "shadow-[0_0_8px_rgba(0,255,136,0.25)] border-green/30" :
-                                  status === "scanning" ? "shadow-[0_0_8px_rgba(255,176,32,0.25)] border-amber/30" :
-                                  "shadow-[0_0_12px_rgba(255,71,87,0.4)] border-red/30 animate-pulse"
-                                )}
-                              >
-                                {status === "secure" && (
-                                  <>
-                                    <ShieldCheck className="h-3 w-3 mr-1 text-green shrink-0" />
-                                    SECURE
-                                  </>
-                                )}
-                                {status === "scanning" && (
-                                  <>
-                                    <Radar className="h-3 w-3 mr-1 text-amber animate-spin shrink-0" />
-                                    SCANNING
-                                  </>
-                                )}
-                                {status === "alert" && (
-                                  <>
-                                    <Shield className="h-3 w-3 mr-1 text-red shrink-0" />
-                                    THREAT FLAGGED
-                                  </>
-                                )}
-                              </Badge>
-                            </div>
-                          ) : (
-                            <Badge variant="muted" className="text-[9px] font-mono tracking-wider">
-                              <ShieldX className="h-3 w-3 mr-1 text-ink-faint shrink-0" /> INACTIVE
-                            </Badge>
-                          )}
-                        </div>
 
-                        {active && (
-                          <span className={cn(
-                            "text-[10px] font-mono font-semibold transition-colors duration-700",
-                            status === "secure" ? "text-green" :
-                            status === "scanning" ? "text-amber" : "text-red"
-                          )}>
-                            {status === "secure" && "ONLINE"}
-                            {status === "scanning" && "DIAGNOSING..."}
-                            {status === "alert" && "MITIGATING..."}
-                          </span>
-                        )}
+                    <CardContent>
+                      <h3 className="mb-1 text-sm font-semibold text-ink flex items-center justify-between">
+                        <span>{shield.name}</span>
+                        <AnimatePresence mode="wait">
+                          <motion.span
+                            key={active ? "status-on" : "status-off"}
+                            initial={{ opacity: 0, y: -2 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: 2 }}
+                            transition={{ duration: 0.2 }}
+                            className={cn(
+                              "text-[10px] font-mono uppercase tracking-wider font-bold",
+                              active ? "text-green" : "text-ink-faint"
+                            )}
+                          >
+                            {active ? "Online" : "Offline"}
+                          </motion.span>
+                        </AnimatePresence>
+                      </h3>
+                      <p className="text-xs leading-relaxed text-ink-muted min-h-[36px]">{shield.desc}</p>
+
+                      <div className="mt-4 flex items-center justify-between gap-2 border-t border-white/[0.06] pt-3">
+                        <AnimatePresence mode="wait">
+                          {active ? (
+                            <motion.div
+                              key="active-state"
+                              initial={{ opacity: 0, scale: 0.94, x: -4 }}
+                              animate={{ opacity: 1, scale: 1, x: 0 }}
+                              exit={{ opacity: 0, scale: 0.94, x: 4 }}
+                              transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+                              className="flex items-center gap-1.5"
+                            >
+                              <div className="relative flex h-2 w-2">
+                                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green opacity-75" />
+                                <span className="relative inline-flex h-2 w-2 rounded-full bg-green" />
+                              </div>
+                              <Badge
+                                variant="green"
+                                className="text-[10px] font-mono font-bold tracking-wider uppercase py-0.5 shadow-[0_0_10px_rgba(0,255,136,0.25)] border-green/30"
+                              >
+                                <ShieldCheck className="h-3 w-3 mr-1 text-green shrink-0" />
+                                ACTIVE DEFENSE
+                              </Badge>
+                            </motion.div>
+                          ) : (
+                            <motion.div
+                              key="inactive-state"
+                              initial={{ opacity: 0, scale: 0.94, x: -4 }}
+                              animate={{ opacity: 1, scale: 1, x: 0 }}
+                              exit={{ opacity: 0, scale: 0.94, x: 4 }}
+                              transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+                              className="flex items-center gap-1.5"
+                            >
+                              <div className="h-2 w-2 rounded-full bg-white/20" />
+                              <Badge variant="muted" className="text-[10px] font-mono tracking-wider py-0.5">
+                                <ShieldX className="h-3 w-3 mr-1 text-ink-faint shrink-0" />
+                                DISENGAGED
+                              </Badge>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+
+                        <span
+                          className={cn(
+                            "text-[10px] font-mono transition-colors duration-300",
+                            active ? "text-green/80 font-medium" : "text-ink-faint"
+                          )}
+                        >
+                          {active ? "REAL-TIME VIGILANCE" : "STANDBY"}
+                        </span>
                       </div>
                     </CardContent>
                   </div>
@@ -264,7 +237,7 @@ export function ShieldsView() {
         })}
       </StaggerContainer>
 
-      <FadeIn delay={0.3}>
+      <FadeIn delay={0.2}>
         <NativeShieldPanel />
       </FadeIn>
     </div>

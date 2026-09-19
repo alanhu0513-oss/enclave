@@ -75,22 +75,38 @@ export function DemoView() {
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6 p-6">
       <SectionHeader icon={Play} title="See Enclave in Action" description="Interactive demo of our core features" />
 
-      {/* Video Placeholder */}
+      {/* Interactive Tour Hero */}
       <StaggerItem>
         <Card className="bg-gradient-to-br from-white/5 to-white/[0.02] border-white/10 overflow-hidden">
-          <div className="aspect-video flex items-center justify-center relative">
-            <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/10 to-violet-500/10" />
-            <div className="relative text-center">
+          <div className="py-12 px-6 flex items-center justify-center relative">
+            <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/10 via-purple-500/5 to-violet-500/10" />
+            <div className="relative text-center max-w-lg mx-auto">
               <motion.div
-                animate={{ scale: [1, 1.1, 1] }}
-                transition={{ duration: 2, repeat: Infinity }}
-                className="w-20 h-20 mx-auto rounded-full bg-cyan-500/20 border border-cyan-500/30 flex items-center justify-center mb-4 cursor-pointer hover:bg-cyan-500/30 transition-colors"
-                onClick={() => window.open('https://www.youtube.com/watch?v=dQw4w9WgXcQ', '_blank')}
+                animate={{ scale: [1, 1.06, 1] }}
+                transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                className="w-16 h-16 mx-auto rounded-2xl bg-cyan-500/20 border border-cyan-500/30 flex items-center justify-center mb-4 shadow-[0_0_24px_rgba(0,242,254,0.2)]"
               >
-                <Play className="w-8 h-8 text-cyan-400 ml-1" />
+                <Shield className="w-8 h-8 text-cyan-400" />
               </motion.div>
-              <h3 className="text-xl font-semibold text-white">Watch Demo Video</h3>
-              <p className="text-sm text-white/60 mt-1">2 minutes • No signup required</p>
+              <h3 className="text-xl font-semibold text-white">Autonomous Protection System Tour</h3>
+              <p className="text-sm text-white/60 mt-2 mb-6">
+                Explore how Enclave combines multi-layered ML heuristics, proactive web crawling, and automated legal enforcement.
+              </p>
+              <div className="flex flex-wrap items-center justify-center gap-3">
+                <Button
+                  className="bg-cyan-500 text-black font-semibold hover:bg-cyan-400 font-mono text-xs px-5"
+                  onClick={() => setTab("scan")}
+                >
+                  <ScanSearch className="w-4 h-4 mr-2" /> Launch Live Scan
+                </Button>
+                <Button
+                  variant="outline"
+                  className="border-white/20 text-white hover:bg-white/10 font-mono text-xs px-5"
+                  onClick={() => setTab("threat-intel")}
+                >
+                  <Globe className="w-4 h-4 mr-2" /> View Threat Intel
+                </Button>
+              </div>
             </div>
           </div>
         </Card>
